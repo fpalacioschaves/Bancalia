@@ -1,6 +1,8 @@
 <?php
 /** public/views/admin/gestor.php */
 
+if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
+
 $labels = [
   'roles'        => 'Roles',
   'grados'       => 'Grados',
@@ -10,8 +12,18 @@ $labels = [
   'actividades'  => 'Actividades',
   'usuarios'     => 'Usuarios',
 ];
-$entity = $entity ?? 'grados';
-$title  = $labels[$entity] ?? ucfirst($entity);
+
+$entity  = $entity ?? 'grados';
+$title   = $labels[$entity] ?? ucfirst($entity);
+
+/* Detectar rol desde la sesión */
+$roleId  = 0;
+if (isset($_SESSION['user']['rol_id'])) {
+  $roleId = (int)$_SESSION['user']['rol_id'];
+} elseif (isset($_SESSION['rol_id'])) {
+  $roleId = (int)$_SESSION['rol_id'];
+}
+$isAdmin = ($roleId === 1);
 ?>
 <style>
   /* Toolbar */
@@ -47,7 +59,13 @@ $title  = $labels[$entity] ?? ucfirst($entity);
   <div class="admin-actions">
     <input id="q" class="search" type="search" placeholder="Buscar <?= strtolower($title) ?>..." />
     <button class="btn ghost" id="btnReload" title="Buscar">Buscar</button>
-    <button class="btn primary" id="btnNew">Nuevo</button>
+
+    <?php if (!($isAdmin && $entity === 'actividades')): ?>
+      <button class="btn primary" id="btnNew">Nuevo</button>
+    <?php else: ?>
+      <!-- Admin en actividades: sin botón Nuevo -->
+      <button class="btn primary" id="btnNew" style="display:none">Nuevo</button>
+    <?php endif; ?>
   </div>
 </div>
 
@@ -71,7 +89,10 @@ $title  = $labels[$entity] ?? ucfirst($entity);
 <script>
 (function(){
   const API = window.API_BASE || '/Bancalia/api';
-  const entity = <?= json_encode($entity) ?>;
+  const entity   = <?= json_encode($entity) ?>;
+  const ROLE_ID  = <?= (int)$roleId ?>;
+  const IS_ADMIN = ROLE_ID === 1;
+
   const qs = (s,r)=> (r||document).querySelector(s);
   const ce = (t)=> document.createElement(t);
   const show = (el,msg,type)=>{ if(!el)return; el.textContent=msg; el.className='alert '+(type||''); el.hidden=!msg; };
@@ -80,10 +101,7 @@ $title  = $labels[$entity] ?? ucfirst($entity);
   const modal = qs('#modal'), frm = qs('#frm'), mAlert = qs('#modalAlert'), mTitle=qs('#modalTitle');
 
   let meta = null, rows = [];
-  let gradosCache = null;
-  let asignaturasCache = null;
-  let usuariosCache = null;
-  let rolesCache = null;
+  let gradosCache = null, asignaturasCache = null, usuariosCache = null, rolesCache = null;
 
   async function jget(url){ const r = await fetch(url); if(!r.ok) throw new Error(await r.text()); return r.json(); }
   async function jpost(url,method,body){
@@ -114,9 +132,16 @@ $title  = $labels[$entity] ?? ucfirst($entity);
       cols.forEach(c=>{ const td=ce('td'); td.textContent = (r[c] ?? ''); tr.appendChild(td); });
 
       const td=ce('td'); td.className='admin-actions-cell';
-      const bE=ce('button'); bE.textContent='Editar'; bE.className='btn ghost'; bE.onclick=()=>openEdit(r);
+
+      // Admin en actividades: sin botón Editar (solo Borrar)
+      if (!(IS_ADMIN && entity === 'actividades')) {
+        const bE=ce('button'); bE.textContent='Editar'; bE.className='btn ghost'; bE.onclick=()=>openEdit(r);
+        td.appendChild(bE);
+      }
+
       const bD=ce('button'); bD.textContent='Borrar'; bD.className='btn'; bD.onclick=()=>delRow(r);
-      td.appendChild(bE); td.appendChild(bD); tr.appendChild(td);
+      td.appendChild(bD);
+      tr.appendChild(td);
 
       tbody.appendChild(tr);
     });
@@ -149,9 +174,7 @@ $title  = $labels[$entity] ?? ucfirst($entity);
     return wrap;
   }
 
-  function userFullName(u){
-    return (u?.nombre ?? '') + (u?.apellidos ? (' ' + u.apellidos) : '');
-  }
+  function userFullName(u){ return (u?.nombre ?? '') + (u?.apellidos ? (' ' + u.apellidos) : ''); }
 
   async function ensureCatalogs(){
     if (entity === 'asignaturas' && !gradosCache){
@@ -196,34 +219,50 @@ $title  = $labels[$entity] ?? ucfirst($entity);
         return;
       }
 
-      // Usuarios: select de rol por nombre + password virtual opcional
+      // Usuarios: select de rol por nombre
       if (entity === 'usuarios' && f.name === 'rol_id'){
         const rid = row ? (row.rol_id ?? row.rolId) : null;
         frm.appendChild( makeSelect('rol_id','Rol', (rolesCache||[]), rid, req) );
         return;
       }
+
+      // Usuarios: estado como select (activo/suspendido)
+      if (entity === 'usuarios' && f.name === 'estado'){
+        const estadoActual = row ? (row.estado ?? '') : '';
+        const opcionesEstado = [
+          { id: 'activo',     nombre: 'Activo' },
+          { id: 'suspendido', nombre: 'Suspendido' }
+        ];
+        frm.appendChild( makeSelect('estado','Estado', opcionesEstado, estadoActual, req) );
+        return;
+      }
+
+      // Usuarios: password virtual opcional
       if (entity === 'usuarios' && f.name === 'password_hash'){
-        // Campo virtual: password en claro sólo si se quiere cambiar/crear
         const wrap = ce('label'); wrap.style.display='block'; wrap.style.margin='8px 0';
         wrap.textContent = 'password (opcional)';
         const inp = ce('input'); inp.name = 'password'; inp.type = 'password'; inp.placeholder = '••••••';
         wrap.appendChild(inp); frm.appendChild(wrap); return;
       }
 
+      // Default: input normal
       frm.appendChild( makeInput(f.name, row ? row[f.name] : '', req) );
     });
   }
 
-  // Editar/Nuevo: cargamos detalle para preselección correcta
+  // Editar/Nuevo (bloqueado para admin en actividades desde UI)
   async function openEdit(row){
+    if (IS_ADMIN && entity === 'actividades') return; // no permitir abrir modal de edición
     mTitle.textContent = row ? 'Editar' : 'Nuevo';
     show(mAlert,'',null);
     let detail = null;
+
     if (row){
       const id = row[meta.pk];
       try { detail = await jget(`${API}/admin/${entity}/${id}`); }
       catch (e) { console.error(e); }
     }
+
     await buildForm(detail);
     modal.style.display='flex';
     frm.dataset.id = row ? row[meta.pk] : '';
@@ -241,6 +280,9 @@ $title  = $labels[$entity] ?? ucfirst($entity);
     const data = {};
     new FormData(frm).forEach((v,k)=> data[k]=v);
     const id = frm.dataset.id;
+
+    if (IS_ADMIN && entity === 'actividades') { show(mAlert,'El admin no puede crear/editar actividades.', 'err'); return; }
+
     try{
       if (id) await jpost(`${API}/admin/${entity}/${id}`, 'PUT', data);
       else    await jpost(`${API}/admin/${entity}`, 'POST', data);
@@ -259,12 +301,17 @@ $title  = $labels[$entity] ?? ucfirst($entity);
   // init
   (async ()=>{
     meta = await jget(`${API}/admin/meta/${entity}`);
+    if (IS_ADMIN && entity === 'actividades') {
+      const btnNew = qs('#btnNew'); if (btnNew) btnNew.style.display = 'none';
+    }
     await reload();
   })();
 
   // eventos
   qs('#btnReload').onclick = reload;
+  <?php if (!($isAdmin && $entity === 'actividades')): ?>
   qs('#btnNew').onclick    = ()=>openEdit(null);
+  <?php endif; ?>
   qs('#btnSave').onclick   = (e)=>{ e.preventDefault(); saveForm(); };
   qs('#btnCancel').onclick = (e)=>{ e.preventDefault(); modal.style.display='none'; };
 
