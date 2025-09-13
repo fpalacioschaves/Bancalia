@@ -54,6 +54,7 @@ final class Session
         return isset($_SESSION['rol_id']) ? (int)$_SESSION['rol_id'] : null;
     }
 
+    /** Para proteger endpoints de API por rol */
     public static function requireApiRole(array $roles): void
     {
         self::start();
