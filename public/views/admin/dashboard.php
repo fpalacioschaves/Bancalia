@@ -1,6 +1,6 @@
 <?php $path = __FILE__; ?>
 <h1>Administración</h1>
-<p class="muted">Elige un bloque para gestionarlo.</p>
+
 
 <!-- 3 columnas fijas, usando tu .card y sin tocar el CSS global -->
 <section style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:16px 0">

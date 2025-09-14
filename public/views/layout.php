@@ -45,7 +45,8 @@ if ($isAuth && $userId) {
         <?php endif; ?>
 
         <?php if ($isAuth && $rolId === 2): ?>
-          <a class="link" href="/Bancalia/public/profesor/actividades">Profesor</a>
+          <!-- Enlace al panel de profesor (no a /profesor/actividades) -->
+          <a class="link" href="/Bancalia/public/profesor">Profesor</a>
         <?php endif; ?>
 
         <?php if ($isAuth && $rolId === 3): ?>

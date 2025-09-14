@@ -29,15 +29,20 @@ final class AuthController extends BaseController
             if (!$user) return $this->json(['error' => 'Credenciales inválidas'], 401);
 
             $hash = $user['password_hash'] ?? '';
-            $ok = $hash && str_starts_with($hash, '$2y$') ? password_verify($password, $hash)
-                                                         : hash_equals($hash, $password);
+            $ok = $hash && str_starts_with($hash, '$2y$')
+                ? password_verify($password, $hash)
+                : hash_equals($hash, $password);
 
             if (!$ok) return $this->json(['error' => 'Credenciales inválidas'], 401);
 
             Session::login((int)$user['id'], (int)$user['rol_id']);
-
             unset($user['password_hash']);
-            return $this->json(['ok' => true, 'user' => $user]);
+
+            $redirect = '/Bancalia/public/';
+            if ((int)$user['rol_id'] === 1)      $redirect = '/Bancalia/public/admin';
+            else if ((int)$user['rol_id'] === 2) $redirect = '/Bancalia/public/profesor';
+
+            return $this->json(['ok' => true, 'user' => $user, 'redirect' => $redirect]);
         } catch (Throwable $e) {
             return $this->json(['error' => $e->getMessage()], 500);
         }
@@ -66,17 +71,37 @@ final class AuthController extends BaseController
             // dependencias
             $cursoId = (int)($d['curso_id'] ?? 0);
             $asigId  = (int)($d['asignatura_id'] ?? 0);
+            $imparte = is_array($d['imparte'] ?? null) ? $d['imparte'] : [];
 
             if ($rolTxt === 'alumno') {
                 if ($cursoId <= 0) return $this->json(['error'=>'Selecciona curso'], 422);
                 $st = $pdo->prepare('SELECT id FROM cursos WHERE id=?');
                 $st->execute([$cursoId]); if (!$st->fetch()) return $this->json(['error'=>'Curso no válido'], 422);
-            } else {
-                if ($cursoId <= 0 || $asigId <= 0) return $this->json(['error'=>'Selecciona curso y asignatura'], 422);
-                $st = $pdo->prepare('SELECT id,grado_id FROM cursos WHERE id=?'); $st->execute([$cursoId]); $curso = $st->fetch();
-                $st = $pdo->prepare('SELECT id,grado_id FROM asignaturas WHERE id=?'); $st->execute([$asigId]); $asig = $st->fetch();
-                if (!$curso || !$asig) return $this->json(['error'=>'Curso/Asignatura no válidos'], 422);
-                if ((int)$curso['grado_id'] !== (int)$asig['grado_id']) return $this->json(['error'=>'Curso y asignatura de grados distintos'], 422);
+            } else { // profesor
+                // Si viene array imparte, lo usaremos; si no, exigimos el par único
+                if (empty($imparte)) {
+                    if ($cursoId <= 0 || $asigId <= 0) return $this->json(['error'=>'Selecciona curso y asignatura'], 422);
+                    // validación de coherencia
+                    $st = $pdo->prepare('SELECT id,grado_id FROM cursos WHERE id=?');       $st->execute([$cursoId]); $curso = $st->fetch();
+                    $st = $pdo->prepare('SELECT id,grado_id FROM asignaturas WHERE id=?');  $st->execute([$asigId]);  $asig  = $st->fetch();
+                    if (!$curso || !$asig) return $this->json(['error'=>'Curso/Asignatura no válidos'], 422);
+                    if ((int)$curso['grado_id'] !== (int)$asig['grado_id']) return $this->json(['error'=>'Curso y asignatura de grados distintos'], 422);
+                } else {
+                    // Validamos rápidamente la estructura
+                    foreach ($imparte as $i => $row) {
+                        $gid = (int)($row['grado_id'] ?? 0);
+                        $cid = (int)($row['curso_id'] ?? 0);
+                        $aid = (int)($row['asignatura_id'] ?? 0);
+                        if ($gid<=0 || $cid<=0 || $aid<=0) return $this->json(['error'=>"Fila imparte #".($i+1)." incompleta"], 422);
+
+                        $st = $pdo->prepare('SELECT grado_id FROM cursos WHERE id=?');       $st->execute([$cid]); $gCurso = $st->fetchColumn();
+                        $st = $pdo->prepare('SELECT grado_id FROM asignaturas WHERE id=?');  $st->execute([$aid]); $gAsig  = $st->fetchColumn();
+
+                        if (!$gCurso || !$gAsig || (int)$gCurso!==$gid || (int)$gAsig!==$gid){
+                            return $this->json(['error'=>"Fila imparte #".($i+1)." no coherente con el grado"], 422);
+                        }
+                    }
+                }
             }
 
             // email único
@@ -87,15 +112,28 @@ final class AuthController extends BaseController
             $pdo->beginTransaction();
 
             $hash = password_hash($password, PASSWORD_BCRYPT);
-            $ins = $pdo->prepare('INSERT INTO usuarios (nombre,email,password_hash,rol_id,estado) VALUES (?,?,?,?,?)');
+            $ins  = $pdo->prepare('INSERT INTO usuarios (nombre,email,password_hash,rol_id,estado) VALUES (?,?,?,?,?)');
             $ins->execute([$nombre,$email,$hash,$rolId,'activo']);
             $uid = (int)$pdo->lastInsertId();
 
-            // perfiles_* (deben existir en tu BD)
             if ($rolTxt === 'alumno') {
-                $pdo->prepare('INSERT INTO perfiles_alumno (usuario_id, curso_id) VALUES (?,?)')->execute([$uid,$cursoId]);
+                // si existe perfiles_alumno en tu BD
+                try {
+                    $pdo->prepare('INSERT INTO perfiles_alumno (usuario_id, curso_id) VALUES (?,?)')->execute([$uid,$cursoId]);
+                } catch (\Throwable $e) { /* ignora si no existe */ }
             } else {
-                $pdo->prepare('INSERT INTO perfiles_profesor (usuario_id, curso_id, asignatura_id) VALUES (?,?,?)')->execute([$uid,$cursoId,$asigId]);
+                if (!empty($imparte)) {
+                    $insPI = $pdo->prepare('INSERT IGNORE INTO profesor_imparte (profesor_id,grado_id,curso_id,asignatura_id) VALUES (?,?,?,?)');
+                    foreach ($imparte as $row) {
+                        $gid=(int)$row['grado_id']; $cid=(int)$row['curso_id']; $aid=(int)$row['asignatura_id'];
+                        $insPI->execute([$uid,$gid,$cid,$aid]);
+                    }
+                } else {
+                    // compat: un solo curso/asignatura -> deducimos grado
+                    $st = $pdo->prepare('SELECT grado_id FROM cursos WHERE id=?'); $st->execute([$cursoId]); $gid = (int)$st->fetchColumn();
+                    $pdo->prepare('INSERT IGNORE INTO profesor_imparte (profesor_id,grado_id,curso_id,asignatura_id) VALUES (?,?,?,?)')
+                        ->execute([$uid,$gid,$cursoId,$asigId]);
+                }
             }
 
             $pdo->commit();
