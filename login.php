@@ -1,28 +1,28 @@
 <?php
-session_start();
-require_once __DIR__ . '/includes/funciones.php';
+declare(strict_types=1);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = isset($_POST['usuario']) ? trim($_POST['usuario']) : '';
-    $password = isset($_POST['clave']) ? $_POST['clave'] : '';
-    $user_id = verificar_login($email, $password);
+require __DIR__ . '/inc/auth.php';
 
-    if ($user_id) {
-        $_SESSION['usuario_id'] = $user_id;
-        if (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) {
-            echo json_encode(['success' => true, 'redirect' => 'panel.php']);
-            exit;
-        } else {
-            header('Location: panel.php');
-            exit;
-        }
-    } else {
-        if (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) {
-            echo json_encode(['success' => false, 'error' => 'Usuario o contraseña incorrectos.']);
-            exit;
-        }
-        header('Location: index.php');
-        exit;
-    }
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+  header('Location: /Bancalia/index.php');
+  exit;
 }
-?>
+
+header('Content-Type: application/json; charset=utf-8');
+
+try {
+  $email = trim((string)($_POST['usuario'] ?? $_POST['email'] ?? ''));
+  $pass  = (string)($_POST['clave'] ?? $_POST['password'] ?? '');
+  if ($email === '' || $pass === '') {
+    throw new RuntimeException('Faltan credenciales.');
+  }
+  $user = login_with_credentials($pdo, $email, $pass);
+  echo json_encode([
+    'success'  => true,
+    'user'     => ['id'=>$user['id'],'nombre'=>$user['nombre'],'rol_id'=>$user['rol_id']],
+    'redirect' => '/Bancalia/panel.php'
+  ], JSON_UNESCAPED_UNICODE);
+} catch (Throwable $e) {
+  http_response_code(400);
+  echo json_encode(['success'=>false,'error'=>$e->getMessage()], JSON_UNESCAPED_UNICODE);
+}
