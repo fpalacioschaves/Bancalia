@@ -7,38 +7,59 @@ require_login();
 if (!is_admin()) { http_response_code(403); echo json_encode(['ok'=>false,'error'=>'Solo admin']); exit; }
 
 try {
-  if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
-    http_response_code(405); echo json_encode(['ok'=>false,'error'=>'Método no permitido']); exit;
-  }
+  $page    = max(1, (int)($_GET['page'] ?? 1));
+  $per     = min(100, max(1, (int)($_GET['per_page'] ?? 10)));
+  $gradoId = (int)($_GET['grado_id'] ?? 0);
+  $cursoId = (int)($_GET['curso_id'] ?? 0);
+  $q       = trim((string)($_GET['q'] ?? ''));
 
-  $grado_id = (int)($_POST['grado_id'] ?? 0);
-  $nombre   = trim((string)($_POST['nombre'] ?? ''));
-  $codigo   = trim((string)($_POST['codigo'] ?? ''));
+  $joins = [];
+  $where = [];
+  $args  = [];
 
-  if ($grado_id <= 0) { http_response_code(400); echo json_encode(['ok'=>false,'error'=>'Selecciona un grado']); exit; }
-  if ($nombre === '') { http_response_code(400); echo json_encode(['ok'=>false,'error'=>'El nombre es obligatorio']); exit; }
+  if ($gradoId > 0) { $where[] = 'a.grado_id = ?'; $args[] = $gradoId; }
+  if ($cursoId > 0) { $joins[] = 'JOIN asignatura_curso acf ON acf.asignatura_id=a.id AND acf.curso_id=?'; $args[] = $cursoId; }
+  if ($q !== '')    { $where[] = 'a.nombre LIKE ?'; $args[] = "%$q%"; }
 
-  // Grado válido
-  $st = $pdo->prepare('SELECT 1 FROM grados WHERE id=?');
-  $st->execute([$grado_id]);
-  if (!$st->fetch()) { http_response_code(400); echo json_encode(['ok'=>false,'error'=>'Grado no válido']); exit; }
+  $jSql = $joins ? ' '.implode(' ', $joins).' ' : '';
+  $wSql = $where ? 'WHERE '.implode(' AND ', $where) : '';
 
-  // (Opcional) evitar duplicados por (grado_id, nombre)
-  $st = $pdo->prepare('SELECT 1 FROM asignaturas WHERE grado_id=? AND nombre=?');
-  $st->execute([$grado_id, $nombre]);
-  if ($st->fetch()) { http_response_code(400); echo json_encode(['ok'=>false,'error'=>'Ya existe esa asignatura en el grado']); exit; }
+  // total (distinct asignaturas)
+  $st = $pdo->prepare("SELECT COUNT(DISTINCT a.id)
+    FROM asignaturas a
+    $jSql
+    $wSql");
+  $st->execute($args);
+  $total = (int)$st->fetchColumn();
 
-  $st = $pdo->prepare('INSERT INTO asignaturas (grado_id, nombre, codigo) VALUES (?,?,?)');
-  $st->execute([$grado_id, $nombre, $codigo !== '' ? $codigo : null]);
-  $id = (int)$pdo->lastInsertId();
+  $offset = ($page - 1) * $per;
 
-  $st = $pdo->prepare('
-    SELECT a.id, a.nombre, a.codigo, a.grado_id, g.nombre AS grado, 0 AS temas
-    FROM asignaturas a JOIN grados g ON g.id=a.grado_id WHERE a.id=?');
-  $st->execute([$id]);
-  $row = $st->fetch();
+  // data
+  $sql = "
+    SELECT
+      a.id, a.nombre, a.codigo, a.grado_id, g.nombre AS grado,
+      COALESCE(t.temas,0) AS temas,
+      GROUP_CONCAT(DISTINCT c.id ORDER BY c.orden, c.nombre SEPARATOR ',')   AS cursos_ids,
+      GROUP_CONCAT(DISTINCT c.nombre ORDER BY c.orden, c.nombre SEPARATOR ' | ') AS cursos_nombres
+    FROM asignaturas a
+    JOIN grados g ON g.id=a.grado_id
+    LEFT JOIN asignatura_curso ac ON ac.asignatura_id=a.id
+    LEFT JOIN cursos c ON c.id=ac.curso_id
+    LEFT JOIN (
+      SELECT asignatura_id, COUNT(*) AS temas
+      FROM temas GROUP BY asignatura_id
+    ) t ON t.asignatura_id=a.id
+    $jSql
+    $wSql
+    GROUP BY a.id, a.nombre, a.codigo, a.grado_id, g.nombre, t.temas
+    ORDER BY g.nombre, a.nombre
+    LIMIT $per OFFSET $offset
+  ";
+  $st = $pdo->prepare($sql);
+  $st->execute($args);
+  $rows = $st->fetchAll();
 
-  echo json_encode(['ok'=>true,'data'=>$row], JSON_UNESCAPED_UNICODE);
+  echo json_encode(['ok'=>true,'data'=>$rows,'total'=>$total,'page'=>$page,'per_page'=>$per], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
   http_response_code(500);
   echo json_encode(['ok'=>false,'error'=>$e->getMessage()], JSON_UNESCAPED_UNICODE);

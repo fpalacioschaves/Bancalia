@@ -118,13 +118,13 @@
   <div class="card p-4 mt-6">
     <div class="mb-1">
       <h2 class="text-base font-semibold">Catálogo: Asignaturas</h2>
-      <p class="text-sm text-gray-600">Crear, editar y eliminar asignaturas. (Según tu SQL, están ligadas a Grado.)</p>
+      <p class="text-sm text-gray-600">Las asignaturas pertenecen a un grado y pueden asociarse a uno o varios cursos de ese grado.</p>
     </div>
 
-    <!-- Filtros + Acciones (Mostrando… arriba dcha) -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
       <div class="flex flex-wrap items-center gap-2">
         <select id="asigGradoFiltro" class="ui-select"><option value="">Todos los grados</option></select>
+        <select id="asigCursoFiltro" class="ui-select" disabled><option value="">Todos los cursos</option></select>
         <input id="asigQ" type="text" placeholder="Buscar asignatura" class="ui-input w-64" />
         <button id="asigBuscar" class="ui-btn btn-blue">Buscar</button>
         <button id="asigNuevo" class="ui-btn btn-green ml-2">Nueva asignatura</button>
@@ -132,7 +132,6 @@
       <div id="asigMeta" class="text-sm text-gray-500"></div>
     </div>
 
-    <!-- Tabla Asignaturas -->
     <div class="mt-4 table-wrap">
       <table class="w-full text-sm">
         <thead class="border-b">
@@ -141,6 +140,7 @@
             <th class="sticky-th py-2 pr-3">Nombre</th>
             <th class="sticky-th py-2 pr-3">Código</th>
             <th class="sticky-th py-2 pr-3">Grado</th>
+            <th class="sticky-th py-2 pr-3">Cursos</th>
             <th class="sticky-th py-2 pr-3">Temas</th>
             <th class="sticky-th py-2">Acciones</th>
           </tr>
@@ -149,14 +149,12 @@
       </table>
     </div>
 
-    <!-- Paginación Asignaturas -->
     <div class="mt-3 flex items-center gap-2">
       <button id="asigPrev" class="ui-btn border">Anterior</button>
       <button id="asigNext" class="ui-btn border">Siguiente</button>
     </div>
   </div>
 
-  <!-- Formulario Asignatura -->
   <div id="asigFormWrap" class="card p-4 mt-4 hidden">
     <h3 id="asigFormTitle" class="text-base font-semibold mb-3">Nueva asignatura</h3>
     <form id="asigForm" class="grid md:grid-cols-3 gap-4">
@@ -172,6 +170,11 @@
       <div>
         <label class="block text-sm font-medium mb-1">Código (opcional)</label>
         <input id="asigCodigo" type="text" class="ui-input w-full" />
+      </div>
+      <div class="md:col-span-3">
+        <label class="block text-sm font-medium mb-1">Cursos (del grado)</label>
+        <select id="asigCursos" class="ui-multi w-full" multiple size="8"></select>
+        <p class="help mt-1">Selecciona uno o varios cursos (Ctrl/⌘ + clic).</p>
       </div>
       <div class="md:col-span-3 flex items-center gap-2">
         <button id="asigGuardar" type="submit" class="ui-btn btn-green">Guardar</button>

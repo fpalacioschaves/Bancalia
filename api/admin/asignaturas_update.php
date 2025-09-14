@@ -16,6 +16,11 @@ try {
   $codigo   = trim((string)($_POST['codigo'] ?? ''));
   $grado_id = isset($_POST['grado_id']) && $_POST['grado_id'] !== '' ? (int)$_POST['grado_id'] : null;
 
+  $cursoIds = $_POST['curso_ids'] ?? [];
+  if (!is_array($cursoIds)) $cursoIds = [$cursoIds];
+  $cursoIds = array_values(array_unique(array_map('intval', $cursoIds)));
+  $cursoIds = array_filter($cursoIds, fn($v)=>$v>0);
+
   if ($id <= 0)       { http_response_code(400); echo json_encode(['ok'=>false,'error'=>'ID requerido']); exit; }
   if ($nombre === '') { http_response_code(400); echo json_encode(['ok'=>false,'error'=>'El nombre es obligatorio']); exit; }
 
@@ -26,28 +31,53 @@ try {
 
   $new_grado = $grado_id ?? (int)$row['grado_id'];
 
-  // Grado válido
+  // Validar grado
   $st = $pdo->prepare('SELECT 1 FROM grados WHERE id=?');
   $st->execute([$new_grado]);
   if (!$st->fetch()) { http_response_code(400); echo json_encode(['ok'=>false,'error'=>'Grado no válido']); exit; }
 
-  // Duplicados por (grado_id, nombre)
+  // Duplicado (nombre dentro del grado)
   $st = $pdo->prepare('SELECT 1 FROM asignaturas WHERE grado_id=? AND nombre=? AND id<>?');
   $st->execute([$new_grado, $nombre, $id]);
   if ($st->fetch()) { http_response_code(400); echo json_encode(['ok'=>false,'error'=>'Ya existe esa asignatura en el grado']); exit; }
 
-  $st = $pdo->prepare('UPDATE asignaturas SET nombre=?, codigo=?, grado_id=? WHERE id=?');
-  $st->execute([$nombre, $codigo !== '' ? $codigo : null, $new_grado, $id]);
+  // Validar cursos (si vienen)
+  if ($cursoIds) {
+    $in = implode(',', array_fill(0, count($cursoIds), '?'));
+    $params = $cursoIds; $params[] = $new_grado;
+    $chk = $pdo->prepare("SELECT COUNT(*) FROM cursos WHERE id IN ($in) AND grado_id=?");
+    $chk->execute($params);
+    if ((int)$chk->fetchColumn() !== count($cursoIds)) {
+      http_response_code(400); echo json_encode(['ok'=>false,'error'=>'Algún curso no pertenece al grado seleccionado']); exit;
+    }
+  }
 
-  $st = $pdo->prepare('
+  $pdo->beginTransaction();
+
+  $pdo->prepare('UPDATE asignaturas SET nombre=?, codigo=?, grado_id=? WHERE id=?')
+      ->execute([$nombre, $codigo !== '' ? $codigo : null, $new_grado, $id]);
+
+  // Reemplazar vínculos de cursos
+  $pdo->prepare('DELETE FROM asignatura_curso WHERE asignatura_id=?')->execute([$id]);
+  if ($cursoIds) {
+    $ins = $pdo->prepare('INSERT INTO asignatura_curso (asignatura_id, curso_id) VALUES (?,?)');
+    foreach ($cursoIds as $cid) $ins->execute([$id, $cid]);
+  }
+
+  $pdo->commit();
+
+  $st = $pdo->prepare("
     SELECT a.id, a.nombre, a.codigo, a.grado_id, g.nombre AS grado,
-           (SELECT COUNT(*) FROM temas t WHERE t.asignatura_id=a.id) AS temas
-    FROM asignaturas a JOIN grados g ON g.id=a.grado_id WHERE a.id=?');
+           (SELECT COUNT(*) FROM temas t WHERE t.asignatura_id=a.id) AS temas,
+           (SELECT GROUP_CONCAT(c.id)    FROM asignatura_curso ac JOIN cursos c ON c.id=ac.curso_id WHERE ac.asignatura_id=a.id) AS cursos_ids,
+           (SELECT GROUP_CONCAT(c.nombre SEPARATOR ' | ') FROM asignatura_curso ac JOIN cursos c ON c.id=ac.curso_id WHERE ac.asignatura_id=a.id) AS cursos_nombres
+    FROM asignaturas a JOIN grados g ON g.id=a.grado_id WHERE a.id=?");
   $st->execute([$id]);
   $data = $st->fetch();
 
   echo json_encode(['ok'=>true,'data'=>$data], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
+  if ($pdo && $pdo->inTransaction()) $pdo->rollBack();
   http_response_code(500);
   echo json_encode(['ok'=>false,'error'=>$e->getMessage()], JSON_UNESCAPED_UNICODE);
 }

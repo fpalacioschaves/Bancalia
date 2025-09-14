@@ -1,5 +1,4 @@
 <?php
-// Usa $user si existe
 ?><!DOCTYPE html>
 <html lang="es">
 <head>
@@ -9,9 +8,17 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/Bancalia/assets/css/app.css" />
   <style>
+    /* Controles base */
     .ui-input, .ui-select, .ui-btn { height: 2.5rem; font-size:.875rem; line-height:1.25rem; border-radius:.5rem; }
-    .ui-input, .ui-select { border:1px solid #e5e7eb; padding:.5rem .75rem; }
+    .ui-input, .ui-select { border:1px solid #e5e7eb; padding:.5rem .75rem; background:#fff; }
     .ui-btn { padding:.5rem 1rem; }
+    .ui-input:focus, .ui-select:focus, .ui-multi:focus { outline:2px solid #93c5fd; outline-offset:1px; }
+
+    /* Select múltiple (no queremos altura fija) */
+    .ui-multi { height:auto; min-height: 10rem; border:1px solid #e5e7eb; border-radius:.5rem; padding:.25rem; background:#fff; }
+    .ui-multi option { padding:.25rem .5rem; }
+
+    /* Tabs y helpers */
     .tablink { height:2.5rem; font-size:.875rem; border-radius:.75rem; border:1px solid #e5e7eb; background:#fff; transition:all .15s; }
     .tablink[aria-selected="true"] { border-color:#93c5fd; background:#eff6ff; }
     .card { background:#fff; border:1px solid #e5e7eb; border-radius:.75rem; }
@@ -26,7 +33,8 @@
     .btn-red  { background:#ef4444; color:#fff; } .btn-red:hover { background:#dc2626; }
     .btn-gray { background:#6b7280; color:#fff; } .btn-gray:hover { background:#4b5563; }
     .btn-green{ background:#16a34a; color:#fff; } .btn-green:hover{ background:#15803d; }
-    .btn-blue { background:#2563eb; color:#fff; } .btn-blue:hover{ background:#1d4ed8; }
+    .btn-blue { background:#2563eb; color:#fff; } .btn-blue:hover { background:#1d4ed8; }
+    .help { font-size:.75rem; color:#6b7280; }
   </style>
 </head>
 <body class="bg-gray-100 min-h-screen text-gray-900">
