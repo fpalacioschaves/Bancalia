@@ -113,3 +113,22 @@ thead th { position: sticky; top: 0; background: var(--surface-2); }
 
 
 
+/* Evitar que el texto del <select> quede tapado por la flecha nativa */
+.form select {
+  padding-right: 34px;          /* espacio para la flecha */
+  -webkit-padding-end: 34px;    /* Safari/WebKit */
+  text-overflow: clip;          /* sin puntos suspensivos */
+}
+
+/* Asegurar ancho completo del contenedor */
+.form label { width: 100%; }
+.form select, .form input { width: 100%; }
+
+/* Para selects “compactos” del perfil, permitir que crezcan */
+.eq { width: auto; min-width: 180px; }
+
+select{
+  height: 42px;
+  border-radius: 10px;
+  padding: 0 5px 0 5px
+}

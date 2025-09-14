@@ -37,6 +37,7 @@ $router->delete('/api/profesor/imparte/{id}',   [\Src\Controller\ProfesorPerfilC
 // Alias por si el router no maneja DELETE:
 $router->post  ('/api/profesor/imparte/delete/{id}', [\Src\Controller\ProfesorPerfilController::class, 'apiImparteDelete']);
 
+$router->get('/profesor/actividades', [\Src\Controller\ProfesorActividadesController::class, 'pageIndex']);
 
 
 

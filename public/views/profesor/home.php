@@ -12,12 +12,12 @@
 
 <div class="page">
   <div class="dash-head">
-    <h2 style="margin:0">Panel del profesor</h2>
-    <div class="userpill">
+    <h2 style="margin:0">Admin</h2>
+    <!--<div class="userpill">
       <span class="avatar"><?= strtoupper(substr((string)($u['nombre'] ?? 'P'),0,1)) ?></span>
       <span class="uname"><?= htmlspecialchars((string)($u['nombre'] ?? 'Profesor')) ?></span>
       <span class="urole">profesor</span>
-    </div>
+    </div>-->
   </div>
 
   <div class="cards-grid">

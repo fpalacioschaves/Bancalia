@@ -34,17 +34,19 @@
       </fieldset>
 
       <!-- Selección de grado/curso/asignatura -->
-      <div class="grid">
+       <fieldset class="rolebox">
         <label>Grado
           <select id="gradoSelect" name="grado_id" required></select>
         </label>
+        <br>
         <label>Curso
           <select id="cursoSelect" name="curso_id" required></select>
         </label>
-      </div>
+       </fieldset>
 
       <!-- Solo profesor: asignatura + lista de “imparte” -->
       <div id="profWrap" hidden>
+        <fieldset class="rolebox">
         <label>Asignatura
           <select id="asigSelect" name="asignatura_id"></select>
         </label>
@@ -66,6 +68,7 @@
             </tbody>
           </table>
         </div>
+        </fieldset>
       </div>
 
       <button class="btn primary" style="margin-top:10px">Crear cuenta</button>

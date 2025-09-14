@@ -3,22 +3,17 @@
 $u = $user ?? null;
 ?>
 <style>
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  @media (max-width:860px){.grid2{grid-template-columns:1fr}}
-
+  /* Layout en una sola columna */
+  .stack{display:grid;grid-template-columns:1fr;gap:16px}
   .row{display:flex;align-items:center;gap:10px}
   .row .grow{flex:1}
+
+  /* Controles consistentes y fluidos */
+  .form input, .form select { height:42px; width:100%; }
   .table-wrap{overflow:auto}
   .muted{color:var(--muted)}
 
-  /* MISMO TAMAÑO para inputs/selects/botón */
-  :root { --ctl-h: 40px; --ctl-w: 140px; }
-  .form input, .form select { height: var(--ctl-h); }
-  .row select, .row button { height: var(--ctl-h); }
-  /* Selects y botón con MISMO ANCHO */
-  .eq { width: var(--ctl-w); }
-
-  /* Password con el mismo look incluso con autofill */
+  /* Input password con mismo look incluso con autofill */
   input:-webkit-autofill,
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus,
@@ -27,13 +22,16 @@ $u = $user ?? null;
     -webkit-text-fill-color: var(--text);
     transition: background-color 9999s ease-in-out 0s;
   }
+
+  /* Evitar que el texto del <select> quede tapado por la flecha nativa */
+  .form select{ padding-right:34px; -webkit-padding-end:34px; }
 </style>
 
 <div class="page">
   <h2 style="margin:0 0 12px">Mi perfil</h2>
 
-  <div class="grid2">
-    <!-- Datos personales -->
+  <div class="stack">
+    <!-- Card: Datos personales -->
     <div class="card">
       <h3 style="margin-top:0">Datos personales</h3>
       <form id="frmPerfil" class="form">
@@ -53,15 +51,16 @@ $u = $user ?? null;
       </form>
     </div>
 
-    <!-- Materias impartidas -->
+    <!-- Card: Materias impartidas -->
     <div class="card">
       <h3 style="margin-top:0">Materias impartidas</h3>
 
-      <div class="row" style="gap:10px; margin-bottom:10px">
-        <select id="gradoSel" class="eq" aria-label="Grado"></select>
-        <select id="cursoSel" class="eq" aria-label="Curso"></select>
-        <select id="asigSel"  class="eq" aria-label="Asignatura"></select>
-        <button class="btn eq" id="btnAdd">Añadir</button>
+      <!-- Barra de alta -->
+      <div class="row" style="margin-bottom:10px">
+        <select id="gradoSel" class="grow" aria-label="Grado"></select>
+        <select id="cursoSel" class="grow" aria-label="Curso"></select>
+        <select id="asigSel"  class="grow" aria-label="Asignatura"></select>
+        <button class="btn" id="btnAdd" style="height:42px">Añadir</button>
       </div>
 
       <div class="table-wrap">
@@ -88,27 +87,26 @@ $u = $user ?? null;
   const ce = (t)=> document.createElement(t);
   const show = (el,msg,type)=>{ if(!el)return; el.textContent=msg; el.className='alert '+(type||''); el.hidden=!msg; };
 
-  const frm = qs('#frmPerfil');
-  const pfAlert = qs('#pfAlert');
+  // --- refs
+  const frm       = qs('#frmPerfil');
+  const pfAlert   = qs('#pfAlert');
+  const gradoSel  = qs('#gradoSel');
+  const cursoSel  = qs('#cursoSel');
+  const asigSel   = qs('#asigSel');
+  const btnAdd    = qs('#btnAdd');
+  const tblBody   = qs('#tblImp tbody');
+  const impAlert  = qs('#impAlert');
 
-  const gradoSel = qs('#gradoSel');
-  const cursoSel = qs('#cursoSel');
-  const asigSel  = qs('#asigSel');
-  const btnAdd   = qs('#btnAdd');
-  const tblBody  = qs('#tblImp tbody');
-  const impAlert = qs('#impAlert');
-
+  // --- helpers fetch
   async function jget(url){
     const r=await fetch(url,{headers:{'Accept':'application/json'}});
-    const t=await r.text();
-    let j={}; try{ j=JSON.parse(t) }catch{}
+    const t=await r.text(); let j={}; try{ j=JSON.parse(t) }catch{}
     if(!r.ok) throw new Error((j && j.error) ? j.error : ('HTTP '+r.status+' '+url));
     return j;
   }
   async function jsend(url,method,body){
     const r=await fetch(url,{method,headers:{'Content-Type':'application/json','Accept':'application/json'}, body: body?JSON.stringify(body):null});
-    const t=await r.text(); let j={};
-    try{ j=JSON.parse(t); }catch{ j={}; }
+    const t=await r.text(); let j={}; try{ j=JSON.parse(t) }catch{ j={}; }
     if(!r.ok) throw new Error((j && j.error) ? j.error : ('HTTP '+r.status+' '+url));
     return j;
   }
@@ -149,7 +147,7 @@ $u = $user ?? null;
 
   async function reloadImparte(){
     try{
-      const data = await jget(API+'/profesor/perfil');
+      const data = await jget(API+'/profesor/perfil'); // GET datos e imparte[]
       const imp  = (data && data.imparte) ? data.imparte : [];
       tblBody.innerHTML='';
       if (!imp.length){
@@ -175,12 +173,10 @@ $u = $user ?? null;
 
   async function delImparte(id){
     try{
-      // Intentamos DELETE; si tu router no lo soporta, usa el alias POST
-      const url = API+'/profesor/imparte/'+id;
-      let ok = false;
-      try{ await jsend(url, 'DELETE'); ok = true; }
-      catch(e){ await jsend(API+'/profesor/imparte/delete/'+id, 'POST'); ok = true; }
-      if (ok) reloadImparte();
+      // DELETE; si tu host no lo soporta, usa alias POST
+      try{ await jsend(API+'/profesor/imparte/'+id, 'DELETE'); }
+      catch(e){ await jsend(API+'/profesor/imparte/delete/'+id, 'POST'); }
+      reloadImparte();
     }catch(e){ console.error(e); show(impAlert, e.message||'No se pudo eliminar', 'err'); }
   }
 
@@ -197,28 +193,30 @@ $u = $user ?? null;
       reloadImparte();
     }catch(e){
       console.error(e);
-      show(impAlert, (e && e.message) ? e.message : 'No se pudo añadir', 'err');
+      show(impAlert, e.message || 'No se pudo añadir', 'err');
     }
   });
 
   // Guardar perfil
-  const frmSubmit = async (e)=>{
+  frm.addEventListener('submit', async (e)=>{
     e.preventDefault();
     show(pfAlert,'',null);
     const fd = new FormData(frm);
     const payload = {
       nombre: fd.get('nombre'),
-      email: fd.get('email'),
+      email:  fd.get('email'),
       password: fd.get('password') || ''
     };
     try{
-      // Intentamos PUT; si tu router no lo soporta, usamos POST alias
+      // PUT; si no está permitido, alias POST
       try { await jsend(API+'/profesor/perfil', 'PUT', payload); }
       catch(e){ await jsend(API+'/profesor/perfil/update', 'POST', payload); }
-      show(pfAlert, 'Guardado', 'ok');
-    }catch(e){ console.error(e); show(pfAlert, e.message || 'No se pudo guardar', 'err'); }
-  };
-  frm.addEventListener('submit', frmSubmit);
+      show(pfAlert,'Guardado', 'ok');
+    }catch(e){
+      console.error(e);
+      show(pfAlert, e.message || 'No se pudo guardar', 'err');
+    }
+  });
 
   // init
   (async ()=>{

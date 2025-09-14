@@ -45,8 +45,9 @@ if ($isAuth && $userId) {
         <?php endif; ?>
 
         <?php if ($isAuth && $rolId === 2): ?>
-          <!-- Enlace al panel de profesor (no a /profesor/actividades) -->
           <a class="link" href="/Bancalia/public/profesor">Profesor</a>
+          <a class="link" href="/Bancalia/public/profesor/actividades">Actividades</a>
+          <a class="link" href="/Bancalia/public/profesor/perfil">Perfil</a>
         <?php endif; ?>
 
         <?php if ($isAuth && $rolId === 3): ?>
@@ -81,6 +82,8 @@ if ($isAuth && $userId) {
   </main>
 
   <script>window.API_BASE='/Bancalia/api';</script>
+  <!-- módulo común de listados (admin + profesor) -->
+  <script defer src="/Bancalia/public/assets/js/bancalia.list.js"></script>
   <script defer src="/Bancalia/public/assets/js/auth.js"></script>
 </body>
 </html>
