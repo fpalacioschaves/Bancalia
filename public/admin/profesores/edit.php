@@ -1,7 +1,11 @@
 <?php
 // /public/admin/profesores/edit.php
 declare(strict_types=1);
-require_once __DIR__ . '/../../../middleware/require_admin.php';
+
+require_once __DIR__ . '/../../../config.php';
+require_login_or_redirect();
+$u = current_user();
+
 
 // --------- CARGA PREVIA ---------
 $id = (int)($_GET['id'] ?? 0);

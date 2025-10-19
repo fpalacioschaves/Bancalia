@@ -1,7 +1,16 @@
 <?php
 // /public/admin/familias/create.php
 declare(strict_types=1);
-require_once __DIR__ . '/../../../middleware/require_admin.php';
+
+require_once __DIR__ . '/../../../config.php';
+require_login_or_redirect();
+$u = current_user();
+
+if (($u['role'] ?? '') !== 'admin') {
+  flash('error', 'Acceso restringido a administradores.');
+  header('Location: ' . PUBLIC_URL . '/dashboard.php');
+  exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   try {

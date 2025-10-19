@@ -1,10 +1,12 @@
 <?php
-// /public/admin/centros/index.php
+// /public/dashboard.php
 declare(strict_types=1);
+require_once __DIR__ . '/../../../config.php';
+require_login_or_redirect();
 
-require_once __DIR__ . '/../../../middleware/require_auth.php';
-require_once __DIR__ . '/../../../lib/auth.php';
+$u = current_user();
 require_once __DIR__ . '/../../../partials/header.php';
+
 
 $u = current_user();
 if (!$u || !in_array(($u['role'] ?? ''), ['admin','profesor'], true)) {

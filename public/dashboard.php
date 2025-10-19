@@ -1,10 +1,11 @@
 <?php
 // /public/dashboard.php
 declare(strict_types=1);
-require_once __DIR__ . '/../middleware/require_auth.php';
-require_once __DIR__ . '/../partials/header.php';
+require_once __DIR__ . '/../config.php';
+require_login_or_redirect();
 
 $u = current_user();
+require_once __DIR__ . '/../partials/header.php';
 $role = $u['role'] ?? '';
 $profesorId = $u['profesor_id'] ?? null;
 
@@ -84,7 +85,7 @@ if ($role === 'admin') {
 <?php if ($role === 'admin'): ?>
 
   <!-- ======= ADMIN: KPIs ======= -->
-  <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+  <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
     <a href="<?= PUBLIC_URL ?>/admin/familias/index.php" class="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
       <div class="text-xs font-medium text-slate-500">Familias</div>
       <div class="mt-2 text-3xl font-semibold"><?= number_format($kpis['familias']) ?></div>
@@ -122,8 +123,8 @@ if ($role === 'admin') {
     </a>
   </div>
 
-  <!-- Accesos rápidos -->
-  <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+  <!-- Accesos rápidos 
+  <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
     <a href="<?= PUBLIC_URL ?>/admin/familias/create.php" class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
       <div class="text-sm font-semibold">+ Nueva familia</div>
       <p class="mt-1 text-xs text-slate-600">Crea una familia profesional.</p>
@@ -145,7 +146,7 @@ if ($role === 'admin') {
       <p class="mt-1 text-xs text-slate-600">Registra un centro educativo.</p>
     </a>
   </div>
-
+-->
   <!-- Recientes -->
   <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
     <!-- Familias + Cursos -->

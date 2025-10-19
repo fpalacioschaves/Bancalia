@@ -2,32 +2,45 @@
 // /public/admin/centros/delete.php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../../../middleware/require_auth.php';
-require_once __DIR__ . '/../../../lib/auth.php';
-
+require_once __DIR__ . '/../../../config.php';
+require_login_or_redirect();
 $u = current_user();
-if (!$u || !in_array(($u['role'] ?? ''), ['admin','profesor'], true)) {
-  $_SESSION['flash'] = 'Acceso restringido.';
-  header('Location: ' . PUBLIC_URL . '/auth/login.php'); exit;
-}
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-  $_SESSION['flash'] = 'Método inválido.';
-  header('Location: ' . PUBLIC_URL . '/admin/centros/index.php'); exit;
+if (($u['role'] ?? '') !== 'admin') {
+  flash('error', 'Acceso restringido a administradores.');
+  header('Location: ' . PUBLIC_URL . '/dashboard.php');
+  exit;
 }
 
 try {
+  if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    flash('error', 'Método no permitido.');
+    header('Location: ' . PUBLIC_URL . '/admin/centros/index.php'); exit;
+  }
+
   csrf_check($_POST['csrf'] ?? null);
 
   $id = (int)($_POST['id'] ?? 0);
   if ($id <= 0) throw new RuntimeException('ID inválido.');
 
-  // Si tu esquema tiene FK a centros (profesores, etc.), puede fallar por FK. Capturamos el error.
-  $del = pdo()->prepare('DELETE FROM centros WHERE id=:id');
-  $del->execute([':id'=>$id]);
+  $st = pdo()->prepare('DELETE FROM centros WHERE id = :id LIMIT 1');
+  $st->execute([':id' => $id]);
 
-  $_SESSION['flash'] = 'Centro eliminado.';
+  if ($st->rowCount() > 0) {
+    flash('success', 'Centro eliminado correctamente.');
+  } else {
+    flash('error', 'No se encontró el centro.');
+  }
+
+} catch (PDOException $e) {
+  if ($e->getCode() === '23000') {
+    flash('error', 'No se puede eliminar: el centro está referenciado por profesores/asignaciones.');
+  } else {
+    flash('error', 'Error de base de datos: ' . $e->getMessage());
+  }
 } catch (Throwable $e) {
-  $_SESSION['flash'] = 'No se pudo eliminar: ' . $e->getMessage();
+  flash('error', $e->getMessage());
 }
-header('Location: ' . PUBLIC_URL . '/admin/centros/index.php'); exit;
+
+header('Location: ' . PUBLIC_URL . '/admin/centros/index.php');
+exit;

@@ -1,61 +1,54 @@
 <?php
-// /public/mi-perfil.php
+// /public/dashboard.php
 declare(strict_types=1);
-
-require_once __DIR__ . '/../middleware/require_auth.php';
-require_once __DIR__ . '/../lib/auth.php';
-require_once __DIR__ . '/../partials/header.php';
+require_once __DIR__ . '/../config.php';
+require_login_or_redirect();
 
 $u = current_user();
+require_once __DIR__ . '/../partials/header.php';
+
 
 /**
- * --- AJUSTE CLAVE ---
- * No redirigimos a dashboard si falta profesor_id:
- * - Si no es admin y no hay profesor_id en sesión, intentamos resolverlo por email.
- * - Si no existe el profesor, lo creamos mínimo y guardamos profesor_id en sesión.
- * - Solo si no hay manera de identificarlo, mostramos un flash y seguimos en la misma página (sin redirect).
+ * Si el usuario no es admin, garantizamos que tenga profesor_id:
+ * - Intentamos localizar su ficha por email.
+ * - Si no existe, la creamos mínima y guardamos profesor_id en sesión.
  */
+$profesorId = 0;
 if (($u['role'] ?? '') !== 'admin') {
   $profesorId = (int)($u['profesor_id'] ?? 0);
 
   if ($profesorId <= 0) {
-    // 1) Intentar por email
     $email = trim((string)($u['email'] ?? ''));
     if ($email !== '') {
       $stFind = pdo()->prepare('SELECT id FROM profesores WHERE email = :e LIMIT 1');
       $stFind->execute([':e' => $email]);
       if ($row = $stFind->fetch()) {
         $profesorId = (int)$row['id'];
-        $_SESSION['user']['profesor_id'] = $profesorId; // persistimos en sesión
+        $_SESSION['user']['profesor_id'] = $profesorId;
       }
     }
-
-    // 2) Si aún no existe, lo creamos mínimo
     if ($profesorId <= 0) {
       $ins = pdo()->prepare('
         INSERT INTO profesores (nombre, apellidos, email, is_active, created_at, updated_at)
         VALUES (:n, :a, :e, 1, NOW(), NOW())
       ');
-      $nombre    = trim((string)($u['nombre'] ?? $u['username'] ?? 'Profesor'));
+      $nombre    = trim((string)($u['nombre'] ?? 'Profesor'));
       $apellidos = '';
       $emailDb   = ($email !== '' ? $email : null);
       $ins->execute([':n'=>$nombre, ':a'=>$apellidos, ':e'=>$emailDb]);
 
       $profesorId = (int)pdo()->lastInsertId();
       $_SESSION['user']['profesor_id'] = $profesorId;
-      // Info suave; no redirigimos.
-      if (function_exists('flash')) {
-        flash('success', 'Se ha inicializado tu ficha de profesor.');
-      }
+      flash('success', 'Se ha inicializado tu ficha de profesor.');
     }
   }
 } else {
-  // Admin puede editar cualquier perfil, pero aquí usamos su propio profesor_id si lo tiene
+  // Admin: usa su propio profesor_id si lo tiene (opcional)
   $profesorId = (int)($u['profesor_id'] ?? 0);
 }
 
-// Si aún no hay profesor_id a estas alturas, mostramos aviso (sin redirigir)
-if ($profesorId <= 0 && function_exists('flash')) {
+// Aviso suave si no logramos profesor_id
+if ($profesorId <= 0) {
   flash('error', 'No ha sido posible identificar tu perfil de profesor.');
 }
 
@@ -93,7 +86,10 @@ if ($profesorId > 0) {
 // POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   try {
-    csrf_check($_POST['csrf'] ?? null);
+    // Si usas CSRF helpers globales, déjalos; si no, comenta las dos líneas:
+    if (function_exists('csrf_check')) {
+      csrf_check($_POST['csrf'] ?? null);
+    }
 
     $centro_id = ($_POST['centro_id'] ?? '') !== '' ? (int)$_POST['centro_id'] : null;
     $nombre    = trim($_POST['nombre'] ?? '');
@@ -103,9 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $notas     = trim($_POST['notas'] ?? '');
     $activo    = isset($_POST['is_active']) ? 1 : 0;
 
-    if ($profesorId <= 0) {
-      throw new RuntimeException('Tu ficha de profesor no está inicializada.');
-    }
+    if ($profesorId <= 0) throw new RuntimeException('Tu ficha de profesor no está inicializada.');
     if ($nombre === '' || $apellidos === '') throw new RuntimeException('Nombre y apellidos son obligatorios.');
     if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) throw new RuntimeException('Email no válido.');
 
@@ -202,13 +196,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
     }
 
-    if (function_exists('flash')) flash('success','Perfil actualizado.');
+    flash('success','Perfil actualizado.');
     header('Location: ' . PUBLIC_URL . '/mi-perfil.php'); exit;
 
   } catch (Throwable $e) {
     $msg = $e->getMessage();
     if (stripos($msg, 'uq_pa') !== false) $msg = 'Asignación duplicada en el mismo año.';
-    if (function_exists('flash')) flash('error',$msg);
+    flash('error',$msg);
     header('Location: ' . PUBLIC_URL . '/mi-perfil.php'); exit;
   }
 }
@@ -223,17 +217,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
   <form method="post" action="" class="space-y-6" id="profForm">
-    <?= csrf_field() ?>
+    <?php if (function_exists('csrf_field')): ?>
+      <?= csrf_field() ?>
+    <?php endif; ?>
 
     <div class="grid gap-4 sm:grid-cols-3">
       <div class="sm:col-span-2">
         <label class="mb-1 block text-sm font-medium text-slate-700">Nombre</label>
-        <input name="nombre" type="text" required value="<?= htmlspecialchars($prof['nombre'] ?? '') ?>"
+        <input name="nombre" type="text" required value="<?= h($prof['nombre'] ?? '') ?>"
                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400">
       </div>
       <div>
         <label class="mb-1 block text-sm font-medium text-slate-700">Apellidos</label>
-        <input name="apellidos" type="text" required value="<?= htmlspecialchars($prof['apellidos'] ?? '') ?>"
+        <input name="apellidos" type="text" required value="<?= h($prof['apellidos'] ?? '') ?>"
                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400">
       </div>
     </div>
@@ -241,12 +237,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="grid gap-4 sm:grid-cols-3">
       <div>
         <label class="mb-1 block text-sm font-medium text-slate-700">Email</label>
-        <input name="email" type="email" value="<?= htmlspecialchars((string)($prof['email'] ?? '')) ?>"
+        <input name="email" type="email" value="<?= h((string)($prof['email'] ?? '')) ?>"
                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400">
       </div>
       <div>
         <label class="mb-1 block text-sm font-medium text-slate-700">Teléfono</label>
-        <input name="telefono" type="text" value="<?= htmlspecialchars((string)($prof['telefono'] ?? '')) ?>"
+        <input name="telefono" type="text" value="<?= h((string)($prof['telefono'] ?? '')) ?>"
                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400">
       </div>
       <div>
@@ -255,7 +251,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <option value="">— Selecciona centro —</option>
           <?php foreach ($centros as $c): ?>
             <option value="<?= (int)$c['id'] ?>" <?= ((int)($prof['centro_id'] ?? 0)===(int)$c['id'])?'selected':'' ?>>
-              <?= htmlspecialchars($c['nombre']) ?>
+              <?= h($c['nombre']) ?>
             </option>
           <?php endforeach; ?>
         </select>
@@ -266,7 +262,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div>
       <label class="mb-1 block text-sm font-medium text-slate-700">Notas</label>
       <textarea name="notas" rows="3"
-                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= htmlspecialchars((string)($prof['notas'] ?? '')) ?></textarea>
+                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h((string)($prof['notas'] ?? '')) ?></textarea>
     </div>
 
     <div class="flex items-center gap-2">
@@ -307,7 +303,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <option value="">— Familia/Grado —</option>
                     <?php foreach ($fams as $f): ?>
                       <option value="<?= (int)$f['id'] ?>" <?= (int)$r['familia_id']===(int)$f['id']?'selected':'' ?>>
-                        <?= htmlspecialchars($f['nombre']) ?>
+                        <?= h($f['nombre']) ?>
                       </option>
                     <?php endforeach; ?>
                   </select>
@@ -319,15 +315,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   <select name="asig_asignatura_id[]" class="asigSel w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm focus:ring-2 focus:ring-slate-400"></select>
                 </td>
                 <td class="px-3 py-2">
-                  <input name="asig_anio[]" type="text" value="<?= htmlspecialchars($r['anio_academico']) ?>" placeholder="2025-2026"
+                  <input name="asig_anio[]" type="text" value="<?= h($r['anio_academico']) ?>" placeholder="2025-2026"
                          class="w-28 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm focus:ring-2 focus:ring-slate-400">
                 </td>
                 <td class="px-3 py-2">
-                  <input name="asig_horas[]" type="number" min="0" value="<?= htmlspecialchars((string)$r['horas']) ?>"
+                  <input name="asig_horas[]" type="number" min="0" value="<?= h((string)$r['horas']) ?>"
                          class="w-20 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm focus:ring-2 focus:ring-slate-400">
                 </td>
                 <td class="px-3 py-2">
-                  <input name="asig_obs[]" type="text" value="<?= htmlspecialchars((string)$r['observaciones']) ?>"
+                  <input name="asig_obs[]" type="text" value="<?= h((string)$r['observaciones']) ?>"
                          class="w-48 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm focus:ring-2 focus:ring-slate-400" placeholder="Notas">
                 </td>
                 <td class="px-3 py-2 text-right">

@@ -1,8 +1,12 @@
 <?php
-// /public/admin/profesores/index.php
+// /public/dashboard.php
 declare(strict_types=1);
-require_once __DIR__ . '/../../../middleware/require_admin.php';
+require_once __DIR__ . '/../../../config.php';
+require_login_or_redirect();
+
+$u = current_user();
 require_once __DIR__ . '/../../../partials/header.php';
+
 
 $q       = trim($_GET['q'] ?? '');
 $centro  = (int)($_GET['centro_id'] ?? 0);

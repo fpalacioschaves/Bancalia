@@ -2,11 +2,21 @@
 // /public/admin/centros/create.php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../../../middleware/require_auth.php';
-require_once __DIR__ . '/../../../lib/auth.php';
-require_once __DIR__ . '/../../../partials/header.php';
-
+require_once __DIR__ . '/../../../config.php';
+require_login_or_redirect();
 $u = current_user();
+
+if (($u['role'] ?? '') !== 'admin') {
+  flash('error', 'Acceso restringido a administradores.');
+  header('Location: ' . PUBLIC_URL . '/dashboard.php');
+  exit;
+}
+
+if (($u['role'] ?? '') !== 'admin') {
+  flash('error', 'Acceso restringido a administradores.');
+  header('Location: ' . PUBLIC_URL . '/dashboard.php');
+  exit;
+}
 if (!$u || !in_array(($u['role'] ?? ''), ['admin','profesor'], true)) {
   $_SESSION['flash'] = 'Acceso restringido.';
   header('Location: ' . PUBLIC_URL . '/auth/login.php'); exit;
@@ -72,6 +82,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Location: ' . PUBLIC_URL . '/admin/centros/create.php'); exit;
   }
 }
+
+require_once __DIR__ . '/../../../partials/header.php';
 ?>
 <div class="mb-6 flex items-center justify-between">
   <div>
