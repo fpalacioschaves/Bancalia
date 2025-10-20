@@ -83,6 +83,11 @@ $stVF = pdo()->prepare("SELECT * FROM actividades_vf WHERE actividad_id=:id LIMI
 $stVF->execute([':id'=>$id]);
 $vfRow = $stVF->fetch() ?: [];
 
+// Respuesta corta
+$stRC = pdo()->prepare("SELECT * FROM actividades_rc WHERE actividad_id=:id LIMIT 1");
+$stRC->execute([':id'=>$id]);
+$rcRow = $stRC->fetch() ?: [];
+
 // --------- POST: actualizar ----------
 $errors = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -253,7 +258,105 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
       }
     }
-    // Si cambias a otro tipo, no borramos lo previo (tarea/vf). Conservamos histórico.
+
+    // ——— Específico de RESPUESTA CORTA: UPSERT en actividades_rc ———
+    if ($tipo === 'respuesta_corta') {
+      $rc_modo   = trim((string)($_POST['rc_modo'] ?? ''));
+      if (!in_array($rc_modo, ['palabras_clave','regex'], true)) {
+        throw new RuntimeException('Modo de corrección no válido (respuesta corta).');
+      }
+
+      $rc_case     = isset($_POST['rc_case_sensitive']) ? 1 : 0;
+      $rc_acentos  = isset($_POST['rc_normalizar_acentos']) ? 1 : 0;
+      $rc_trim     = isset($_POST['rc_trim']) ? 1 : 0;
+
+      $rc_resp_muestra = trim((string)($_POST['rc_respuesta_muestra'] ?? ''));
+      $rc_fb_ok        = trim((string)($_POST['rc_feedback_correcta'] ?? ''));
+      $rc_fb_fail      = trim((string)($_POST['rc_feedback_incorrecta'] ?? ''));
+
+      $palabras_json   = null;
+      $coinc_min       = null;
+      $puntuacion_max  = null;
+      $regex_pat       = null;
+      $regex_flags     = null;
+
+      if ($rc_modo === 'palabras_clave') {
+        $palabras_json  = trim((string)($_POST['rc_palabras_clave_json'] ?? ''));
+        $coinc_min      = ($_POST['rc_coincidencia_minima'] !== '') ? max(0, min(100, (int)$_POST['rc_coincidencia_minima'])) : null;
+        $puntuacion_max = ($_POST['rc_puntuacion_max'] !== '') ? max(0, (int)$_POST['rc_puntuacion_max']) : null;
+
+        if ($palabras_json !== '') {
+          json_decode($palabras_json, true);
+          if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new RuntimeException('El JSON de palabras clave no es válido.');
+          }
+        }
+      } else { // regex
+        $regex_pat   = trim((string)($_POST['rc_regex_pattern'] ?? ''));
+        $regex_flags = trim((string)($_POST['rc_regex_flags'] ?? ''));
+        if ($regex_pat === '') {
+          throw new RuntimeException('Debes indicar un patrón regex.');
+        }
+      }
+
+      if ($rcRow) {
+        $upRC = pdo()->prepare('
+          UPDATE actividades_rc
+          SET modo=:modo, case_sensitive=:case_s, normalizar_acentos=:acentos, trim_espacios=:trim,
+              palabras_clave_json=:pjson, coincidencia_minima=:cmin, puntuacion_max=:pmax,
+              regex_pattern=:rpat, regex_flags=:rflags,
+              respuesta_muestra=:rmuestra, feedback_correcta=:fb_ok, feedback_incorrecta=:fb_fail,
+              updated_at=NOW()
+          WHERE actividad_id=:aid
+        ');
+        $upRC->execute([
+          ':modo'=>$rc_modo,
+          ':case_s'=>$rc_case,
+          ':acentos'=>$rc_acentos,
+          ':trim'=>$rc_trim,
+          ':pjson'=>($palabras_json !== '' ? $palabras_json : null),
+          ':cmin'=>$coinc_min,
+          ':pmax'=>$puntuacion_max,
+          ':rpat'=>($regex_pat !== '' ? $regex_pat : null),
+          ':rflags'=>($regex_flags !== '' ? $regex_flags : null),
+          ':rmuestra'=>($rc_resp_muestra !== '' ? $rc_resp_muestra : null),
+          ':fb_ok'=>($rc_fb_ok !== '' ? $rc_fb_ok : null),
+          ':fb_fail'=>($rc_fb_fail !== '' ? $rc_fb_fail : null),
+          ':aid'=>$id,
+        ]);
+      } else {
+        $insRC = pdo()->prepare('
+          INSERT INTO actividades_rc
+            (actividad_id, modo, case_sensitive, normalizar_acentos, trim_espacios,
+             palabras_clave_json, coincidencia_minima, puntuacion_max,
+             regex_pattern, regex_flags,
+             respuesta_muestra, feedback_correcta, feedback_incorrecta,
+             created_at, updated_at)
+          VALUES
+            (:aid, :modo, :case_s, :acentos, :trim,
+             :pjson, :cmin, :pmax,
+             :rpat, :rflags,
+             :rmuestra, :fb_ok, :fb_fail,
+             NOW(), NOW())
+        ');
+        $insRC->execute([
+          ':aid'=>$id,
+          ':modo'=>$rc_modo,
+          ':case_s'=>$rc_case,
+          ':acentos'=>$rc_acentos,
+          ':trim'=>$rc_trim,
+          ':pjson'=>($palabras_json !== '' ? $palabras_json : null),
+          ':cmin'=>$coinc_min,
+          ':pmax'=>$puntuacion_max,
+          ':rpat'=>($regex_pat !== '' ? $regex_pat : null),
+          ':rflags'=>($regex_flags !== '' ? $regex_flags : null),
+          ':rmuestra'=>($rc_resp_muestra !== '' ? $rc_resp_muestra : null),
+          ':fb_ok'=>($rc_fb_ok !== '' ? $rc_fb_ok : null),
+          ':fb_fail'=>($rc_fb_fail !== '' ? $rc_fb_fail : null),
+        ]);
+      }
+    }
+    // Si cambias a otro tipo, no borramos lo previo (tarea/vf/rc). Conservamos histórico.
 
     if ($DEBUG) { echo "[DBG] UPDATE OK"; exit; }
     flash('success','Actividad actualizada correctamente.');
@@ -294,6 +397,20 @@ $t_rubrica_json  = (string)($tareaRow['rubrica_json'] ?? '');
 $vf_respuesta_correcta = (string)($vfRow['respuesta_correcta'] ?? '');
 $vf_feedback_correcta  = (string)($vfRow['feedback_correcta'] ?? '');
 $vf_feedback_incorrecta= (string)($vfRow['feedback_incorrecta'] ?? '');
+
+// Valores actuales RC (si hay)
+$rc_modo          = (string)($rcRow['modo'] ?? 'palabras_clave');
+$rc_case          = (int)($rcRow['case_sensitive'] ?? 0);
+$rc_acentos       = (int)($rcRow['normalizar_acentos'] ?? 0);
+$rc_trim          = (int)($rcRow['trim_espacios'] ?? 1);
+$rc_palabras_json = (string)($rcRow['palabras_clave_json'] ?? '');
+$rc_coinc_min     = ($rcRow['coincidencia_minima'] ?? '');
+$rc_puntos_max    = ($rcRow['puntuacion_max'] ?? '');
+$rc_regex_pat     = (string)($rcRow['regex_pattern'] ?? '');
+$rc_regex_flags   = (string)($rcRow['regex_flags'] ?? '');
+$rc_resp_muestra  = (string)($rcRow['respuesta_muestra'] ?? '');
+$rc_fb_ok         = (string)($rcRow['feedback_correcta'] ?? '');
+$rc_fb_fail       = (string)($rcRow['feedback_incorrecta'] ?? '');
 ?>
 
 <div class="mb-6 flex items-center justify-between">
@@ -374,7 +491,7 @@ $vf_feedback_incorrecta= (string)($vfRow['feedback_incorrecta'] ?? '');
       </div>
 
       <div>
-        <label class="mb-1 block textsm font-medium text-slate-700">Curso <span class="text-rose-600">*</span></label>
+        <label class="mb-1 block text-sm font-medium text-slate-700">Curso <span class="text-rose-600">*</span></label>
         <select id="curso_id" name="curso_id" required
                 class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400">
           <option value="">— Curso —</option>
@@ -525,6 +642,97 @@ $vf_feedback_incorrecta= (string)($vfRow['feedback_incorrecta'] ?? '');
     </div>
     <!-- ====== /BLOQUE VERDADERO/FALSO ====== -->
 
+    <!-- ====== BLOQUE ESPECÍFICO RESPUESTA CORTA ====== -->
+    <div id="bloqueRC" class="<?= $tipo==='respuesta_corta' ? '' : 'hidden' ?> border-t pt-4">
+      <h3 class="text-sm font-semibold text-slate-700 mb-2">Configuración Respuesta corta</h3>
+
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Modo de corrección <span class="text-rose-600">*</span></label>
+          <select name="rc_modo" id="rc_modo"
+                  class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400">
+            <?php
+              $opsRC = ['palabras_clave'=>'Palabras clave','regex'=>'Regex'];
+              foreach ($opsRC as $v=>$lab) {
+                $sel = ($rc_modo===$v) ? 'selected' : '';
+                echo '<option value="'.h($v).'" '.$sel.'>'.h($lab).'</option>';
+              }
+            ?>
+          </select>
+        </div>
+        <label class="inline-flex items-center gap-2 text-sm mt-6">
+          <input type="checkbox" name="rc_case_sensitive" class="h-4 w-4 rounded border-slate-300" <?= $rc_case? 'checked':'' ?>>
+          Sensible a mayúsculas
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm mt-6">
+          <input type="checkbox" name="rc_normalizar_acentos" class="h-4 w-4 rounded border-slate-300" <?= $rc_acentos? 'checked':'' ?>>
+          Normalizar acentos
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm mt-6">
+          <input type="checkbox" name="rc_trim" class="h-4 w-4 rounded border-slate-300" <?= $rc_trim? 'checked':'' ?>>
+          Ignorar espacios extremos
+        </label>
+      </div>
+
+      <!-- Sub-bloque: Palabras clave -->
+      <div id="rc_palabras" class="mt-3 <?= $rc_modo==='palabras_clave' ? '' : 'hidden' ?>">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Palabras clave (JSON)</label>
+          <textarea name="rc_palabras_clave_json" rows="4"
+                    class="w-full font-mono rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"
+                    placeholder='[{"palabra":"osmosis","peso":1},{"palabra":"membrana","peso":1}]'><?= h($rc_palabras_json) ?></textarea>
+          <p class="mt-1 text-xs text-slate-500">Cada objeto puede incluir "palabra" y "peso".</p>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2 mt-2">
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-700">% coincidencia mínima</label>
+            <input type="number" min="0" max="100" name="rc_coincidencia_minima" value="<?= h((string)$rc_coinc_min) ?>"
+                   class="w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400" placeholder="Ej: 60">
+          </div>
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-700">Puntuación máxima</label>
+            <input type="number" min="0" name="rc_puntuacion_max" value="<?= h((string)$rc_puntos_max) ?>"
+                   class="w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400" placeholder="Ej: 10">
+          </div>
+        </div>
+      </div>
+
+      <!-- Sub-bloque: Regex -->
+      <div id="rc_regex" class="mt-3 <?= $rc_modo==='regex' ? '' : 'hidden' ?>">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-700">Patrón regex <span class="text-rose-600">*</span></label>
+            <input type="text" name="rc_regex_pattern" value="<?= h($rc_regex_pat) ?>"
+                   class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400" placeholder="^\\s*respuesta\\s*$">
+          </div>
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-700">Flags</label>
+            <input type="text" name="rc_regex_flags" value="<?= h($rc_regex_flags) ?>"
+                   class="w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400" placeholder="i, u, m...">
+          </div>
+        </div>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-3 mt-3">
+        <div class="sm:col-span-3">
+          <label class="mb-1 block text-sm font-medium text-slate-700">Respuesta de ejemplo</label>
+          <input type="text" name="rc_respuesta_muestra" value="<?= h($rc_resp_muestra) ?>"
+                 class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400" placeholder="Opcional, guía para el alumno">
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Feedback si acierta</label>
+          <textarea name="rc_feedback_correcta" rows="3"
+                    class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($rc_fb_ok) ?></textarea>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Feedback si falla</label>
+          <textarea name="rc_feedback_incorrecta" rows="3"
+                    class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($rc_fb_fail) ?></textarea>
+        </div>
+      </div>
+    </div>
+    <!-- ====== /BLOQUE RESPUESTA CORTA ====== -->
+
     <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
       <a href="<?= $basePublic ?>/admin/actividades/index.php"
          class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancelar</a>
@@ -547,8 +755,14 @@ $vf_feedback_incorrecta= (string)($vfRow['feedback_incorrecta'] ?? '');
   const selAsi = document.getElementById('asignatura_id');
   const selTem = document.getElementById('tema_id');
   const selTipo = document.getElementById('tipo');
+
   const bloqueTarea = document.getElementById('bloqueTarea');
   const bloqueVF = document.getElementById('bloqueVF');
+  const bloqueRC = document.getElementById('bloqueRC');
+
+  const rcModoSel = document.getElementById('rc_modo');
+  const rcBloqPal = document.getElementById('rc_palabras');
+  const rcBloqReg = document.getElementById('rc_regex');
 
   const currentFam = <?= (int)$familia_id ?>;
   const currentCur = <?= (int)$curso_id ?>;
@@ -617,10 +831,22 @@ $vf_feedback_incorrecta= (string)($vfRow['feedback_incorrecta'] ?? '');
     const t = selTipo.value;
     bloqueTarea.classList.toggle('hidden', t !== 'tarea');
     bloqueVF.classList.toggle('hidden', t !== 'verdadero_falso');
+    bloqueRC.classList.toggle('hidden', t !== 'respuesta_corta');
   }
+
+  function toggleRcSub(){
+    if (!rcModoSel) return;
+    const m = rcModoSel.value || 'palabras_clave';
+    rcBloqPal.classList.toggle('hidden', m !== 'palabras_clave');
+    rcBloqReg.classList.toggle('hidden', m !== 'regex');
+  }
+
   selTipo.addEventListener('change', toggleBloques, {passive:true});
+  if (rcModoSel) rcModoSel.addEventListener('change', toggleRcSub, {passive:true});
+
   if (currentTipo) selTipo.value = currentTipo;
   toggleBloques();
+  toggleRcSub();
 </script>
 
 <?php require_once __DIR__ . '/../../../partials/footer.php'; ?>

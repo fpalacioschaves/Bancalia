@@ -44,7 +44,7 @@ try {
 
 $errors = [];
 
-// POST: guardar actividad (campos comunes + tarea/vf si aplica)
+// POST: guardar actividad (campos comunes + tarea/vf/rc si aplica)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   try {
     csrf_check($_POST['csrf'] ?? null);
@@ -178,6 +178,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ':resp'   => $vf_resp,
         ':fb_ok'  => ($vf_fb_ok !== '' ? $vf_fb_ok : null),
         ':fb_fail'=> ($vf_fb_fail !== '' ? $vf_fb_fail : null),
+      ]);
+    }
+
+    // ----- Específico RESPUESTA CORTA -----
+    if ($tipo === 'respuesta_corta') {
+      $rc_modo   = trim((string)($_POST['rc_modo'] ?? ''));
+      if (!in_array($rc_modo, ['palabras_clave','regex'], true)) {
+        throw new RuntimeException('Modo de corrección no válido (respuesta corta).');
+      }
+
+      $rc_case     = isset($_POST['rc_case_sensitive']) ? 1 : 0;
+      $rc_acentos  = isset($_POST['rc_normalizar_acentos']) ? 1 : 0;
+      $rc_trim     = isset($_POST['rc_trim']) ? 1 : 0;
+
+      // comunes/aux
+      $rc_resp_muestra = trim((string)($_POST['rc_respuesta_muestra'] ?? ''));
+      $rc_fb_ok        = trim((string)($_POST['rc_feedback_correcta'] ?? ''));
+      $rc_fb_fail      = trim((string)($_POST['rc_feedback_incorrecta'] ?? ''));
+
+      // ramas
+      $palabras_json   = null;
+      $coinc_min       = null;
+      $puntuacion_max  = null;
+      $regex_pat       = null;
+      $regex_flags     = null;
+
+      if ($rc_modo === 'palabras_clave') {
+        $palabras_json  = trim((string)($_POST['rc_palabras_clave_json'] ?? ''));
+        $coinc_min      = ($_POST['rc_coincidencia_minima'] !== '') ? max(0, min(100, (int)$_POST['rc_coincidencia_minima'])) : null;
+        $puntuacion_max = ($_POST['rc_puntuacion_max'] !== '') ? max(0, (int)$_POST['rc_puntuacion_max']) : null;
+        // opcional: validación JSON mínima
+        if ($palabras_json !== '') {
+          json_decode($palabras_json, true);
+          if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new RuntimeException('El JSON de palabras clave no es válido.');
+          }
+        }
+      } else { // regex
+        $regex_pat   = trim((string)($_POST['rc_regex_pattern'] ?? ''));
+        $regex_flags = trim((string)($_POST['rc_regex_flags'] ?? ''));
+        if ($regex_pat === '') {
+          throw new RuntimeException('Debes indicar un patrón regex.');
+        }
+      }
+
+      $insRC = pdo()->prepare('
+        INSERT INTO actividades_rc
+          (actividad_id, modo, case_sensitive, normalizar_acentos, trim_espacios,
+           palabras_clave_json, coincidencia_minima, puntuacion_max,
+           regex_pattern, regex_flags,
+           respuesta_muestra, feedback_correcta, feedback_incorrecta,
+           created_at, updated_at)
+        VALUES
+          (:aid, :modo, :case_s, :acentos, :trim,
+           :pjson, :cmin, :pmax,
+           :rpat, :rflags,
+           :rmuestra, :fb_ok, :fb_fail,
+           NOW(), NOW())
+      ');
+      $insRC->execute([
+        ':aid'     => $actividadId,
+        ':modo'    => $rc_modo,
+        ':case_s'  => $rc_case,
+        ':acentos' => $rc_acentos,
+        ':trim'    => $rc_trim,
+
+        ':pjson'   => ($palabras_json !== '' ? $palabras_json : null),
+        ':cmin'    => $coinc_min,
+        ':pmax'    => $puntuacion_max,
+
+        ':rpat'    => ($regex_pat !== '' ? $regex_pat : null),
+        ':rflags'  => ($regex_flags !== '' ? $regex_flags : null),
+
+        ':rmuestra'=> ($rc_resp_muestra !== '' ? $rc_resp_muestra : null),
+        ':fb_ok'   => ($rc_fb_ok !== '' ? $rc_fb_ok : null),
+        ':fb_fail' => ($rc_fb_fail !== '' ? $rc_fb_fail : null),
       ]);
     }
 
@@ -444,6 +520,98 @@ require_once __DIR__ . '/../../../partials/header.php';
     </div>
     <!-- ====== /BLOQUE VERDADERO/FALSO ====== -->
 
+    <!-- ====== BLOQUE ESPECÍFICO RESPUESTA CORTA ====== -->
+    <div id="bloqueRC" class="hidden border-t pt-4">
+      <h3 class="text-sm font-semibold text-slate-700 mb-2">Configuración Respuesta corta</h3>
+
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Modo de corrección <span class="text-rose-600">*</span></label>
+          <select name="rc_modo" id="rc_modo"
+                  class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400">
+            <?php
+              $rcModo = (string)($_POST['rc_modo'] ?? '');
+              $ops = ['palabras_clave'=>'Palabras clave','regex'=>'Regex'];
+              foreach ($ops as $v=>$lab) {
+                $sel = ($rcModo===$v) ? 'selected' : '';
+                echo '<option value="'.h($v).'" '.$sel.'>'.h($lab).'</option>';
+              }
+            ?>
+          </select>
+        </div>
+        <label class="inline-flex items-center gap-2 text-sm mt-6">
+          <input type="checkbox" name="rc_case_sensitive" class="h-4 w-4 rounded border-slate-300" <?= isset($_POST['rc_case_sensitive'])?'checked':'' ?>>
+          Sensible a mayúsculas
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm mt-6">
+          <input type="checkbox" name="rc_normalizar_acentos" class="h-4 w-4 rounded border-slate-300" <?= isset($_POST['rc_normalizar_acentos'])?'checked':'' ?>>
+          Normalizar acentos
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm mt-6">
+          <input type="checkbox" name="rc_trim" class="h-4 w-4 rounded border-slate-300" <?= isset($_POST['rc_trim'])?'checked':'' ?>>
+          Ignorar espacios extremos
+        </label>
+      </div>
+
+      <!-- Sub-bloque: Palabras clave -->
+      <div id="rc_palabras" class="mt-3 hidden">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Palabras clave (JSON)</label>
+          <textarea name="rc_palabras_clave_json" rows="4"
+                    class="w-full font-mono rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"
+                    placeholder='[{"palabra":"osmosis","peso":1},{"palabra":"membrana","peso":1}]'><?= h($_POST['rc_palabras_clave_json'] ?? '') ?></textarea>
+          <p class="mt-1 text-xs text-slate-500">Cada objeto puede incluir "palabra" y "peso".</p>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2 mt-2">
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-700">% coincidencia mínima</label>
+            <input type="number" min="0" max="100" name="rc_coincidencia_minima" value="<?= h((string)($_POST['rc_coincidencia_minima'] ?? '')) ?>"
+                   class="w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400" placeholder="Ej: 60">
+          </div>
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-700">Puntuación máxima</label>
+            <input type="number" min="0" name="rc_puntuacion_max" value="<?= h((string)($_POST['rc_puntuacion_max'] ?? '')) ?>"
+                   class="w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400" placeholder="Ej: 10">
+          </div>
+        </div>
+      </div>
+
+      <!-- Sub-bloque: Regex -->
+      <div id="rc_regex" class="mt-3 hidden">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-700">Patrón regex <span class="text-rose-600">*</span></label>
+            <input type="text" name="rc_regex_pattern" value="<?= h((string)($_POST['rc_regex_pattern'] ?? '')) ?>"
+                   class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400" placeholder="^\\s*respuesta\\s*$">
+          </div>
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-700">Flags</label>
+            <input type="text" name="rc_regex_flags" value="<?= h((string)($_POST['rc_regex_flags'] ?? '')) ?>"
+                   class="w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400" placeholder="i, u, m...">
+          </div>
+        </div>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-3 mt-3">
+        <div class="sm:col-span-3">
+          <label class="mb-1 block text-sm font-medium text-slate-700">Respuesta de ejemplo</label>
+          <input type="text" name="rc_respuesta_muestra" value="<?= h((string)($_POST['rc_respuesta_muestra'] ?? '')) ?>"
+                 class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400" placeholder="Opcional, guía para el alumno">
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Feedback si acierta</label>
+          <textarea name="rc_feedback_correcta" rows="3"
+                    class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($_POST['rc_feedback_correcta'] ?? '') ?></textarea>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Feedback si falla</label>
+          <textarea name="rc_feedback_incorrecta" rows="3"
+                    class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($_POST['rc_feedback_incorrecta'] ?? '') ?></textarea>
+        </div>
+      </div>
+    </div>
+    <!-- ====== /BLOQUE RESPUESTA CORTA ====== -->
+
     <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
       <a href="<?= PUBLIC_URL ?>/admin/actividades/index.php"
          class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancelar</a>
@@ -468,12 +636,17 @@ require_once __DIR__ . '/../../../partials/header.php';
   const selTipo = document.getElementById('tipo');
   const bloqueTarea = document.getElementById('bloqueTarea');
   const bloqueVF = document.getElementById('bloqueVF');
+  const bloqueRC = document.getElementById('bloqueRC');
+  const rcModoSel = document.getElementById('rc_modo');
+  const rcBloqPal = document.getElementById('rc_palabras');
+  const rcBloqReg = document.getElementById('rc_regex');
 
   const currentFam = <?= (int)($_POST['familia_id'] ?? 0) ?>;
   const currentCur = <?= (int)($_POST['curso_id'] ?? 0) ?>;
   const currentAsi = <?= (int)($_POST['asignatura_id'] ?? 0) ?>;
   const currentTem = <?= (int)($_POST['tema_id'] ?? 0) ?>;
   const currentTipo= <?= json_encode((string)($_POST['tipo'] ?? '')) ?>;
+  const currentRcModo = <?= json_encode((string)($_POST['rc_modo'] ?? 'palabras_clave')) ?>;
 
   function opt(v,t){const o=document.createElement('option'); o.value=v; o.textContent=t; return o;}
 
@@ -524,10 +697,23 @@ require_once __DIR__ . '/../../../partials/header.php';
     const t = selTipo.value;
     bloqueTarea.classList.toggle('hidden', t !== 'tarea');
     bloqueVF.classList.toggle('hidden', t !== 'verdadero_falso');
+    bloqueRC.classList.toggle('hidden', t !== 'respuesta_corta');
   }
+
+  function toggleRcSub(){
+    const m = rcModoSel.value || 'palabras_clave';
+    rcBloqPal.classList.toggle('hidden', m !== 'palabras_clave');
+    rcBloqReg.classList.toggle('hidden', m !== 'regex');
+  }
+
   selTipo.addEventListener('change', toggleBloques, {passive:true});
+  if (rcModoSel) rcModoSel.addEventListener('change', toggleRcSub, {passive:true});
+
   if (currentTipo) selTipo.value = currentTipo;
   toggleBloques();
+
+  if (rcModoSel && currentRcModo) rcModoSel.value = currentRcModo;
+  toggleRcSub();
 </script>
 
 <?php require_once __DIR__ . '/../../../partials/footer.php'; ?>

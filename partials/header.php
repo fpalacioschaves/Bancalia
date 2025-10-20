@@ -45,6 +45,7 @@ if (!defined('PUBLIC_URL')) define('PUBLIC_URL', BASE_URL . '/public');
             <a href="<?= PUBLIC_URL ?>/admin/actividades/index.php" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Actividades</a>
           <?php endif; ?>
         <?php endif; ?>
+            <a href="<?= PUBLIC_URL ?>/ayuda.php" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Ayuda</a>
       </nav>
 
       <div class="flex items-center gap-3">
