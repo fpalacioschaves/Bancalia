@@ -4,15 +4,10 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../../config.php';
 require_login_or_redirect();
+
 $u = current_user();
-
-
 $userEmail  = (string)($u['email'] ?? '');
-$profesorId = (int)($u['profesor_id'] ?? 0);
-
-
-$u = current_user();
-$role = $u['role'] ?? '';
+$role       = (string)($u['role'] ?? '');
 $profesorId = (int)($u['profesor_id'] ?? 0);
 
 // Admin: solo lectura → no puede crear
@@ -21,18 +16,20 @@ if ($role === 'admin') {
   header('Location: ' . PUBLIC_URL . '/admin/actividades/index.php'); exit;
 }
 
+// Resolver profesor_id por email si no viene
+if ($role === 'profesor' && $profesorId <= 0 && $userEmail !== '') {
+  $stP = pdo()->prepare('SELECT id FROM profesores WHERE email = :e LIMIT 1');
+  $stP->execute([':e' => $userEmail]);
+  if ($rowP = $stP->fetch()) {
+    $profesorId = (int)$rowP['id'];
+    $_SESSION['user']['profesor_id'] = $profesorId; // persistimos en sesión
+  }
+}
+
 // Profesor sin profesor_id aún
 if ($role !== 'profesor' || $profesorId <= 0) {
   flash('error','No se ha podido identificar tu ficha de profesor.');
   header('Location: ' . PUBLIC_URL . '/mi-perfil.php'); exit;
-}
-
-// Resolver profesor_id por email si no viene
-if ($profesorId <= 0 && $userEmail !== '') {
-  $stP = pdo()->prepare('SELECT id FROM profesores WHERE email = :e LIMIT 1');
-  $stP->execute([':e' => $userEmail]);
-  $rowP = $stP->fetch();
-  if ($rowP) $profesorId = (int)$rowP['id'];
 }
 
 // Datos para selects (precargados)
@@ -47,14 +44,13 @@ try {
 
 $errors = [];
 
-// POST: guardar actividad (campos comunes)
+// POST: guardar actividad (campos comunes + tarea si aplica)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   try {
-    if ($profesorId <= 0) {
-      throw new RuntimeException('No se pudo resolver tu identificador de profesor. Ve a “Mi Perfil” y guarda tus datos (el email debe coincidir).');
-    }
-    $titulo        = trim($_POST['titulo'] ?? '');
-    $descripcion   = trim($_POST['descripcion'] ?? '');
+    csrf_check($_POST['csrf'] ?? null);
+
+    $titulo        = trim((string)($_POST['titulo'] ?? ''));
+    $descripcion   = trim((string)($_POST['descripcion'] ?? ''));
     $familia_id    = (int)($_POST['familia_id'] ?? 0);
     $curso_id      = (int)($_POST['curso_id'] ?? 0);
     $asignatura_id = (int)($_POST['asignatura_id'] ?? 0);
@@ -63,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $visibilidad   = trim((string)($_POST['visibilidad'] ?? 'privada'));
     $estado        = trim((string)($_POST['estado'] ?? 'borrador'));
 
-    // DIFICULTAD como ENUM (baja|media|alta) o vacío (NULL)
+    // DIFICULTAD: ENUM o NULL
     $dificultad    = trim((string)($_POST['dificultad'] ?? ''));
     if ($dificultad !== '' && !in_array($dificultad, ['baja','media','alta'], true)) {
       throw new RuntimeException('Dificultad no válida.');
@@ -73,9 +69,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($familia_id <= 0)    throw new RuntimeException('Selecciona una familia.');
     if ($curso_id <= 0)      throw new RuntimeException('Selecciona un curso.');
     if ($asignatura_id <= 0) throw new RuntimeException('Selecciona una asignatura.');
-    if (!in_array($tipo, ['autocorregible','tarea_abierta'], true)) throw new RuntimeException('Tipo de actividad no válido.');
-    if (!in_array($visibilidad, ['privada','publica'], true))        throw new RuntimeException('Visibilidad no válida.');
-    if (!in_array($estado, ['borrador','publicada'], true))          throw new RuntimeException('Estado no válido.');
+    if (!in_array($tipo, ['opcion_multiple','verdadero_falso','respuesta_corta','rellenar_huecos','emparejar','tarea'], true)) throw new RuntimeException('Tipo de actividad no válido.');
+    if (!in_array($visibilidad, ['privada','publica'], true))  throw new RuntimeException('Visibilidad no válida.');
+    if (!in_array($estado, ['borrador','publicada'], true))    throw new RuntimeException('Estado no válido.');
 
     // Coherencias
     $stC = pdo()->prepare('SELECT familia_id FROM cursos WHERE id=:id LIMIT 1');
@@ -101,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
     }
 
-    // Insert (dificultad como string o NULL)
+    // Insert actividad
     $ins = pdo()->prepare('
       INSERT INTO actividades
         (profesor_id, familia_id, curso_id, asignatura_id, tema_id,
@@ -125,17 +121,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       ':des'=>($descripcion!=='' ? $descripcion : null),
       ':dif'=>($dificultad!=='' ? $dificultad : null),
     ]);
+    $actividadId = (int)pdo()->lastInsertId();
 
-    /*if ($DEBUG) {
-      echo "[DBG] INSERT OK id=" . (int)pdo()->lastInsertId();
-      exit;
-    }*/
+    // Si es TAREA → guardar datos en actividades_tarea
+    if ($tipo === 'tarea') {
+      $instrucciones = trim((string)($_POST['t_instrucciones'] ?? ''));
+      $perm_texto    = isset($_POST['t_perm_texto']) ? 1 : 0;
+      $perm_archivo  = isset($_POST['t_perm_archivo']) ? 1 : 0;
+      $perm_enlace   = isset($_POST['t_perm_enlace']) ? 1 : 0;
+      $max_archivos  = ($_POST['t_max_archivos'] !== '') ? max(0,(int)$_POST['t_max_archivos']) : null;
+      $max_peso_mb   = ($_POST['t_max_peso_mb'] !== '') ? max(0,(int)$_POST['t_max_peso_mb']) : null;
+      $eval_modo     = trim((string)($_POST['t_evaluacion_modo'] ?? '')); // '' | puntos | rubrica
+      if ($eval_modo !== '' && !in_array($eval_modo, ['puntos','rubrica'], true)) {
+        throw new RuntimeException('Modo de evaluación no válido.');
+      }
+      $puntos_max    = ($_POST['t_puntuacion_max'] !== '') ? max(0,(int)$_POST['t_puntuacion_max']) : null;
+      $rubrica_json  = trim((string)($_POST['t_rubrica_json'] ?? ''));
 
-    // Redirección normal
-    //require_once $ROOT . '/lib/auth.php';
+      $insT = pdo()->prepare('
+        INSERT INTO actividades_tarea
+          (actividad_id, instrucciones, perm_texto, perm_archivo, perm_enlace,
+           max_archivos, max_peso_mb, evaluacion_modo, puntuacion_max, rubrica_json,
+           created_at, updated_at)
+        VALUES
+          (:aid, :inst, :pt, :pa, :pe, :maxf, :maxmb, :modo, :pmax, :rub, NOW(), NOW())
+      ');
+      $insT->execute([
+        ':aid'=>$actividadId,
+        ':inst'=>($instrucciones!==''?$instrucciones:null),
+        ':pt'=>$perm_texto, ':pa'=>$perm_archivo, ':pe'=>$perm_enlace,
+        ':maxf'=>$max_archivos, ':maxmb'=>$max_peso_mb,
+        ':modo'=>($eval_modo!==''?$eval_modo:null),
+        ':pmax'=>$puntos_max,
+        ':rub'=>($rubrica_json!==''?$rubrica_json:null),
+      ]);
+    }
+
     flash('success','Actividad creada correctamente.');
-    header('Location: ' . '/Bancalia/public/admin/actividades/index.php');
-    exit;
+    header('Location: ' . PUBLIC_URL . '/admin/actividades/index.php'); exit;
 
   } catch (Throwable $e) {
     $errors[] = $e->getMessage();
@@ -146,25 +169,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 require_once __DIR__ . '/../../../partials/header.php';
 ?>
 
-
-
 <div class="mb-6 flex items-center justify-between">
   <div>
     <h1 class="text-xl font-semibold tracking-tight">Nueva actividad</h1>
-    <p class="mt-1 text-sm text-slate-600">Crea una actividad. Los campos específicos del tipo los añadiremos después.</p>
+    <p class="mt-1 text-sm text-slate-600">Crea una actividad. Los campos específicos del tipo aparecen cuando proceda.</p>
   </div>
-  <a href="/Bancalia/public/admin/actividades/index.php"
+  <a href="<?= PUBLIC_URL ?>/admin/actividades/index.php"
      class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
     Volver al listado
   </a>
 </div>
-
-<?php if ($profesorId <= 0): ?>
-  <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-    No se ha podido vincular tu usuario con un <strong>profesor</strong>. Comprueba que tu email (<?= h($userEmail) ?>)
-    está dado de alta en <em>Profesores</em> o edita tu perfil en <a class="underline" href="/Bancalia/public/mi-perfil.php">Mi Perfil</a>.
-  </div>
-<?php endif; ?>
 
 <?php if ($errors): ?>
   <div class="mb-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
@@ -175,7 +189,8 @@ require_once __DIR__ . '/../../../partials/header.php';
 <?php endif; ?>
 
 <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-  <form method="post" action="" class="space-y-5">
+  <form method="post" action="" class="space-y-5" id="formActividad">
+    <?= csrf_field() ?>
 
     <div>
       <label class="mb-1 block text-sm font-medium text-slate-700">Título <span class="text-rose-600">*</span></label>
@@ -187,13 +202,17 @@ require_once __DIR__ . '/../../../partials/header.php';
     <div class="grid gap-4 sm:grid-cols-2">
       <div>
         <label class="mb-1 block text-sm font-medium text-slate-700">Tipo <span class="text-rose-600">*</span></label>
-        <select name="tipo" required
+        <select name="tipo" id="tipo" required
                 class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400">
           <?php
             $tipoSel = (string)($_POST['tipo'] ?? '');
             $opts = [
-              'autocorregible' => 'Autocorregible',
-              'tarea_abierta'  => 'Tarea / entrega abierta',
+              'opcion_multiple' => 'Opción múltiple',
+              'verdadero_falso' => 'Veradero/falso',
+              'respuesta_corta' => 'Respuesta corta',
+              'rellenar_huecos' => 'Rellenar huecos',
+              'emparejar'       => 'Emparejar',
+              'tarea'           => 'Tarea / entrega abierta',
             ];
             foreach ($opts as $val => $lab) {
               $sel = ($tipoSel === $val) ? 'selected' : '';
@@ -295,12 +314,85 @@ require_once __DIR__ . '/../../../partials/header.php';
           ?>
         </select>
       </div>
+    </div>
 
-      <div class="flex items-end">
-        <button class="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
-          Guardar actividad
-        </button>
+    <!-- ====== BLOQUE ESPECÍFICO TAREA (solo cuando tipo = tarea) ====== -->
+    <div id="bloqueTarea" class="hidden border-t pt-4">
+      <h3 class="text-sm font-semibold text-slate-700 mb-2">Opciones de Tarea / Entrega</h3>
+
+      <div>
+        <label class="mb-1 block text-sm font-medium text-slate-700">Instrucciones para el alumno</label>
+        <textarea name="t_instrucciones" rows="3"
+                  class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($_POST['t_instrucciones'] ?? '') ?></textarea>
       </div>
+
+      <div class="grid gap-4 sm:grid-cols-3">
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="t_perm_texto" class="h-4 w-4 rounded border-slate-300" <?= isset($_POST['t_perm_texto'])?'checked':'' ?>>
+          Permitir texto
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="t_perm_archivo" class="h-4 w-4 rounded border-slate-300" <?= isset($_POST['t_perm_archivo'])?'checked':'' ?>>
+          Permitir archivos
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="t_perm_enlace" class="h-4 w-4 rounded border-slate-300" <?= isset($_POST['t_perm_enlace'])?'checked':'' ?>>
+          Permitir enlaces
+        </label>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Máx. archivos</label>
+          <input type="number" min="0" name="t_max_archivos" value="<?= h((string)($_POST['t_max_archivos'] ?? '')) ?>"
+                 class="w-40 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400">
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Máx. tamaño por archivo (MB)</label>
+          <input type="number" min="0" name="t_max_peso_mb" value="<?= h((string)($_POST['t_max_peso_mb'] ?? '')) ?>"
+                 class="w-56 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400">
+        </div>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Evaluación</label>
+          <select name="t_evaluacion_modo"
+                  class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400">
+            <?php
+              $modoSel = (string)($_POST['t_evaluacion_modo'] ?? '');
+              $ops = [''=>'— Sin evaluación —','puntos'=>'Puntuación','rubrica'=>'Rúbrica'];
+              foreach ($ops as $v=>$lab) {
+                $sel = ($modoSel === $v) ? 'selected' : '';
+                echo '<option value="'.h($v).'" '.$sel.'>'.h($lab).'</option>';
+              }
+            ?>
+          </select>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Puntuación máxima</label>
+          <input type="number" min="0" name="t_puntuacion_max" value="<?= h((string)($_POST['t_puntuacion_max'] ?? '')) ?>"
+                 class="w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"
+                 placeholder="Ej: 10">
+        </div>
+      </div>
+
+      <div>
+        <label class="mb-1 block text-sm font-medium text-slate-700">Rúbrica (JSON)</label>
+        <textarea name="t_rubrica_json" rows="4"
+                  class="w-full font-mono rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"
+                  placeholder='[{"criterio":"Presentación","max":2},{"criterio":"Contenido","max":8}]'><?= h($_POST['t_rubrica_json'] ?? '') ?></textarea>
+        <p class="mt-1 text-xs text-slate-500">Opcional. Solo si usas evaluación por rúbrica.</p>
+      </div>
+    </div>
+    <!-- ====== /BLOQUE TAREA ====== -->
+
+    <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <a href="<?= PUBLIC_URL ?>/admin/actividades/index.php"
+         class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancelar</a>
+      <button class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
+        Guardar actividad
+      </button>
     </div>
 
   </form>
@@ -316,28 +408,36 @@ require_once __DIR__ . '/../../../partials/header.php';
   const selCur = document.getElementById('curso_id');
   const selAsi = document.getElementById('asignatura_id');
   const selTem = document.getElementById('tema_id');
+  const selTipo = document.getElementById('tipo');
+  const bloqueTarea = document.getElementById('bloqueTarea');
 
   const currentFam = <?= (int)($_POST['familia_id'] ?? 0) ?>;
   const currentCur = <?= (int)($_POST['curso_id'] ?? 0) ?>;
   const currentAsi = <?= (int)($_POST['asignatura_id'] ?? 0) ?>;
   const currentTem = <?= (int)($_POST['tema_id'] ?? 0) ?>;
+  const currentTipo= <?= json_encode((string)($_POST['tipo'] ?? '')) ?>;
 
   function opt(v,t){const o=document.createElement('option'); o.value=v; o.textContent=t; return o;}
 
   function renderCursos(fid, selected=0){
     selCur.innerHTML=''; selCur.appendChild(opt('', '— Curso —'));
-    cursosAll.filter(c=>parseInt(c.familia_id,10)===parseInt(fid,10))
+    cursosAll.filter(c=>parseInt(c.familia_id,10)===parseInt(fid||'0',10))
              .forEach(c=>{const o=opt(c.id, c.nombre); if(parseInt(selected,10)===parseInt(c.id,10)) o.selected=true; selCur.appendChild(o);});
   }
   function renderAsigs(cid, selected=0){
     selAsi.innerHTML=''; selAsi.appendChild(opt('', '— Asignatura —'));
-    asigsAll.filter(a=>parseInt(a.curso_id,10)===parseInt(cid,10))
+    asigsAll.filter(a=>parseInt(a.curso_id,10)===parseInt(cid||'0',10))
             .forEach(a=>{const o=opt(a.id, a.nombre); if(parseInt(selected,10)===parseInt(a.id,10)) o.selected=true; selAsi.appendChild(o);});
   }
   function renderTemas(aid, selected=0){
     selTem.innerHTML=''; selTem.appendChild(opt('', '— Tema (opcional) —'));
-    temasAll.filter(t=>parseInt(t.asignatura_id,10)===parseInt(aid,10))
-            .forEach(t=>{const label=(t.numero?('T'+t.numero+' · '):'')+t.nombre; const o=opt(t.id, label); if(parseInt(selected,10)===parseInt(t.id,10)) o.selected=true; selTem.appendChild(o);});
+    temasAll.filter(t=>parseInt(t.asignatura_id,10)===parseInt(aid||'0',10))
+            .forEach(t=>{
+              const label=(t.numero?('T'+t.numero+' · '):'')+t.nombre;
+              const o=opt(t.id, label);
+              if(parseInt(selected,10)===parseInt(t.id,10)) o.selected=true;
+              selTem.appendChild(o);
+            });
   }
 
   if (currentFam>0) renderCursos(currentFam, currentCur);
@@ -361,6 +461,11 @@ require_once __DIR__ . '/../../../partials/header.php';
     const aid=parseInt(selAsi.value||'0',10);
     renderTemas(aid, 0);
   }, {passive:true});
+
+  function toggleTarea(){ bloqueTarea.classList.toggle('hidden', selTipo.value !== 'tarea'); }
+  selTipo.addEventListener('change', toggleTarea, {passive:true});
+  if (currentTipo) selTipo.value = currentTipo;
+  toggleTarea();
 </script>
 
 <?php require_once __DIR__ . '/../../../partials/footer.php'; ?>

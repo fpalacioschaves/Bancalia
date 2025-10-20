@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 18-10-2025 a las 13:35:53
+-- Tiempo de generación: 20-10-2025 a las 12:36:11
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -28,242 +28,52 @@ SET time_zone = "+00:00";
 --
 
 CREATE TABLE `actividades` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `titulo` varchar(200) NOT NULL,
-  `enunciado` mediumtext NOT NULL,
-  `autor_id` bigint(20) UNSIGNED NOT NULL,
-  `tipo_id` tinyint(3) UNSIGNED DEFAULT NULL,
-  `visibilidad` enum('privada','compartida','publicada') NOT NULL DEFAULT 'privada',
+  `id` int(11) NOT NULL,
+  `profesor_id` int(11) NOT NULL,
+  `familia_id` int(11) NOT NULL,
+  `curso_id` int(11) NOT NULL,
+  `asignatura_id` int(11) NOT NULL,
+  `tema_id` int(11) DEFAULT NULL,
+  `tipo` enum('opcion_multiple','verdadero_falso','respuesta_corta','rellenar_huecos','emparejar','tarea') NOT NULL,
+  `titulo` varchar(255) NOT NULL,
+  `descripcion` text DEFAULT NULL,
+  `dificultad` enum('baja','media','alta') NOT NULL DEFAULT 'media',
+  `visibilidad` enum('privada','publica') NOT NULL DEFAULT 'privada',
   `estado` enum('borrador','publicada') NOT NULL DEFAULT 'borrador',
-  `dificultad` enum('facil','media','dificil') DEFAULT NULL,
-  `tiempo_estimado_min` smallint(5) UNSIGNED DEFAULT NULL,
-  `publico_slug` varchar(140) DEFAULT NULL,
-  `creado_en` datetime NOT NULL DEFAULT current_timestamp(),
-  `actualizado_en` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Volcado de datos para la tabla `actividades`
 --
 
-INSERT INTO `actividades` (`id`, `titulo`, `enunciado`, `autor_id`, `tipo_id`, `visibilidad`, `estado`, `dificultad`, `tiempo_estimado_min`, `publico_slug`, `creado_en`, `actualizado_en`) VALUES
-(1, 'VF: Una entidad débil nunca tiene clave primaria propia', 'Indica si la afirmación es verdadera o falsa.', 2, 1, 'compartida', 'publicada', 'media', 3, 'vf-entidad-debil', '2025-09-13 11:59:34', '2025-09-13 11:59:34'),
-(2, 'VF: <main> solo puede aparecer una vez por página', 'Indica si la afirmación es verdadera o falsa.', 2, 1, 'compartida', 'publicada', 'facil', 2, 'vf-main-unico', '2025-09-13 11:59:34', '2025-09-13 11:59:34'),
-(3, 'EM: Clave candidata en un esquema relacional', 'Selecciona la opción correcta.', 2, 2, 'compartida', 'borrador', 'media', 5, 'em-clave-candidata', '2025-09-13 11:59:34', '2025-09-13 11:59:34'),
-(4, 'EM: XPath para seleccionar todos los <libro> con precio > 30', 'Selecciona la expresión XPath correcta.', 2, 2, 'compartida', 'borrador', 'media', 5, 'em-xpath-precio', '2025-09-13 11:59:34', '2025-09-13 11:59:34'),
-(5, 'Desarrollo: Normaliza a 3FN una tabla de pedidos', 'Adjunta un PDF justificando las dependencias funcionales y el proceso de normalización hasta 3FN.', 2, 3, 'privada', 'borrador', 'dificil', 30, 'des-normalizacion-3fn', '2025-09-13 11:59:34', '2025-09-13 11:59:34'),
-(6, 'Desarrollo: Flujo Git con ramas feature y pull requests', 'Entrega un PDF con un flujo de trabajo recomendado para un equipo pequeño.', 2, 3, 'compartida', 'borrador', 'media', 15, 'des-flujo-git', '2025-09-13 11:59:34', '2025-09-13 11:59:34');
-
---
--- Disparadores `actividades`
---
-DELIMITER $$
-CREATE TRIGGER `trg_em_check_correcta_before_publish` BEFORE UPDATE ON `actividades` FOR EACH ROW BEGIN
-  DECLARE num_correctas INT DEFAULT 0;
-
-  IF NEW.estado = 'publicada' AND NEW.tipo_id = 2 THEN
-    SELECT COUNT(*) INTO num_correctas
-      FROM actividad_opciones
-     WHERE actividad_id = NEW.id
-       AND es_correcta = TRUE;
-
-    IF num_correctas = 0 THEN
-      SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'La actividad de elección múltiple debe tener al menos una opción correcta.';
-    END IF;
-  END IF;
-END
-$$
-DELIMITER ;
+INSERT INTO `actividades` (`id`, `profesor_id`, `familia_id`, `curso_id`, `asignatura_id`, `tema_id`, `tipo`, `titulo`, `descripcion`, `dificultad`, `visibilidad`, `estado`, `created_at`, `updated_at`) VALUES
+(5, 2, 2, 3, 3, NULL, '', 'Actividad 2', 'Ejercicio de Lenguaje de Marcas', '', 'privada', 'borrador', '2025-10-19 18:24:32', '2025-10-19 18:44:15'),
+(6, 2, 2, 3, 1, 1, '', 'Título editado', 'asdfasdgsadfgsdfg', 'baja', 'privada', 'borrador', '2025-10-19 18:45:20', '2025-10-20 12:18:58'),
+(7, 2, 2, 3, 1, 1, '', 'Actividad Nueva de Lunes', 'dfgsdfgsdfgsdfg', 'baja', 'privada', 'borrador', '2025-10-20 12:26:53', '2025-10-20 12:27:25');
 
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `actividad_desarrollo`
+-- Estructura de tabla para la tabla `actividades_tarea`
 --
 
-CREATE TABLE `actividad_desarrollo` (
-  `actividad_id` bigint(20) UNSIGNED NOT NULL,
-  `requiere_archivo` tinyint(1) NOT NULL DEFAULT 1,
-  `formatos_permitidos` varchar(200) DEFAULT NULL,
-  `tamano_max_mb` smallint(5) UNSIGNED DEFAULT NULL,
-  `max_palabras` int(10) UNSIGNED DEFAULT NULL,
-  `criterios_rubrica` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`criterios_rubrica`))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Volcado de datos para la tabla `actividad_desarrollo`
---
-
-INSERT INTO `actividad_desarrollo` (`actividad_id`, `requiere_archivo`, `formatos_permitidos`, `tamano_max_mb`, `max_palabras`, `criterios_rubrica`) VALUES
-(5, 1, 'pdf', 20, 800, '{\"criterios\": [{\"nombre\": \"Identificación de DF\", \"peso\": 0.35}, {\"nombre\": \"Proceso a 3FN\", \"peso\": 0.35}, {\"nombre\": \"Claridad y justificación\", \"peso\": 0.30}]}'),
-(6, 1, 'pdf', 10, 600, '{\"criterios\": [{\"nombre\": \"Estrategia de ramas\", \"peso\": 0.4}, {\"nombre\": \"Gestión de PR y revisiones\", \"peso\": 0.4}, {\"nombre\": \"Buenas prácticas\", \"peso\": 0.2}]}');
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `actividad_etiqueta`
---
-
-CREATE TABLE `actividad_etiqueta` (
-  `actividad_id` bigint(20) UNSIGNED NOT NULL,
-  `etiqueta_id` int(10) UNSIGNED NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Volcado de datos para la tabla `actividad_etiqueta`
---
-
-INSERT INTO `actividad_etiqueta` (`actividad_id`, `etiqueta_id`) VALUES
-(1, 1),
-(2, 4),
-(3, 1),
-(4, 3),
-(5, 2),
-(6, 6);
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `actividad_opciones`
---
-
-CREATE TABLE `actividad_opciones` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `actividad_id` bigint(20) UNSIGNED NOT NULL,
-  `texto_opcion` text NOT NULL,
-  `es_correcta` tinyint(1) NOT NULL DEFAULT 0,
-  `retroalimentacion` varchar(255) DEFAULT NULL,
-  `orden` smallint(5) UNSIGNED DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Volcado de datos para la tabla `actividad_opciones`
---
-
-INSERT INTO `actividad_opciones` (`id`, `actividad_id`, `texto_opcion`, `es_correcta`, `retroalimentacion`, `orden`) VALUES
-(1, 3, 'Cualquier atributo que identifique de forma única una tupla y sea minimal.', 1, NULL, 1),
-(2, 3, 'Un atributo que siempre es foráneo.', 0, NULL, 2),
-(3, 3, 'La concatenación de todas las columnas de la tabla.', 0, NULL, 3),
-(4, 3, 'Un índice no cluster obligatorio.', 0, NULL, 4),
-(5, 4, '//libro[precio>30]', 1, NULL, 1),
-(6, 4, '//libro/@precio>30', 0, NULL, 2),
-(7, 4, 'libro/precio>30', 0, NULL, 3),
-(8, 4, '//precio[text()>30]/libro', 0, NULL, 4);
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `actividad_ra`
---
-
-CREATE TABLE `actividad_ra` (
-  `actividad_id` bigint(20) UNSIGNED NOT NULL,
-  `ra_id` int(10) UNSIGNED NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Volcado de datos para la tabla `actividad_ra`
---
-
-INSERT INTO `actividad_ra` (`actividad_id`, `ra_id`) VALUES
-(1, 1),
-(2, 4),
-(3, 2),
-(4, 5),
-(5, 3),
-(6, 8);
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `actividad_tema`
---
-
-CREATE TABLE `actividad_tema` (
-  `actividad_id` bigint(20) UNSIGNED NOT NULL,
-  `tema_id` int(10) UNSIGNED NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Volcado de datos para la tabla `actividad_tema`
---
-
-INSERT INTO `actividad_tema` (`actividad_id`, `tema_id`) VALUES
-(1, 1),
-(2, 4),
-(3, 2),
-(4, 5),
-(5, 3),
-(6, 8);
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `actividad_tipos`
---
-
-CREATE TABLE `actividad_tipos` (
-  `id` tinyint(3) UNSIGNED NOT NULL,
-  `clave` varchar(40) NOT NULL,
-  `nombre` varchar(80) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Volcado de datos para la tabla `actividad_tipos`
---
-
-INSERT INTO `actividad_tipos` (`id`, `clave`, `nombre`) VALUES
-(1, 'vf', 'Verdadero/Falso'),
-(2, 'em', 'Elección múltiple'),
-(3, 'des', 'Desarrollo');
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `actividad_vf`
---
-
-CREATE TABLE `actividad_vf` (
-  `actividad_id` bigint(20) UNSIGNED NOT NULL,
-  `respuesta_correcta` tinyint(1) NOT NULL,
-  `feedback_correcto` varchar(255) DEFAULT NULL,
-  `feedback_incorrecto` varchar(255) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Volcado de datos para la tabla `actividad_vf`
---
-
-INSERT INTO `actividad_vf` (`actividad_id`, `respuesta_correcta`, `feedback_correcto`, `feedback_incorrecto`) VALUES
-(1, 1, 'Correcto: las entidades débiles dependen de una fuerte para su identificación.', 'Revisa el concepto de entidad débil.'),
-(2, 1, 'Correcto: según HTML Living Standard, solo un <main> por documento.', 'Revisa accesibilidad y semántica HTML.');
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `asignaciones`
---
-
-CREATE TABLE `asignaciones` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `actividad_id` bigint(20) UNSIGNED NOT NULL,
-  `alumno_id` bigint(20) UNSIGNED NOT NULL,
-  `estado` enum('sin_enviar','enviado','resuelto') NOT NULL DEFAULT 'sin_enviar',
-  `fecha_limite` date DEFAULT NULL,
-  `creado_en` datetime NOT NULL DEFAULT current_timestamp(),
-  `actualizado_en` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Volcado de datos para la tabla `asignaciones`
---
-
-INSERT INTO `asignaciones` (`id`, `actividad_id`, `alumno_id`, `estado`, `fecha_limite`, `creado_en`, `actualizado_en`) VALUES
-(1, 1, 3, 'enviado', '2025-10-20', '2025-09-13 11:59:34', '2025-09-13 11:59:34'),
-(2, 1, 4, 'sin_enviar', '2025-10-20', '2025-09-13 11:59:34', '2025-09-13 11:59:34'),
-(3, 3, 3, 'enviado', '2025-10-22', '2025-09-13 11:59:34', '2025-09-13 11:59:34'),
-(4, 6, 4, 'sin_enviar', '2025-10-30', '2025-09-13 11:59:34', '2025-09-13 11:59:34');
+CREATE TABLE `actividades_tarea` (
+  `id` int(11) NOT NULL,
+  `actividad_id` int(11) NOT NULL,
+  `instrucciones` text DEFAULT NULL,
+  `perm_texto` tinyint(1) NOT NULL DEFAULT 0,
+  `perm_archivo` tinyint(1) NOT NULL DEFAULT 0,
+  `perm_enlace` tinyint(1) NOT NULL DEFAULT 0,
+  `max_archivos` int(11) DEFAULT NULL,
+  `max_peso_mb` int(11) DEFAULT NULL,
+  `evaluacion_modo` enum('puntos','rubrica') DEFAULT NULL,
+  `puntuacion_max` int(11) DEFAULT NULL,
+  `rubrica_json` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`rubrica_json`)),
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -272,6 +82,36 @@ INSERT INTO `asignaciones` (`id`, `actividad_id`, `alumno_id`, `estado`, `fecha_
 --
 
 CREATE TABLE `asignaturas` (
+  `id` int(11) NOT NULL,
+  `familia_id` int(11) NOT NULL,
+  `curso_id` int(11) NOT NULL,
+  `nombre` varchar(150) NOT NULL,
+  `slug` varchar(160) NOT NULL,
+  `codigo` varchar(50) DEFAULT NULL,
+  `horas` int(11) DEFAULT NULL,
+  `descripcion` text DEFAULT NULL,
+  `orden` int(11) NOT NULL DEFAULT 1,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `asignaturas`
+--
+
+INSERT INTO `asignaturas` (`id`, `familia_id`, `curso_id`, `nombre`, `slug`, `codigo`, `horas`, `descripcion`, `orden`, `is_active`, `created_at`, `updated_at`) VALUES
+(1, 2, 3, 'Bases de Datos', 'bases-de-datos', NULL, NULL, NULL, 1, 1, '2025-10-18 16:03:02', '2025-10-18 16:03:02'),
+(2, 2, 3, 'Programación', 'programaci-on', NULL, NULL, NULL, 1, 1, '2025-10-18 16:03:19', '2025-10-18 16:03:19'),
+(3, 2, 3, 'Lenguajes de Marcas', 'lenguajes-de-marcas', NULL, NULL, NULL, 1, 1, '2025-10-18 16:03:52', '2025-10-18 16:03:52');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `asignaturas_old`
+--
+
+CREATE TABLE `asignaturas_old` (
   `id` smallint(5) UNSIGNED NOT NULL,
   `grado_id` smallint(5) UNSIGNED NOT NULL,
   `nombre` varchar(150) NOT NULL,
@@ -279,10 +119,10 @@ CREATE TABLE `asignaturas` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Volcado de datos para la tabla `asignaturas`
+-- Volcado de datos para la tabla `asignaturas_old`
 --
 
-INSERT INTO `asignaturas` (`id`, `grado_id`, `nombre`, `codigo`) VALUES
+INSERT INTO `asignaturas_old` (`id`, `grado_id`, `nombre`, `codigo`) VALUES
 (1, 1, 'Bases de Datos', 'BD'),
 (2, 2, 'Lenguajes de Marcas', 'LM'),
 (3, 2, 'Programación', 'PRO'),
@@ -312,27 +152,38 @@ INSERT INTO `asignatura_curso` (`asignatura_id`, `curso_id`) VALUES
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `auditoria`
+-- Estructura de tabla para la tabla `centros`
 --
 
-CREATE TABLE `auditoria` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `usuario_id` bigint(20) UNSIGNED DEFAULT NULL,
-  `accion` varchar(120) NOT NULL,
-  `entidad` varchar(60) NOT NULL,
-  `entidad_id` bigint(20) UNSIGNED DEFAULT NULL,
-  `detalles` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`detalles`)),
-  `creado_en` datetime NOT NULL DEFAULT current_timestamp()
+CREATE TABLE `centros` (
+  `id` int(11) NOT NULL,
+  `nombre` varchar(180) NOT NULL,
+  `slug` varchar(190) NOT NULL,
+  `codigo` varchar(50) DEFAULT NULL,
+  `tipo` enum('publico','privado','concertado') NOT NULL DEFAULT 'publico',
+  `comunidad` varchar(100) DEFAULT NULL,
+  `provincia` varchar(100) DEFAULT NULL,
+  `localidad` varchar(120) DEFAULT NULL,
+  `direccion` varchar(200) DEFAULT NULL,
+  `cp` varchar(10) DEFAULT NULL,
+  `email` varchar(150) DEFAULT NULL,
+  `telefono` varchar(30) DEFAULT NULL,
+  `web` varchar(200) DEFAULT NULL,
+  `lat` decimal(10,7) DEFAULT NULL,
+  `lng` decimal(10,7) DEFAULT NULL,
+  `descripcion` text DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Volcado de datos para la tabla `auditoria`
+-- Volcado de datos para la tabla `centros`
 --
 
-INSERT INTO `auditoria` (`id`, `usuario_id`, `accion`, `entidad`, `entidad_id`, `detalles`, `creado_en`) VALUES
-(1, 2, 'crear_actividad', 'actividades', 1, '{\"titulo\": \"VF entidad débil\"}', '2025-09-13 11:59:34'),
-(2, 2, 'crear_actividad', 'actividades', 3, '{\"titulo\": \"EM clave candidata\"}', '2025-09-13 11:59:34'),
-(3, 2, 'asignar_actividad', 'asignaciones', 1, '{\"alumno\": 3, \"actividad\": 1}', '2025-09-13 11:59:34');
+INSERT INTO `centros` (`id`, `nombre`, `slug`, `codigo`, `tipo`, `comunidad`, `provincia`, `localidad`, `direccion`, `cp`, `email`, `telefono`, `web`, `lat`, `lng`, `descripcion`, `is_active`, `created_at`, `updated_at`) VALUES
+(1, 'ICET SAFA Málaga', 'icet-safa-m-alaga', NULL, 'publico', 'Andalucía', 'Málaga', 'Málaga', 'C. Banda del Mar, 1', '29017', NULL, NULL, NULL, 36.7189700, -4.3585840, NULL, 1, '2025-10-18 19:36:33', '2025-10-18 19:59:17'),
+(2, 'Otro Centro Distinto', 'o', NULL, 'publico', 'Andalucía', 'Málaga', 'Malaga', 'Tejares 13', '29011', NULL, NULL, NULL, 36.7284040, -4.4360520, NULL, 1, '2025-10-18 22:08:30', '2025-10-18 22:08:30');
 
 -- --------------------------------------------------------
 
@@ -341,6 +192,34 @@ INSERT INTO `auditoria` (`id`, `usuario_id`, `accion`, `entidad`, `entidad_id`, 
 --
 
 CREATE TABLE `cursos` (
+  `id` int(11) NOT NULL,
+  `familia_id` int(11) NOT NULL,
+  `nombre` varchar(80) NOT NULL,
+  `slug` varchar(120) NOT NULL,
+  `descripcion` text DEFAULT NULL,
+  `orden` int(11) NOT NULL DEFAULT 1,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `cursos`
+--
+
+INSERT INTO `cursos` (`id`, `familia_id`, `nombre`, `slug`, `descripcion`, `orden`, `is_active`, `created_at`, `updated_at`) VALUES
+(1, 1, '1º', '1o', NULL, 1, 1, '2025-10-18 15:47:25', '2025-10-18 15:47:25'),
+(2, 1, '2º', '2o', NULL, 2, 1, '2025-10-18 15:47:39', '2025-10-18 15:47:39'),
+(3, 2, '1º', '1o', NULL, 1, 1, '2025-10-18 15:48:04', '2025-10-18 15:48:04'),
+(4, 2, '2º', '2o', NULL, 2, 1, '2025-10-18 15:48:14', '2025-10-18 15:48:14');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `cursos_old`
+--
+
+CREATE TABLE `cursos_old` (
   `id` smallint(5) UNSIGNED NOT NULL,
   `grado_id` smallint(5) UNSIGNED NOT NULL,
   `nombre` varchar(120) NOT NULL,
@@ -348,10 +227,10 @@ CREATE TABLE `cursos` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Volcado de datos para la tabla `cursos`
+-- Volcado de datos para la tabla `cursos_old`
 --
 
-INSERT INTO `cursos` (`id`, `grado_id`, `nombre`, `orden`) VALUES
+INSERT INTO `cursos_old` (`id`, `grado_id`, `nombre`, `orden`) VALUES
 (1, 1, '1º', 1),
 (2, 1, '2º', 2),
 (3, 2, '1º', 1),
@@ -361,126 +240,26 @@ INSERT INTO `cursos` (`id`, `grado_id`, `nombre`, `orden`) VALUES
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `enlaces`
+-- Estructura de tabla para la tabla `familias_profesionales`
 --
 
-CREATE TABLE `enlaces` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `actividad_id` bigint(20) UNSIGNED NOT NULL,
-  `tipo` enum('qr','codigo','iframe') NOT NULL,
-  `token` varchar(140) NOT NULL,
-  `expiracion` datetime DEFAULT NULL,
-  `usos_max` int(10) UNSIGNED DEFAULT NULL,
-  `usos_hechos` int(10) UNSIGNED NOT NULL DEFAULT 0,
-  `creado_en` datetime NOT NULL DEFAULT current_timestamp()
+CREATE TABLE `familias_profesionales` (
+  `id` int(11) NOT NULL,
+  `nombre` varchar(150) NOT NULL,
+  `slug` varchar(160) NOT NULL,
+  `descripcion` text DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Volcado de datos para la tabla `enlaces`
+-- Volcado de datos para la tabla `familias_profesionales`
 --
 
-INSERT INTO `enlaces` (`id`, `actividad_id`, `tipo`, `token`, `expiracion`, `usos_max`, `usos_hechos`, `creado_en`) VALUES
-(1, 1, 'codigo', 'COD-VF-ENTDEBIL', '2025-12-31 23:59:59', 100, 2, '2025-09-13 11:59:34'),
-(2, 3, 'iframe', 'IFR-CLAVE-CAND', NULL, NULL, 0, '2025-09-13 11:59:34');
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `entregas`
---
-
-CREATE TABLE `entregas` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `asignacion_id` bigint(20) UNSIGNED NOT NULL,
-  `alumno_id` bigint(20) UNSIGNED NOT NULL,
-  `url` text DEFAULT NULL,
-  `archivo_path` varchar(255) DEFAULT NULL,
-  `texto_respuesta` mediumtext DEFAULT NULL,
-  `nota` decimal(5,2) DEFAULT NULL,
-  `feedback` text DEFAULT NULL,
-  `creado_en` datetime NOT NULL DEFAULT current_timestamp()
-) ;
-
---
--- Volcado de datos para la tabla `entregas`
---
-
-INSERT INTO `entregas` (`id`, `asignacion_id`, `alumno_id`, `url`, `archivo_path`, `texto_respuesta`, `nota`, `feedback`, `creado_en`) VALUES
-(1, 1, 3, NULL, NULL, 'Verdadero', 1.00, 'Bien.', '2025-09-13 11:59:34'),
-(2, 3, 3, NULL, NULL, 'Una clave candidata es un superconjunto mínimo que identifica de forma única', NULL, NULL, '2025-09-13 11:59:34');
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `etiquetas`
---
-
-CREATE TABLE `etiquetas` (
-  `id` int(10) UNSIGNED NOT NULL,
-  `nombre` varchar(60) NOT NULL,
-  `color` varchar(9) DEFAULT NULL,
-  `creador_id` bigint(20) UNSIGNED DEFAULT NULL,
-  `creado_en` datetime NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Volcado de datos para la tabla `etiquetas`
---
-
-INSERT INTO `etiquetas` (`id`, `nombre`, `color`, `creador_id`, `creado_en`) VALUES
-(1, 'SQL', '#2b6cb0', 2, '2025-09-13 11:59:34'),
-(2, 'Normalización', '#805ad5', 2, '2025-09-13 11:59:34'),
-(3, 'XML', '#38a169', 2, '2025-09-13 11:59:34'),
-(4, 'HTML', '#dd6b20', 2, '2025-09-13 11:59:34'),
-(5, 'JS', '#718096', 2, '2025-09-13 11:59:34'),
-(6, 'Git', '#1a202c', 2, '2025-09-13 11:59:34'),
-(7, 'XPath', '#ccc', 3, '2025-09-13 20:18:08');
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `examenes`
---
-
-CREATE TABLE `examenes` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `titulo` varchar(200) NOT NULL,
-  `autor_id` bigint(20) UNSIGNED NOT NULL,
-  `estado` enum('borrador','publicado') NOT NULL DEFAULT 'borrador',
-  `fecha` date DEFAULT NULL,
-  `hora` time DEFAULT NULL,
-  `creado_en` datetime NOT NULL DEFAULT current_timestamp(),
-  `actualizado_en` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Volcado de datos para la tabla `examenes`
---
-
-INSERT INTO `examenes` (`id`, `titulo`, `autor_id`, `estado`, `fecha`, `hora`, `creado_en`, `actualizado_en`) VALUES
-(1, 'Examen Parcial BD — ER y Relacional', 2, 'borrador', '2025-10-15', '10:00:00', '2025-09-13 11:59:34', '2025-09-13 11:59:34');
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `examenes_actividades`
---
-
-CREATE TABLE `examenes_actividades` (
-  `examen_id` bigint(20) UNSIGNED NOT NULL,
-  `actividad_id` bigint(20) UNSIGNED NOT NULL,
-  `orden` smallint(5) UNSIGNED DEFAULT NULL,
-  `puntos` decimal(5,2) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Volcado de datos para la tabla `examenes_actividades`
---
-
-INSERT INTO `examenes_actividades` (`examen_id`, `actividad_id`, `orden`, `puntos`) VALUES
-(1, 1, 1, 1.00),
-(1, 3, 2, 2.00),
-(1, 5, 3, 3.00);
+INSERT INTO `familias_profesionales` (`id`, `nombre`, `slug`, `descripcion`, `is_active`, `created_at`, `updated_at`) VALUES
+(1, 'Desarrollo de Aplicaciones Multiplataforma', 'desarrollo-de-aplicaciones-multiplataforma', NULL, 1, '2025-10-18 15:33:38', '2025-10-18 15:33:38'),
+(2, 'Desarrollo de Aplicaciones Web', 'desarrollo-de-aplicaciones-web', NULL, 1, '2025-10-18 15:47:51', '2025-10-18 15:47:51');
 
 -- --------------------------------------------------------
 
@@ -569,79 +348,59 @@ INSERT INTO `planes` (`id`, `nombre`, `precio_mensual`) VALUES
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `profesor_imparte`
+-- Estructura de tabla para la tabla `profesores`
 --
 
-CREATE TABLE `profesor_imparte` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `profesor_id` bigint(20) UNSIGNED NOT NULL,
-  `grado_id` smallint(5) UNSIGNED NOT NULL,
-  `curso_id` smallint(5) UNSIGNED NOT NULL,
-  `asignatura_id` smallint(5) UNSIGNED NOT NULL,
-  `creado_en` datetime NOT NULL DEFAULT current_timestamp()
+CREATE TABLE `profesores` (
+  `id` int(11) NOT NULL,
+  `centro_id` int(11) DEFAULT NULL,
+  `nombre` varchar(120) NOT NULL,
+  `apellidos` varchar(160) NOT NULL,
+  `email` varchar(160) NOT NULL,
+  `telefono` varchar(30) DEFAULT NULL,
+  `notas` text DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Volcado de datos para la tabla `profesor_imparte`
+-- Volcado de datos para la tabla `profesores`
 --
 
-INSERT INTO `profesor_imparte` (`id`, `profesor_id`, `grado_id`, `curso_id`, `asignatura_id`, `creado_en`) VALUES
-(1, 6, 2, 4, 3, '2025-09-14 11:56:13'),
-(2, 6, 2, 3, 2, '2025-09-14 12:13:40'),
-(3, 6, 1, 1, 1, '2025-09-14 12:13:57'),
-(4, 8, 1, 1, 1, '2025-09-14 12:26:14'),
-(5, 6, 2, 3, 4, '2025-09-14 12:49:09'),
-(6, 13, 2, 4, 2, '2025-09-14 17:05:12'),
-(7, 14, 1, 1, 1, '2025-09-14 17:07:54'),
-(8, 14, 2, 3, 4, '2025-09-14 17:07:54'),
-(9, 14, 2, 3, 2, '2025-09-14 17:07:54'),
-(10, 29, 1, 1, 1, '2025-09-14 20:59:27'),
-(11, 29, 1, 2, 4, '2025-09-14 20:59:27'),
-(12, 31, 1, 1, 1, '2025-09-14 21:07:35'),
-(13, 31, 2, 3, 2, '2025-09-14 21:07:35');
-
---
--- Disparadores `profesor_imparte`
---
-DELIMITER $$
-CREATE TRIGGER `trg_pi_check_grado` BEFORE INSERT ON `profesor_imparte` FOR EACH ROW BEGIN
-  DECLARE g_curso SMALLINT UNSIGNED;
-  DECLARE g_asig  SMALLINT UNSIGNED;
-  SELECT grado_id INTO g_curso FROM cursos       WHERE id = NEW.curso_id;
-  SELECT grado_id INTO g_asig  FROM asignaturas  WHERE id = NEW.asignatura_id;
-  IF g_curso IS NULL OR g_asig IS NULL OR g_curso <> g_asig OR g_curso <> NEW.grado_id THEN
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'grado_id no coincide con curso/asignatura';
-  END IF;
-END
-$$
-DELIMITER ;
+INSERT INTO `profesores` (`id`, `centro_id`, `nombre`, `apellidos`, `email`, `telefono`, `notas`, `is_active`, `created_at`, `updated_at`) VALUES
+(2, 1, 'Francisco', 'Palacios Chaves', 'fpalacioschaves@gmail.com', '655925498', NULL, 1, '2025-10-18 21:45:18', '2025-10-19 12:50:57'),
+(3, 1, 'Alberto', 'Ruiz Rodriguez', 'albertoruizprofesor@gmail.com', '666666666', NULL, 1, '2025-10-19 19:14:36', '2025-10-19 19:58:01');
 
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `ra`
+-- Estructura de tabla para la tabla `profesor_asignacion`
 --
 
-CREATE TABLE `ra` (
-  `id` int(10) UNSIGNED NOT NULL,
-  `asignatura_id` smallint(5) UNSIGNED NOT NULL,
-  `codigo` varchar(50) NOT NULL,
-  `descripcion` text NOT NULL
+CREATE TABLE `profesor_asignacion` (
+  `id` int(11) NOT NULL,
+  `profesor_id` int(11) NOT NULL,
+  `centro_id` int(11) DEFAULT NULL,
+  `familia_id` int(11) NOT NULL,
+  `curso_id` int(11) NOT NULL,
+  `asignatura_id` int(11) NOT NULL,
+  `anio_academico` varchar(9) NOT NULL,
+  `horas` int(11) DEFAULT NULL,
+  `observaciones` text DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Volcado de datos para la tabla `ra`
+-- Volcado de datos para la tabla `profesor_asignacion`
 --
 
-INSERT INTO `ra` (`id`, `asignatura_id`, `codigo`, `descripcion`) VALUES
-(1, 1, 'RA1', 'Diseña modelos entidad-relación para problemas dados.'),
-(2, 1, 'RA2', 'Transforma modelos al esquema relacional aplicando claves y restricciones.'),
-(3, 1, 'RA3', 'Aplica formas normales para mejorar el diseño.'),
-(4, 2, 'RA1', 'Estructura documentos con HTML semántico y accesible.'),
-(5, 2, 'RA2', 'Valida y transforma XML con XSD y XPath/XSLT.'),
-(6, 3, 'RA1', 'Aplica POO en JavaScript con clases y módulos.'),
-(7, 3, 'RA2', 'Implementa estructuras de datos básicas.'),
-(8, 4, 'RA1', 'Gestiona proyectos con Git y buenas prácticas.');
+INSERT INTO `profesor_asignacion` (`id`, `profesor_id`, `centro_id`, `familia_id`, `curso_id`, `asignatura_id`, `anio_academico`, `horas`, `observaciones`, `is_active`, `created_at`, `updated_at`) VALUES
+(3, 2, 1, 2, 3, 1, '2025-2026', NULL, NULL, 1, '2025-10-18 21:48:28', '2025-10-19 12:50:57'),
+(4, 2, 1, 2, 3, 3, '2025-2026', NULL, NULL, 1, '2025-10-18 21:48:28', '2025-10-19 12:50:57'),
+(5, 3, 1, 2, 3, 2, '2025-2026', NULL, NULL, 1, '2025-10-19 19:15:09', '2025-10-19 19:58:01');
 
 -- --------------------------------------------------------
 
@@ -693,59 +452,61 @@ INSERT INTO `suscripciones` (`id`, `usuario_id`, `plan_id`, `estado`, `inicio`, 
 --
 
 CREATE TABLE `temas` (
-  `id` int(10) UNSIGNED NOT NULL,
-  `asignatura_id` smallint(5) UNSIGNED NOT NULL,
-  `nombre` varchar(200) NOT NULL,
-  `codigo` varchar(50) DEFAULT NULL,
-  `orden` smallint(5) UNSIGNED DEFAULT NULL
+  `id` int(11) NOT NULL,
+  `asignatura_id` int(11) NOT NULL,
+  `nombre` varchar(160) NOT NULL,
+  `slug` varchar(180) NOT NULL,
+  `numero` int(11) NOT NULL DEFAULT 1,
+  `descripcion` text DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Volcado de datos para la tabla `temas`
 --
 
-INSERT INTO `temas` (`id`, `asignatura_id`, `nombre`, `codigo`, `orden`) VALUES
-(1, 1, 'Modelo Entidad-Relación', 'T1-ER', 3),
-(2, 1, 'Modelo Relacional y Álgebra', 'T2-REL', 2),
-(3, 1, 'Normalización', 'T3-NORM', 3),
-(4, 2, 'HTML y Accesibilidad', 'T1-HTML', 1),
-(5, 2, 'XML/XSD/XPath', 'T2-XML', 2),
-(6, 3, 'POO en JavaScript', 'T1-POOJS', 1),
-(7, 3, 'Estructuras de Datos', 'T2-ED', 2),
-(8, 4, 'Control de versiones con Git', 'T1-GIT', 1);
+INSERT INTO `temas` (`id`, `asignatura_id`, `nombre`, `slug`, `numero`, `descripcion`, `is_active`, `created_at`, `updated_at`) VALUES
+(1, 1, 'Introducción al SQL', 'introduccion-al-sql', 1, NULL, 1, '2025-10-18 20:38:49', '2025-10-18 20:38:49');
 
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `temas_ra`
+-- Estructura de tabla para la tabla `users`
 --
 
-CREATE TABLE `temas_ra` (
-  `tema_id` int(10) UNSIGNED NOT NULL,
-  `ra_id` int(10) UNSIGNED NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `users` (
+  `id` int(11) NOT NULL,
+  `nombre` varchar(120) NOT NULL,
+  `email` varchar(190) NOT NULL,
+  `password_hash` varchar(255) NOT NULL,
+  `role` enum('admin','profesor') NOT NULL DEFAULT 'profesor',
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `email_verified_at` datetime DEFAULT NULL,
+  `verify_token` char(64) DEFAULT NULL,
+  `reset_token` char(64) DEFAULT NULL,
+  `reset_expires_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Volcado de datos para la tabla `temas_ra`
+-- Volcado de datos para la tabla `users`
 --
 
-INSERT INTO `temas_ra` (`tema_id`, `ra_id`) VALUES
-(1, 1),
-(2, 2),
-(3, 3),
-(4, 4),
-(5, 5),
-(6, 6),
-(7, 7),
-(8, 8);
+INSERT INTO `users` (`id`, `nombre`, `email`, `password_hash`, `role`, `is_active`, `email_verified_at`, `verify_token`, `reset_token`, `reset_expires_at`, `created_at`, `updated_at`) VALUES
+(2, 'Admin', 'admin@bancalia.local', '$2y$10$FhjKsOldC1VlF2FYcQz1LOBANTQyLH2vX9436CttOnp1/DBjqA.0S', 'admin', 1, '2025-10-18 14:00:29', NULL, NULL, NULL, '2025-10-18 13:58:10', '2025-10-18 14:00:29'),
+(5, 'fpalacioschaves', 'fpalacioschaves@gmail.com', '$2y$10$Oq8MhmKGKuw/KliAHFdIBuImSjqAJqBqi8mSKACi2hXYHDeyFgvxq', 'profesor', 1, NULL, NULL, NULL, NULL, '2025-10-18 21:45:18', '2025-10-18 21:45:18'),
+(6, 'Alberto', 'albertoruizprofesor@gmail.com', '$2y$10$hrRku8L6FP1f4gZBYPo5L.FViGkT93qhDdK3tRrCOhB7PROyRHWyy', 'profesor', 1, NULL, NULL, NULL, NULL, '2025-10-19 19:14:36', '2025-10-19 19:14:36');
 
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `usuarios`
+-- Estructura de tabla para la tabla `usuarios_old`
 --
 
-CREATE TABLE `usuarios` (
+CREATE TABLE `usuarios_old` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `nombre` varchar(100) NOT NULL,
   `email` varchar(190) NOT NULL,
@@ -757,10 +518,10 @@ CREATE TABLE `usuarios` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Volcado de datos para la tabla `usuarios`
+-- Volcado de datos para la tabla `usuarios_old`
 --
 
-INSERT INTO `usuarios` (`id`, `nombre`, `email`, `password_hash`, `rol_id`, `estado`, `creado_en`, `actualizado_en`) VALUES
+INSERT INTO `usuarios_old` (`id`, `nombre`, `email`, `password_hash`, `rol_id`, `estado`, `creado_en`, `actualizado_en`) VALUES
 (1, 'Admin', 'admin@bancalia.local', '$2y$10$lB1mKxDTSaDRKmKiJuOSJeglCC0pfHTkPrT9up0oUFz.vX0nLpBVS', 1, 'activo', '2025-09-13 11:59:34', '2025-09-13 20:41:30'),
 (2, 'Paco Profesor', 'paco@bancalia.local', '$2y$10$hash_bcrypt_de_ejemplo_prof', 2, 'activo', '2025-09-13 11:59:34', '2025-09-13 11:59:34'),
 (3, 'Ana Alumna', 'ana@bancalia.local', '$2y$10$hash_bcrypt_de_ejemplo_alum', 3, '', '2025-09-13 11:59:34', '2025-09-14 17:34:01'),
@@ -784,71 +545,35 @@ INSERT INTO `usuarios` (`id`, `nombre`, `email`, `password_hash`, `rol_id`, `est
 --
 ALTER TABLE `actividades`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `publico_slug` (`publico_slug`),
-  ADD KEY `fk_act_autor` (`autor_id`),
-  ADD KEY `fk_actividad_tipo` (`tipo_id`),
-  ADD KEY `ix_act_vis_estado` (`visibilidad`,`estado`);
-ALTER TABLE `actividades` ADD FULLTEXT KEY `ft_actividades_titulo_enunciado` (`titulo`,`enunciado`);
+  ADD KEY `profesor_id` (`profesor_id`),
+  ADD KEY `familia_id` (`familia_id`),
+  ADD KEY `curso_id` (`curso_id`),
+  ADD KEY `asignatura_id` (`asignatura_id`),
+  ADD KEY `tema_id` (`tema_id`),
+  ADD KEY `tipo` (`tipo`),
+  ADD KEY `visibilidad` (`visibilidad`),
+  ADD KEY `estado` (`estado`);
 
 --
--- Indices de la tabla `actividad_desarrollo`
+-- Indices de la tabla `actividades_tarea`
 --
-ALTER TABLE `actividad_desarrollo`
-  ADD PRIMARY KEY (`actividad_id`);
-
---
--- Indices de la tabla `actividad_etiqueta`
---
-ALTER TABLE `actividad_etiqueta`
-  ADD PRIMARY KEY (`actividad_id`,`etiqueta_id`),
-  ADD KEY `ix_ae_tag` (`etiqueta_id`,`actividad_id`);
-
---
--- Indices de la tabla `actividad_opciones`
---
-ALTER TABLE `actividad_opciones`
+ALTER TABLE `actividades_tarea`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `actividad_id` (`actividad_id`,`orden`);
-
---
--- Indices de la tabla `actividad_ra`
---
-ALTER TABLE `actividad_ra`
-  ADD PRIMARY KEY (`actividad_id`,`ra_id`),
-  ADD KEY `ix_ar_ra` (`ra_id`,`actividad_id`);
-
---
--- Indices de la tabla `actividad_tema`
---
-ALTER TABLE `actividad_tema`
-  ADD PRIMARY KEY (`actividad_id`,`tema_id`),
-  ADD KEY `ix_at_tema` (`tema_id`,`actividad_id`);
-
---
--- Indices de la tabla `actividad_tipos`
---
-ALTER TABLE `actividad_tipos`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `clave` (`clave`);
-
---
--- Indices de la tabla `actividad_vf`
---
-ALTER TABLE `actividad_vf`
-  ADD PRIMARY KEY (`actividad_id`);
-
---
--- Indices de la tabla `asignaciones`
---
-ALTER TABLE `asignaciones`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `actividad_id` (`actividad_id`,`alumno_id`),
-  ADD KEY `ix_asignaciones_alumno` (`alumno_id`,`estado`);
+  ADD UNIQUE KEY `actividad_id` (`actividad_id`);
 
 --
 -- Indices de la tabla `asignaturas`
 --
 ALTER TABLE `asignaturas`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_asig_curso_slug` (`curso_id`,`slug`),
+  ADD UNIQUE KEY `uq_asig_curso_codigo` (`curso_id`,`codigo`),
+  ADD KEY `fk_asig_familia` (`familia_id`);
+
+--
+-- Indices de la tabla `asignaturas_old`
+--
+ALTER TABLE `asignaturas_old`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `grado_id` (`grado_id`,`nombre`);
 
@@ -860,57 +585,33 @@ ALTER TABLE `asignatura_curso`
   ADD KEY `idx_ac_curso` (`curso_id`);
 
 --
--- Indices de la tabla `auditoria`
+-- Indices de la tabla `centros`
 --
-ALTER TABLE `auditoria`
+ALTER TABLE `centros`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `entidad` (`entidad`,`entidad_id`),
-  ADD KEY `fk_aud_user` (`usuario_id`);
+  ADD UNIQUE KEY `slug` (`slug`),
+  ADD UNIQUE KEY `uq_centros_codigo` (`codigo`);
 
 --
 -- Indices de la tabla `cursos`
 --
 ALTER TABLE `cursos`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `grado_id` (`grado_id`,`nombre`);
+  ADD UNIQUE KEY `uq_cursos_familia_slug` (`familia_id`,`slug`);
 
 --
--- Indices de la tabla `enlaces`
+-- Indices de la tabla `cursos_old`
 --
-ALTER TABLE `enlaces`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `token` (`token`),
-  ADD KEY `fk_link_act` (`actividad_id`);
+ALTER TABLE `cursos_old`
+  ADD PRIMARY KEY (`id`);
 
 --
--- Indices de la tabla `entregas`
+-- Indices de la tabla `familias_profesionales`
 --
-ALTER TABLE `entregas`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `fk_ent_asig` (`asignacion_id`),
-  ADD KEY `fk_ent_alum` (`alumno_id`);
-
---
--- Indices de la tabla `etiquetas`
---
-ALTER TABLE `etiquetas`
+ALTER TABLE `familias_profesionales`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `nombre` (`nombre`),
-  ADD KEY `fk_tag_user` (`creador_id`);
-
---
--- Indices de la tabla `examenes`
---
-ALTER TABLE `examenes`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `fk_ex_autor` (`autor_id`);
-
---
--- Indices de la tabla `examenes_actividades`
---
-ALTER TABLE `examenes_actividades`
-  ADD PRIMARY KEY (`examen_id`,`actividad_id`),
-  ADD KEY `fk_ea_act` (`actividad_id`);
+  ADD UNIQUE KEY `slug` (`slug`);
 
 --
 -- Indices de la tabla `grados`
@@ -942,21 +643,24 @@ ALTER TABLE `planes`
   ADD UNIQUE KEY `nombre` (`nombre`);
 
 --
--- Indices de la tabla `profesor_imparte`
+-- Indices de la tabla `profesores`
 --
-ALTER TABLE `profesor_imparte`
+ALTER TABLE `profesores`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `uq_prof_curso_asig` (`profesor_id`,`curso_id`,`asignatura_id`),
-  ADD KEY `fk_pi_grado` (`grado_id`),
-  ADD KEY `fk_pi_curso` (`curso_id`),
-  ADD KEY `fk_pi_asig` (`asignatura_id`);
+  ADD UNIQUE KEY `uq_prof_email` (`email`),
+  ADD KEY `idx_prof_centro` (`centro_id`),
+  ADD KEY `idx_prof_nombre` (`apellidos`,`nombre`);
 
 --
--- Indices de la tabla `ra`
+-- Indices de la tabla `profesor_asignacion`
 --
-ALTER TABLE `ra`
+ALTER TABLE `profesor_asignacion`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `asignatura_id` (`asignatura_id`,`codigo`);
+  ADD UNIQUE KEY `uq_pa` (`profesor_id`,`centro_id`,`familia_id`,`curso_id`,`asignatura_id`,`anio_academico`),
+  ADD KEY `fk_pa_centro` (`centro_id`),
+  ADD KEY `fk_pa_familia` (`familia_id`),
+  ADD KEY `fk_pa_curso` (`curso_id`),
+  ADD KEY `fk_pa_asig` (`asignatura_id`);
 
 --
 -- Indices de la tabla `roles`
@@ -978,22 +682,21 @@ ALTER TABLE `suscripciones`
 --
 ALTER TABLE `temas`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `asignatura_id` (`asignatura_id`,`nombre`);
+  ADD UNIQUE KEY `uq_tema_asig_slug` (`asignatura_id`,`slug`),
+  ADD UNIQUE KEY `uq_tema_asig_numero` (`asignatura_id`,`numero`);
 
 --
--- Indices de la tabla `temas_ra`
+-- Indices de la tabla `users`
 --
-ALTER TABLE `temas_ra`
-  ADD PRIMARY KEY (`tema_id`,`ra_id`),
-  ADD KEY `fk_tr_ra` (`ra_id`);
-
---
--- Indices de la tabla `usuarios`
---
-ALTER TABLE `usuarios`
+ALTER TABLE `users`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `email` (`email`),
-  ADD KEY `fk_usuarios_roles` (`rol_id`);
+  ADD UNIQUE KEY `email` (`email`);
+
+--
+-- Indices de la tabla `usuarios_old`
+--
+ALTER TABLE `usuarios_old`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- AUTO_INCREMENT de las tablas volcadas
@@ -1003,67 +706,49 @@ ALTER TABLE `usuarios`
 -- AUTO_INCREMENT de la tabla `actividades`
 --
 ALTER TABLE `actividades`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
--- AUTO_INCREMENT de la tabla `actividad_opciones`
+-- AUTO_INCREMENT de la tabla `actividades_tarea`
 --
-ALTER TABLE `actividad_opciones`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
-
---
--- AUTO_INCREMENT de la tabla `actividad_tipos`
---
-ALTER TABLE `actividad_tipos`
-  MODIFY `id` tinyint(3) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
-
---
--- AUTO_INCREMENT de la tabla `asignaciones`
---
-ALTER TABLE `asignaciones`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+ALTER TABLE `actividades_tarea`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT de la tabla `asignaturas`
 --
 ALTER TABLE `asignaturas`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT de la tabla `asignaturas_old`
+--
+ALTER TABLE `asignaturas_old`
   MODIFY `id` smallint(5) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
--- AUTO_INCREMENT de la tabla `auditoria`
+-- AUTO_INCREMENT de la tabla `centros`
 --
-ALTER TABLE `auditoria`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+ALTER TABLE `centros`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT de la tabla `cursos`
 --
 ALTER TABLE `cursos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT de la tabla `cursos_old`
+--
+ALTER TABLE `cursos_old`
   MODIFY `id` smallint(5) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
--- AUTO_INCREMENT de la tabla `enlaces`
+-- AUTO_INCREMENT de la tabla `familias_profesionales`
 --
-ALTER TABLE `enlaces`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
-
---
--- AUTO_INCREMENT de la tabla `entregas`
---
-ALTER TABLE `entregas`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT de la tabla `etiquetas`
---
-ALTER TABLE `etiquetas`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
-
---
--- AUTO_INCREMENT de la tabla `examenes`
---
-ALTER TABLE `examenes`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+ALTER TABLE `familias_profesionales`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT de la tabla `grados`
@@ -1078,16 +763,16 @@ ALTER TABLE `planes`
   MODIFY `id` smallint(5) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
--- AUTO_INCREMENT de la tabla `profesor_imparte`
+-- AUTO_INCREMENT de la tabla `profesores`
 --
-ALTER TABLE `profesor_imparte`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+ALTER TABLE `profesores`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
--- AUTO_INCREMENT de la tabla `ra`
+-- AUTO_INCREMENT de la tabla `profesor_asignacion`
 --
-ALTER TABLE `ra`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+ALTER TABLE `profesor_asignacion`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT de la tabla `roles`
@@ -1105,12 +790,18 @@ ALTER TABLE `suscripciones`
 -- AUTO_INCREMENT de la tabla `temas`
 --
 ALTER TABLE `temas`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
--- AUTO_INCREMENT de la tabla `usuarios`
+-- AUTO_INCREMENT de la tabla `users`
 --
-ALTER TABLE `usuarios`
+ALTER TABLE `users`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT de la tabla `usuarios_old`
+--
+ALTER TABLE `usuarios_old`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=32;
 
 --
@@ -1118,169 +809,91 @@ ALTER TABLE `usuarios`
 --
 
 --
--- Filtros para la tabla `actividades`
+-- Filtros para la tabla `actividades_tarea`
 --
-ALTER TABLE `actividades`
-  ADD CONSTRAINT `fk_act_autor` FOREIGN KEY (`autor_id`) REFERENCES `usuarios` (`id`),
-  ADD CONSTRAINT `fk_actividad_tipo` FOREIGN KEY (`tipo_id`) REFERENCES `actividad_tipos` (`id`);
-
---
--- Filtros para la tabla `actividad_desarrollo`
---
-ALTER TABLE `actividad_desarrollo`
-  ADD CONSTRAINT `fk_des_act` FOREIGN KEY (`actividad_id`) REFERENCES `actividades` (`id`) ON DELETE CASCADE;
-
---
--- Filtros para la tabla `actividad_etiqueta`
---
-ALTER TABLE `actividad_etiqueta`
-  ADD CONSTRAINT `fk_ae_act` FOREIGN KEY (`actividad_id`) REFERENCES `actividades` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_ae_tag` FOREIGN KEY (`etiqueta_id`) REFERENCES `etiquetas` (`id`) ON DELETE CASCADE;
-
---
--- Filtros para la tabla `actividad_opciones`
---
-ALTER TABLE `actividad_opciones`
-  ADD CONSTRAINT `fk_opt_act` FOREIGN KEY (`actividad_id`) REFERENCES `actividades` (`id`) ON DELETE CASCADE;
-
---
--- Filtros para la tabla `actividad_ra`
---
-ALTER TABLE `actividad_ra`
-  ADD CONSTRAINT `fk_ar_actividad` FOREIGN KEY (`actividad_id`) REFERENCES `actividades` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_ar_ra` FOREIGN KEY (`ra_id`) REFERENCES `ra` (`id`);
-
---
--- Filtros para la tabla `actividad_tema`
---
-ALTER TABLE `actividad_tema`
-  ADD CONSTRAINT `fk_at_actividad` FOREIGN KEY (`actividad_id`) REFERENCES `actividades` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_at_tema` FOREIGN KEY (`tema_id`) REFERENCES `temas` (`id`);
-
---
--- Filtros para la tabla `actividad_vf`
---
-ALTER TABLE `actividad_vf`
-  ADD CONSTRAINT `fk_vf_act` FOREIGN KEY (`actividad_id`) REFERENCES `actividades` (`id`) ON DELETE CASCADE;
-
---
--- Filtros para la tabla `asignaciones`
---
-ALTER TABLE `asignaciones`
-  ADD CONSTRAINT `fk_asig_act` FOREIGN KEY (`actividad_id`) REFERENCES `actividades` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_asig_alum` FOREIGN KEY (`alumno_id`) REFERENCES `usuarios` (`id`);
+ALTER TABLE `actividades_tarea`
+  ADD CONSTRAINT `fk_act_tarea` FOREIGN KEY (`actividad_id`) REFERENCES `actividades` (`id`) ON DELETE CASCADE;
 
 --
 -- Filtros para la tabla `asignaturas`
 --
 ALTER TABLE `asignaturas`
+  ADD CONSTRAINT `fk_asig_curso` FOREIGN KEY (`curso_id`) REFERENCES `cursos` (`id`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_asig_familia` FOREIGN KEY (`familia_id`) REFERENCES `familias_profesionales` (`id`) ON UPDATE CASCADE;
+
+--
+-- Filtros para la tabla `asignaturas_old`
+--
+ALTER TABLE `asignaturas_old`
   ADD CONSTRAINT `fk_asig_grados` FOREIGN KEY (`grado_id`) REFERENCES `grados` (`id`);
 
 --
 -- Filtros para la tabla `asignatura_curso`
 --
 ALTER TABLE `asignatura_curso`
-  ADD CONSTRAINT `fk_ac_asignatura` FOREIGN KEY (`asignatura_id`) REFERENCES `asignaturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `fk_ac_curso` FOREIGN KEY (`curso_id`) REFERENCES `cursos` (`id`) ON UPDATE CASCADE;
-
---
--- Filtros para la tabla `auditoria`
---
-ALTER TABLE `auditoria`
-  ADD CONSTRAINT `fk_aud_user` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`);
+  ADD CONSTRAINT `fk_ac_asignatura` FOREIGN KEY (`asignatura_id`) REFERENCES `asignaturas_old` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_ac_curso` FOREIGN KEY (`curso_id`) REFERENCES `cursos_old` (`id`) ON UPDATE CASCADE;
 
 --
 -- Filtros para la tabla `cursos`
 --
 ALTER TABLE `cursos`
+  ADD CONSTRAINT `fk_cursos_familia` FOREIGN KEY (`familia_id`) REFERENCES `familias_profesionales` (`id`) ON UPDATE CASCADE;
+
+--
+-- Filtros para la tabla `cursos_old`
+--
+ALTER TABLE `cursos_old`
   ADD CONSTRAINT `fk_cursos_grados` FOREIGN KEY (`grado_id`) REFERENCES `grados` (`id`);
-
---
--- Filtros para la tabla `enlaces`
---
-ALTER TABLE `enlaces`
-  ADD CONSTRAINT `fk_link_act` FOREIGN KEY (`actividad_id`) REFERENCES `actividades` (`id`) ON DELETE CASCADE;
-
---
--- Filtros para la tabla `entregas`
---
-ALTER TABLE `entregas`
-  ADD CONSTRAINT `fk_ent_alum` FOREIGN KEY (`alumno_id`) REFERENCES `usuarios` (`id`),
-  ADD CONSTRAINT `fk_ent_asig` FOREIGN KEY (`asignacion_id`) REFERENCES `asignaciones` (`id`) ON DELETE CASCADE;
-
---
--- Filtros para la tabla `etiquetas`
---
-ALTER TABLE `etiquetas`
-  ADD CONSTRAINT `fk_tag_user` FOREIGN KEY (`creador_id`) REFERENCES `usuarios` (`id`);
-
---
--- Filtros para la tabla `examenes`
---
-ALTER TABLE `examenes`
-  ADD CONSTRAINT `fk_ex_autor` FOREIGN KEY (`autor_id`) REFERENCES `usuarios` (`id`);
-
---
--- Filtros para la tabla `examenes_actividades`
---
-ALTER TABLE `examenes_actividades`
-  ADD CONSTRAINT `fk_ea_act` FOREIGN KEY (`actividad_id`) REFERENCES `actividades` (`id`),
-  ADD CONSTRAINT `fk_ea_ex` FOREIGN KEY (`examen_id`) REFERENCES `examenes` (`id`) ON DELETE CASCADE;
 
 --
 -- Filtros para la tabla `perfiles_alumno`
 --
 ALTER TABLE `perfiles_alumno`
-  ADD CONSTRAINT `fk_alum_curso` FOREIGN KEY (`curso_id`) REFERENCES `cursos` (`id`),
-  ADD CONSTRAINT `fk_alum_user` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `fk_alum_curso` FOREIGN KEY (`curso_id`) REFERENCES `cursos_old` (`id`),
+  ADD CONSTRAINT `fk_alum_user` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios_old` (`id`) ON DELETE CASCADE;
 
 --
 -- Filtros para la tabla `perfiles_profesor`
 --
 ALTER TABLE `perfiles_profesor`
-  ADD CONSTRAINT `fk_prof_asig` FOREIGN KEY (`asignatura_id`) REFERENCES `asignaturas` (`id`),
-  ADD CONSTRAINT `fk_prof_curso` FOREIGN KEY (`curso_id`) REFERENCES `cursos` (`id`),
-  ADD CONSTRAINT `fk_prof_user` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `fk_prof_asig` FOREIGN KEY (`asignatura_id`) REFERENCES `asignaturas_old` (`id`),
+  ADD CONSTRAINT `fk_prof_curso` FOREIGN KEY (`curso_id`) REFERENCES `cursos_old` (`id`),
+  ADD CONSTRAINT `fk_prof_user` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios_old` (`id`) ON DELETE CASCADE;
 
 --
--- Filtros para la tabla `profesor_imparte`
+-- Filtros para la tabla `profesores`
 --
-ALTER TABLE `profesor_imparte`
-  ADD CONSTRAINT `fk_pi_asig` FOREIGN KEY (`asignatura_id`) REFERENCES `asignaturas` (`id`),
-  ADD CONSTRAINT `fk_pi_curso` FOREIGN KEY (`curso_id`) REFERENCES `cursos` (`id`),
-  ADD CONSTRAINT `fk_pi_grado` FOREIGN KEY (`grado_id`) REFERENCES `grados` (`id`),
-  ADD CONSTRAINT `fk_pi_prof` FOREIGN KEY (`profesor_id`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE;
+ALTER TABLE `profesores`
+  ADD CONSTRAINT `fk_prof_centro` FOREIGN KEY (`centro_id`) REFERENCES `centros` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 --
--- Filtros para la tabla `ra`
+-- Filtros para la tabla `profesor_asignacion`
 --
-ALTER TABLE `ra`
-  ADD CONSTRAINT `fk_ra_asig` FOREIGN KEY (`asignatura_id`) REFERENCES `asignaturas` (`id`);
+ALTER TABLE `profesor_asignacion`
+  ADD CONSTRAINT `fk_pa_asig` FOREIGN KEY (`asignatura_id`) REFERENCES `asignaturas` (`id`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_pa_centro` FOREIGN KEY (`centro_id`) REFERENCES `centros` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_pa_curso` FOREIGN KEY (`curso_id`) REFERENCES `cursos` (`id`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_pa_familia` FOREIGN KEY (`familia_id`) REFERENCES `familias_profesionales` (`id`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_pa_profesor` FOREIGN KEY (`profesor_id`) REFERENCES `profesores` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Filtros para la tabla `suscripciones`
 --
 ALTER TABLE `suscripciones`
   ADD CONSTRAINT `fk_sub_plan` FOREIGN KEY (`plan_id`) REFERENCES `planes` (`id`),
-  ADD CONSTRAINT `fk_sub_user` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`);
+  ADD CONSTRAINT `fk_sub_user` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios_old` (`id`);
 
 --
 -- Filtros para la tabla `temas`
 --
 ALTER TABLE `temas`
-  ADD CONSTRAINT `fk_temas_asig` FOREIGN KEY (`asignatura_id`) REFERENCES `asignaturas` (`id`);
+  ADD CONSTRAINT `fk_tema_asignatura` FOREIGN KEY (`asignatura_id`) REFERENCES `asignaturas` (`id`) ON UPDATE CASCADE;
 
 --
--- Filtros para la tabla `temas_ra`
+-- Filtros para la tabla `usuarios_old`
 --
-ALTER TABLE `temas_ra`
-  ADD CONSTRAINT `fk_tr_ra` FOREIGN KEY (`ra_id`) REFERENCES `ra` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_tr_tema` FOREIGN KEY (`tema_id`) REFERENCES `temas` (`id`) ON DELETE CASCADE;
-
---
--- Filtros para la tabla `usuarios`
---
-ALTER TABLE `usuarios`
+ALTER TABLE `usuarios_old`
   ADD CONSTRAINT `fk_usuarios_roles` FOREIGN KEY (`rol_id`) REFERENCES `roles` (`id`);
 COMMIT;
 
