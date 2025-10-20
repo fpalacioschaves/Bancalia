@@ -1,11 +1,10 @@
 <?php
 // /admin/actividades/items/create.php
 declare(strict_types=1);
-require_once __DIR__ . '/../../../middleware/require_auth.php';
-require_once __DIR__ . '/../../../lib/auth.php';
+
 require_once __DIR__ . '/../../../partials/header.php';
 
-function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+
 
 $u = current_user();
 $role = $u['role'] ?? '';

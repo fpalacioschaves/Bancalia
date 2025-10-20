@@ -6,11 +6,13 @@ require_once __DIR__ . '/../../../config.php';
 require_login_or_redirect();
 $u = current_user();
 
-if (($u['role'] ?? '') !== 'admin') {
-  flash('error', 'Acceso restringido a administradores.');
-  header('Location: ' . PUBLIC_URL . '/dashboard.php');
-  exit;
-}
+
+
+//if (($u['role'] ?? '') !== 'admin') {
+//  flash('error', 'Acceso restringido a administradores.');
+//  header('Location: ' . PUBLIC_URL . '/dashboard.php');
+//  exit;
+//}
 
 $userEmail  = (string)($u['email'] ?? '');
 $profesorId = (int)($u['profesor_id'] ?? 0);
@@ -114,13 +116,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       ':dif'=>($dificultad!=='' ? $dificultad : null),
     ]);
 
-    if ($DEBUG) {
+    /*if ($DEBUG) {
       echo "[DBG] INSERT OK id=" . (int)pdo()->lastInsertId();
       exit;
-    }
+    }*/
 
     // Redirección normal
-    require_once $ROOT . '/lib/auth.php';
+    //require_once $ROOT . '/lib/auth.php';
     flash('success','Actividad creada correctamente.');
     header('Location: ' . '/Bancalia/public/admin/actividades/index.php');
     exit;
@@ -131,12 +133,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Render
-if (!$DEBUG) require_once $ROOT . '/partials/header.php';
+require_once __DIR__ . '/../../../partials/header.php';
 ?>
 
-<?php if ($DEBUG): ?>
-  <div class="p-4 text-sm">[DBG] render start</div>
-<?php endif; ?>
+
 
 <div class="mb-6 flex items-center justify-between">
   <div>
@@ -353,4 +353,4 @@ if (!$DEBUG) require_once $ROOT . '/partials/header.php';
   }, {passive:true});
 </script>
 
-<?php if (!$DEBUG) require_once $ROOT . '/partials/footer.php'; ?>
+<?php require_once __DIR__ . '/../../../partials/footer.php'; ?>

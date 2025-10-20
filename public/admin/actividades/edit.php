@@ -18,10 +18,10 @@ ini_set('display_errors', '1');
 $ROOT = realpath(dirname(__DIR__, 3)); // …/bancalia
 if ($ROOT === false) { die('ERROR: no puedo resolver la raíz del proyecto.'); }
 
-require_once $ROOT . '/lib/pdo.php';
-require_once $ROOT . '/lib/auth.php';
-require_once $ROOT . '/lib/acl.php'; // require_propietario_actividad()
-function h(?string $s): string { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+//require_once $ROOT . '/lib/pdo.php';
+//require_once $ROOT . '/lib/auth.php';
+//require_once $ROOT . '/lib/acl.php'; // require_propietario_actividad()
+//function h(?string $s): string { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 
 $basePublic = '/Bancalia/public';
 
@@ -35,7 +35,38 @@ if ($id <= 0) {
 
 // --------- ACL (propietario profesor) ----------
 if ($DEBUG) { echo "[DBG] ACL check…<br>\n"; }
-require_propietario_actividad($id);
+
+// --- Verificación de propiedad --- //
+if ($u['role'] === 'admin') {
+  // El administrador puede ver pero no editar
+  flash('error', 'El administrador solo puede visualizar actividades.');
+  header('Location: ' . PUBLIC_URL . '/admin/actividades/index.php');
+  exit;
+}
+
+$profesorId = (int)($u['profesor_id'] ?? 0);
+if ($profesorId <= 0) {
+  flash('error', 'No se ha podido identificar al profesor.');
+  header('Location: ' . PUBLIC_URL . '/admin/actividades/index.php');
+  exit;
+}
+
+$stCheck = pdo()->prepare('SELECT profesor_id FROM actividades WHERE id = :id LIMIT 1');
+$stCheck->execute([':id' => $id]);
+$owner = $stCheck->fetchColumn();
+
+if (!$owner) {
+  flash('error', 'La actividad no existe.');
+  header('Location: ' . PUBLIC_URL . '/admin/actividades/index.php');
+  exit;
+}
+
+if ((int)$owner !== $profesorId) {
+  flash('error', 'No tienes permiso para editar esta actividad.');
+  header('Location: ' . PUBLIC_URL . '/admin/actividades/index.php');
+  exit;
+}
+
 if ($DEBUG) { echo "[DBG] ACL OK<br>\n"; }
 
 // --------- Cargas base para selects ----------
@@ -168,7 +199,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // --------- Render (con valores actuales) ----------
-if (!$DEBUG) require_once $ROOT . '/partials/header.php';
+require_once __DIR__ . '/../../../partials/header.php';
 
 $titulo        = (string)($row['titulo'] ?? '');
 $descripcion   = (string)($row['descripcion'] ?? '');
@@ -373,4 +404,4 @@ $dificultad    = (string)($row['dificultad'] ?? '');
   }, {passive:true});
 </script>
 
-<?php if (!$DEBUG) require_once $ROOT . '/partials/footer.php'; ?>
+<?php require_once __DIR__ . '/../../../partials/footer.php'; ?>

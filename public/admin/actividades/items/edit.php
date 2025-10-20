@@ -5,7 +5,7 @@ require_once __DIR__ . '/../../../middleware/require_auth.php';
 require_once __DIR__ . '/../../../lib/auth.php';
 require_once __DIR__ . '/../../../partials/header.php';
 
-function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+//function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 
 $id = (int)($_GET['id'] ?? 0);
 if ($id<=0){ header('Location: '.PUBLIC_URL.'/admin/actividades/index.php'); exit; }
