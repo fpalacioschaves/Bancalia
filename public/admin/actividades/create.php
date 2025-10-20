@@ -7,15 +7,25 @@ require_login_or_redirect();
 $u = current_user();
 
 
-
-//if (($u['role'] ?? '') !== 'admin') {
-//  flash('error', 'Acceso restringido a administradores.');
-//  header('Location: ' . PUBLIC_URL . '/dashboard.php');
-//  exit;
-//}
-
 $userEmail  = (string)($u['email'] ?? '');
 $profesorId = (int)($u['profesor_id'] ?? 0);
+
+
+$u = current_user();
+$role = $u['role'] ?? '';
+$profesorId = (int)($u['profesor_id'] ?? 0);
+
+// Admin: solo lectura → no puede crear
+if ($role === 'admin') {
+  flash('error','El administrador no puede crear actividades.');
+  header('Location: ' . PUBLIC_URL . '/admin/actividades/index.php'); exit;
+}
+
+// Profesor sin profesor_id aún
+if ($role !== 'profesor' || $profesorId <= 0) {
+  flash('error','No se ha podido identificar tu ficha de profesor.');
+  header('Location: ' . PUBLIC_URL . '/mi-perfil.php'); exit;
+}
 
 // Resolver profesor_id por email si no viene
 if ($profesorId <= 0 && $userEmail !== '') {
