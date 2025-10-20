@@ -62,7 +62,7 @@ try {
   header('Location: ' . $basePublic . '/admin/actividades/index.php'); exit;
 }
 
-// --------- Cargar actividad + datos de tarea (si existen) ----------
+// --------- Cargar actividad + datos específicos ----------
 $st = pdo()->prepare("SELECT * FROM actividades WHERE id=:id LIMIT 1");
 $st->execute([':id'=>$id]);
 $row = $st->fetch();
@@ -73,9 +73,15 @@ if (!$row) {
   header('Location: ' . $basePublic . '/admin/actividades/index.php'); exit;
 }
 
+// Tarea
 $stTarea = pdo()->prepare("SELECT * FROM actividades_tarea WHERE actividad_id=:id LIMIT 1");
 $stTarea->execute([':id'=>$id]);
 $tareaRow = $stTarea->fetch() ?: [];
+
+// Verdadero/Falso
+$stVF = pdo()->prepare("SELECT * FROM actividades_vf WHERE actividad_id=:id LIMIT 1");
+$stVF->execute([':id'=>$id]);
+$vfRow = $stVF->fetch() ?: [];
 
 // --------- POST: actualizar ----------
 $errors = [];
@@ -209,7 +215,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
       }
     }
-    // Si cambiaste a un tipo que NO es tarea, dejamos cualquier fila de tareas tal cual (no borramos).
+
+    // ——— Específico de VERDADERO/FALSO: UPSERT en actividades_vf ———
+    if ($tipo === 'verdadero_falso') {
+      $vf_resp    = trim((string)($_POST['vf_respuesta_correcta'] ?? ''));
+      $vf_fb_ok   = trim((string)($_POST['vf_feedback_correcta'] ?? ''));
+      $vf_fb_fail = trim((string)($_POST['vf_feedback_incorrecta'] ?? ''));
+
+      if (!in_array($vf_resp, ['verdadero','falso'], true)) {
+        throw new RuntimeException('Debes indicar si la respuesta correcta es Verdadero o Falso.');
+      }
+
+      if ($vfRow) {
+        $upVF = pdo()->prepare('
+          UPDATE actividades_vf
+          SET respuesta_correcta=:resp, feedback_correcta=:fb_ok, feedback_incorrecta=:fb_fail, updated_at=NOW()
+          WHERE actividad_id=:aid
+        ');
+        $upVF->execute([
+          ':resp'=>$vf_resp,
+          ':fb_ok'=>($vf_fb_ok !== '' ? $vf_fb_ok : null),
+          ':fb_fail'=>($vf_fb_fail !== '' ? $vf_fb_fail : null),
+          ':aid'=>$id,
+        ]);
+      } else {
+        $insVF = pdo()->prepare('
+          INSERT INTO actividades_vf
+            (actividad_id, respuesta_correcta, feedback_correcta, feedback_incorrecta, created_at, updated_at)
+          VALUES
+            (:aid, :resp, :fb_ok, :fb_fail, NOW(), NOW())
+        ');
+        $insVF->execute([
+          ':aid'=>$id,
+          ':resp'=>$vf_resp,
+          ':fb_ok'=>($vf_fb_ok !== '' ? $vf_fb_ok : null),
+          ':fb_fail'=>($vf_fb_fail !== '' ? $vf_fb_fail : null),
+        ]);
+      }
+    }
+    // Si cambias a otro tipo, no borramos lo previo (tarea/vf). Conservamos histórico.
 
     if ($DEBUG) { echo "[DBG] UPDATE OK"; exit; }
     flash('success','Actividad actualizada correctamente.');
@@ -245,6 +289,11 @@ $t_max_peso_mb   = $tareaRow['max_peso_mb'] ?? '';
 $t_eval_modo     = (string)($tareaRow['evaluacion_modo'] ?? '');
 $t_puntos_max    = $tareaRow['puntuacion_max'] ?? '';
 $t_rubrica_json  = (string)($tareaRow['rubrica_json'] ?? '');
+
+// Valores actuales VF (si hay)
+$vf_respuesta_correcta = (string)($vfRow['respuesta_correcta'] ?? '');
+$vf_feedback_correcta  = (string)($vfRow['feedback_correcta'] ?? '');
+$vf_feedback_incorrecta= (string)($vfRow['feedback_incorrecta'] ?? '');
 ?>
 
 <div class="mb-6 flex items-center justify-between">
@@ -325,7 +374,7 @@ $t_rubrica_json  = (string)($tareaRow['rubrica_json'] ?? '');
       </div>
 
       <div>
-        <label class="mb-1 block text-sm font-medium text-slate-700">Curso <span class="text-rose-600">*</span></label>
+        <label class="mb-1 block textsm font-medium text-slate-700">Curso <span class="text-rose-600">*</span></label>
         <select id="curso_id" name="curso_id" required
                 class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400">
           <option value="">— Curso —</option>
@@ -447,6 +496,35 @@ $t_rubrica_json  = (string)($tareaRow['rubrica_json'] ?? '');
     </div>
     <!-- ====== /BLOQUE TAREA ====== -->
 
+    <!-- ====== BLOQUE ESPECÍFICO VERDADERO/FALSO ====== -->
+    <div id="bloqueVF" class="<?= $tipo==='verdadero_falso' ? '' : 'hidden' ?> border-t pt-4">
+      <h3 class="text-sm font-semibold text-slate-700 mb-2">Configuración Verdadero/Falso</h3>
+
+      <div>
+        <label class="mb-1 block text-sm font-medium text-slate-700">Respuesta correcta <span class="text-rose-600">*</span></label>
+        <select name="vf_respuesta_correcta"
+                class="w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400">
+          <?php foreach (['verdadero'=>'Verdadero','falso'=>'Falso'] as $v=>$lab): ?>
+            <option value="<?= h($v) ?>" <?= $vf_respuesta_correcta===$v?'selected':'' ?>><?= h($lab) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2 mt-3">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Feedback si acierta</label>
+          <textarea name="vf_feedback_correcta" rows="3"
+                    class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($vf_feedback_correcta) ?></textarea>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Feedback si falla</label>
+          <textarea name="vf_feedback_incorrecta" rows="3"
+                    class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($vf_feedback_incorrecta) ?></textarea>
+        </div>
+      </div>
+    </div>
+    <!-- ====== /BLOQUE VERDADERO/FALSO ====== -->
+
     <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
       <a href="<?= $basePublic ?>/admin/actividades/index.php"
          class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancelar</a>
@@ -470,6 +548,7 @@ $t_rubrica_json  = (string)($tareaRow['rubrica_json'] ?? '');
   const selTem = document.getElementById('tema_id');
   const selTipo = document.getElementById('tipo');
   const bloqueTarea = document.getElementById('bloqueTarea');
+  const bloqueVF = document.getElementById('bloqueVF');
 
   const currentFam = <?= (int)$familia_id ?>;
   const currentCur = <?= (int)$curso_id ?>;
@@ -534,10 +613,14 @@ $t_rubrica_json  = (string)($tareaRow['rubrica_json'] ?? '');
     renderTemas(aid, 0);
   }, {passive:true});
 
-  function toggleTarea(){ bloqueTarea.classList.toggle('hidden', selTipo.value !== 'tarea'); }
-  selTipo.addEventListener('change', toggleTarea, {passive:true});
+  function toggleBloques(){
+    const t = selTipo.value;
+    bloqueTarea.classList.toggle('hidden', t !== 'tarea');
+    bloqueVF.classList.toggle('hidden', t !== 'verdadero_falso');
+  }
+  selTipo.addEventListener('change', toggleBloques, {passive:true});
   if (currentTipo) selTipo.value = currentTipo;
-  toggleTarea();
+  toggleBloques();
 </script>
 
 <?php require_once __DIR__ . '/../../../partials/footer.php'; ?>

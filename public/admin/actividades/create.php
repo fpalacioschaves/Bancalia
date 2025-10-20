@@ -44,7 +44,7 @@ try {
 
 $errors = [];
 
-// POST: guardar actividad (campos comunes + tarea si aplica)
+// POST: guardar actividad (campos comunes + tarea/vf si aplica)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   try {
     csrf_check($_POST['csrf'] ?? null);
@@ -123,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ]);
     $actividadId = (int)pdo()->lastInsertId();
 
-    // Si es TAREA → guardar datos en actividades_tarea
+    // ----- Específico TAREA -----
     if ($tipo === 'tarea') {
       $instrucciones = trim((string)($_POST['t_instrucciones'] ?? ''));
       $perm_texto    = isset($_POST['t_perm_texto']) ? 1 : 0;
@@ -154,6 +154,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ':modo'=>($eval_modo!==''?$eval_modo:null),
         ':pmax'=>$puntos_max,
         ':rub'=>($rubrica_json!==''?$rubrica_json:null),
+      ]);
+    }
+
+    // ----- Específico VERDADERO/FALSO -----
+    if ($tipo === 'verdadero_falso') {
+      $vf_resp     = trim((string)($_POST['vf_respuesta_correcta'] ?? ''));
+      $vf_fb_ok    = trim((string)($_POST['vf_feedback_correcta'] ?? ''));
+      $vf_fb_fail  = trim((string)($_POST['vf_feedback_incorrecta'] ?? ''));
+
+      if (!in_array($vf_resp, ['verdadero','falso'], true)) {
+        throw new RuntimeException('Debes indicar si la respuesta correcta es Verdadero o Falso.');
+      }
+
+      $insVF = pdo()->prepare('
+        INSERT INTO actividades_vf
+          (actividad_id, respuesta_correcta, feedback_correcta, feedback_incorrecta, created_at, updated_at)
+        VALUES
+          (:aid, :resp, :fb_ok, :fb_fail, NOW(), NOW())
+      ');
+      $insVF->execute([
+        ':aid'    => $actividadId,
+        ':resp'   => $vf_resp,
+        ':fb_ok'  => ($vf_fb_ok !== '' ? $vf_fb_ok : null),
+        ':fb_fail'=> ($vf_fb_fail !== '' ? $vf_fb_fail : null),
       ]);
     }
 
@@ -387,6 +411,39 @@ require_once __DIR__ . '/../../../partials/header.php';
     </div>
     <!-- ====== /BLOQUE TAREA ====== -->
 
+    <!-- ====== BLOQUE ESPECÍFICO VERDADERO/FALSO ====== -->
+    <div id="bloqueVF" class="hidden border-t pt-4">
+      <h3 class="text-sm font-semibold text-slate-700 mb-2">Configuración Verdadero/Falso</h3>
+
+      <div>
+        <label class="mb-1 block text-sm font-medium text-slate-700">Respuesta correcta <span class="text-rose-600">*</span></label>
+        <select name="vf_respuesta_correcta"
+                class="w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400">
+          <?php
+            $vfSel = (string)($_POST['vf_respuesta_correcta'] ?? '');
+            foreach (['verdadero'=>'Verdadero','falso'=>'Falso'] as $v=>$lab) {
+              $sel = ($vfSel===$v)?'selected':'';
+              echo '<option value="'.h($v).'" '.$sel.'>'.h($lab).'</option>';
+            }
+          ?>
+        </select>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2 mt-3">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Feedback si acierta</label>
+          <textarea name="vf_feedback_correcta" rows="3"
+                    class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($_POST['vf_feedback_correcta'] ?? '') ?></textarea>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Feedback si falla</label>
+          <textarea name="vf_feedback_incorrecta" rows="3"
+                    class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($_POST['vf_feedback_incorrecta'] ?? '') ?></textarea>
+        </div>
+      </div>
+    </div>
+    <!-- ====== /BLOQUE VERDADERO/FALSO ====== -->
+
     <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
       <a href="<?= PUBLIC_URL ?>/admin/actividades/index.php"
          class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancelar</a>
@@ -410,6 +467,7 @@ require_once __DIR__ . '/../../../partials/header.php';
   const selTem = document.getElementById('tema_id');
   const selTipo = document.getElementById('tipo');
   const bloqueTarea = document.getElementById('bloqueTarea');
+  const bloqueVF = document.getElementById('bloqueVF');
 
   const currentFam = <?= (int)($_POST['familia_id'] ?? 0) ?>;
   const currentCur = <?= (int)($_POST['curso_id'] ?? 0) ?>;
@@ -462,10 +520,14 @@ require_once __DIR__ . '/../../../partials/header.php';
     renderTemas(aid, 0);
   }, {passive:true});
 
-  function toggleTarea(){ bloqueTarea.classList.toggle('hidden', selTipo.value !== 'tarea'); }
-  selTipo.addEventListener('change', toggleTarea, {passive:true});
+  function toggleBloques(){
+    const t = selTipo.value;
+    bloqueTarea.classList.toggle('hidden', t !== 'tarea');
+    bloqueVF.classList.toggle('hidden', t !== 'verdadero_falso');
+  }
+  selTipo.addEventListener('change', toggleBloques, {passive:true});
   if (currentTipo) selTipo.value = currentTipo;
-  toggleTarea();
+  toggleBloques();
 </script>
 
 <?php require_once __DIR__ . '/../../../partials/footer.php'; ?>
