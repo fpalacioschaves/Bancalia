@@ -13,7 +13,8 @@ require_once __DIR__ . '/../partials/header.php';
 <div class="grid gap-6 lg:grid-cols-4">
   <!-- Índice -->
   <aside class="lg:col-span-1">
-    <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <!-- sticky en pantallas grandes, con límite de altura y scroll interno -->
+    <div class="lg:sticky lg:top-24 lg:max-h-[calc(100vh-6rem)] overflow-auto rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <h3 class="text-sm font-semibold text-slate-700 mb-2">Contenido</h3>
       <nav class="text-sm space-y-2">
         <a class="block hover:underline" href="#login">1. Acceso y Mi perfil</a>
@@ -34,7 +35,7 @@ require_once __DIR__ . '/../partials/header.php';
   <main class="lg:col-span-3 space-y-10">
 
     <!-- Login / Perfil -->
-    <section id="login" class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section id="login" class="scroll-mt-24 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       <h2 class="text-lg font-semibold">1. Acceso y Mi perfil</h2>
       <div class="mt-3 space-y-3 text-sm text-slate-700 leading-6">
         <p><strong>Acceso</strong>: entra con tu email y contraseña. Si no recuerdas la contraseña, usa “¿Olvidaste tu contraseña?” para solicitar un enlace de recuperación.</p>
@@ -44,7 +45,7 @@ require_once __DIR__ . '/../partials/header.php';
     </section>
 
     <!-- Centro -->
-    <section id="centro" class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section id="centro" class="scroll-mt-24 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       <h2 class="text-lg font-semibold">2. Crear y gestionar Centro</h2>
       <div class="mt-3 space-y-3 text-sm text-slate-700 leading-6">
         <p>Si tu instalación usa la noción de <strong>Centro</strong> (institución/colegio), primero debe existir el centro para poder asociar familias, cursos, asignaturas y profesores.</p>
@@ -58,14 +59,14 @@ require_once __DIR__ . '/../partials/header.php';
     </section>
 
     <!-- Actividades -->
-    <section id="actividades" class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section id="actividades" class="scroll-mt-24 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       <h2 class="text-lg font-semibold">3. Crear actividades</h2>
       <p class="mt-3 text-sm text-slate-700 leading-6">
         Desde <strong>Admin &rarr; Actividades</strong> pulsa <em>Nueva actividad</em>. Rellena los campos comunes y, según el <em>Tipo</em>, aparecerán opciones específicas.
       </p>
 
       <!-- Campos comunes -->
-      <div id="campos-comunes" class="mt-5">
+      <div id="campos-comunes" class="mt-5 scroll-mt-24">
         <h3 class="text-base font-semibold text-slate-800">3.1 Campos comunes</h3>
         <dl class="mt-2 grid gap-4 sm:grid-cols-2 text-sm">
           <div>
@@ -112,7 +113,7 @@ require_once __DIR__ . '/../partials/header.php';
       </div>
 
       <!-- Tarea -->
-      <div id="tarea" class="mt-8">
+      <div id="tarea" class="mt-8 scroll-mt-24">
         <h3 class="text-base font-semibold text-slate-800">3.2 Tarea / Entrega (campos específicos)</h3>
         <ul class="mt-2 list-disc pl-6 text-sm text-slate-700 space-y-1">
           <li><strong>Instrucciones</strong>: qué debe entregar el alumno.</li>
@@ -122,7 +123,7 @@ require_once __DIR__ . '/../partials/header.php';
         </ul>
         <div class="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs">
           <strong>Ejemplo</strong> (rúbrica JSON):
-          <pre class="mt-2 overflow-x-auto text-[11px] leading-5">[
+<pre class="mt-2 overflow-x-auto text-[11px] leading-5">[
   {"criterio":"Presentación","max":2},
   {"criterio":"Contenido","max":8}
 ]</pre>
@@ -130,7 +131,7 @@ require_once __DIR__ . '/../partials/header.php';
       </div>
 
       <!-- Verdadero / Falso -->
-      <div id="vf" class="mt-8">
+      <div id="vf" class="mt-8 scroll-mt-24">
         <h3 class="text-base font-semibold text-slate-800">3.3 Verdadero / Falso</h3>
         <ul class="mt-2 list-disc pl-6 text-sm text-slate-700 space-y-1">
           <li><strong>Respuesta correcta</strong>: selecciona <em>Verdadero</em> o <em>Falso</em>.</li>
@@ -144,7 +145,7 @@ require_once __DIR__ . '/../partials/header.php';
       </div>
 
       <!-- Respuesta corta -->
-      <div id="rc" class="mt-8">
+      <div id="rc" class="mt-8 scroll-mt-24">
         <h3 class="text-base font-semibold text-slate-800">3.4 Respuesta corta</h3>
         <p class="mt-2 text-sm text-slate-700">El sistema puede autocorregir por <em>Palabras clave</em> o por <em>Regex</em>.</p>
 
@@ -159,7 +160,7 @@ require_once __DIR__ . '/../partials/header.php';
             </ul>
             <div class="mt-3 rounded border border-slate-200 bg-slate-50 p-3 text-xs">
               <strong>Ejemplo de JSON</strong>:
-              <pre class="mt-2 overflow-x-auto text-[11px] leading-5">[
+<pre class="mt-2 overflow-x-auto text-[11px] leading-5">[
   {"palabra":"ósmosis","peso":1},
   {"palabra":"membrana","peso":1},
   {"palabra":"gradiente","peso":1}
@@ -188,7 +189,7 @@ require_once __DIR__ . '/../partials/header.php';
     </section>
 
     <!-- FAQ -->
-    <section id="faq" class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section id="faq" class="scroll-mt-24 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       <h2 class="text-lg font-semibold">4. Preguntas frecuentes</h2>
       <div class="mt-3 divide-y">
         <details class="py-3">

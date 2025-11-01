@@ -44,7 +44,7 @@ try {
 
 $errors = [];
 
-// POST: guardar actividad (campos comunes + tarea/vf/rc si aplica)
+// POST: guardar actividad (campos comunes + tarea/vf/rc/rh si aplica)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   try {
     csrf_check($_POST['csrf'] ?? null);
@@ -59,8 +59,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $visibilidad   = trim((string)($_POST['visibilidad'] ?? 'privada'));
     $estado        = trim((string)($_POST['estado'] ?? 'borrador'));
 
-    // DIFICULTAD: ENUM o NULL
-    $dificultad    = trim((string)($_POST['dificultad'] ?? ''));
+    // DIFICULTAD: ENUM o NULL (si viene vacío pasamos NULL para respetar tu lógica actual)
+    $dificultad = trim((string)($_POST['dificultad'] ?? ''));
     if ($dificultad !== '' && !in_array($dificultad, ['baja','media','alta'], true)) {
       throw new RuntimeException('Dificultad no válida.');
     }
@@ -208,7 +208,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $palabras_json  = trim((string)($_POST['rc_palabras_clave_json'] ?? ''));
         $coinc_min      = ($_POST['rc_coincidencia_minima'] !== '') ? max(0, min(100, (int)$_POST['rc_coincidencia_minima'])) : null;
         $puntuacion_max = ($_POST['rc_puntuacion_max'] !== '') ? max(0, (int)$_POST['rc_puntuacion_max']) : null;
-        // opcional: validación JSON mínima
         if ($palabras_json !== '') {
           json_decode($palabras_json, true);
           if (json_last_error() !== JSON_ERROR_NONE) {
@@ -254,6 +253,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ':rmuestra'=> ($rc_resp_muestra !== '' ? $rc_resp_muestra : null),
         ':fb_ok'   => ($rc_fb_ok !== '' ? $rc_fb_ok : null),
         ':fb_fail' => ($rc_fb_fail !== '' ? $rc_fb_fail : null),
+      ]);
+    }
+
+    // ----- Específico RELLENAR HUECOS -----
+    if ($tipo === 'rellenar_huecos') {
+      $rh_plantilla = trim((string)($_POST['rh_plantilla'] ?? ''));         // ← enunciado_html
+      $rh_modo      = trim((string)($_POST['rh_modo'] ?? 'exacto'));        // UI: se valida pero NO se guarda (no existe columna)
+      $rh_case      = isset($_POST['rh_case_sensitive']) ? 1 : 0;
+      $rh_acentos   = isset($_POST['rh_normalizar_acentos']) ? 1 : 0;
+      $rh_trim      = isset($_POST['rh_trim']) ? 1 : 0;
+      $rh_pmax      = ($_POST['rh_puntuacion_max'] !== '') ? max(0,(int)$_POST['rh_puntuacion_max']) : null;
+      $rh_fb_ok     = trim((string)($_POST['rh_feedback_correcta'] ?? ''));
+      $rh_fb_fail   = trim((string)($_POST['rh_feedback_incorrecta'] ?? ''));
+      $rh_sol_json  = trim((string)($_POST['rh_soluciones_json'] ?? ''));   // ← huecos_json
+
+      if ($rh_plantilla === '') {
+        throw new RuntimeException('Debes indicar el texto con huecos.');
+      }
+      // El modo no se almacena en BDD, pero mantenemos la validación para no tocar el formulario
+      if (!in_array($rh_modo, ['exacto','regex'], true)) {
+        throw new RuntimeException('Modo de corrección no válido (rellenar huecos).');
+      }
+      // Validación mínima del JSON de soluciones: debe ser un array (de arrays o strings)
+      if ($rh_sol_json !== '') {
+        $decoded = json_decode($rh_sol_json, true);
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
+          throw new RuntimeException('El JSON de soluciones no es válido. Usa un array (p. ej. ["TCP","IP"]) o array de arrays.');
+        }
+      }
+
+      // MAPEO A BDD REAL: enunciado_html + huecos_json (NO existe 'modo' ni 'soluciones_json')
+      $insRH = pdo()->prepare('
+        INSERT INTO actividades_rh
+          (actividad_id, enunciado_html, huecos_json, case_sensitive, normalizar_acentos, trim_espacios,
+           puntuacion_max, feedback_correcta, feedback_incorrecta, created_at, updated_at)
+        VALUES
+          (:aid, :html, :huecos, :case_s, :acentos, :trim,
+           :pmax, :fb_ok, :fb_fail, NOW(), NOW())
+      ');
+      $insRH->execute([
+        ':aid'    => $actividadId,
+        ':html'   => $rh_plantilla,
+        ':huecos' => ($rh_sol_json !== '' ? $rh_sol_json : null),
+        ':case_s' => $rh_case,
+        ':acentos'=> $rh_acentos,
+        ':trim'   => $rh_trim,
+        ':pmax'   => $rh_pmax,
+        ':fb_ok'  => ($rh_fb_ok !== '' ? $rh_fb_ok : null),
+        ':fb_fail'=> ($rh_fb_fail !== '' ? $rh_fb_fail : null),
       ]);
     }
 
@@ -416,7 +464,7 @@ require_once __DIR__ . '/../../../partials/header.php';
       </div>
     </div>
 
-    <!-- ====== BLOQUE ESPECÍFICO TAREA (solo cuando tipo = tarea) ====== -->
+    <!-- ====== BLOQUE ESPECÍFICO TAREA ====== -->
     <div id="bloqueTarea" class="hidden border-t pt-4">
       <h3 class="text-sm font-semibold text-slate-700 mb-2">Opciones de Tarea / Entrega</h3>
 
@@ -612,6 +660,80 @@ require_once __DIR__ . '/../../../partials/header.php';
     </div>
     <!-- ====== /BLOQUE RESPUESTA CORTA ====== -->
 
+    <!-- ====== BLOQUE ESPECÍFICO RELLENAR HUECOS ====== -->
+    <div id="bloqueRH" class="hidden border-t pt-4">
+      <h3 class="text-sm font-semibold text-slate-700 mb-2">Configuración Rellenar huecos</h3>
+
+      <div>
+        <label class="mb-1 block text-sm font-medium text-slate-700">Texto con huecos <span class="text-rose-600">*</span></label>
+        <textarea name="rh_plantilla" rows="4"
+                  class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"
+                  placeholder="Ejemplo: &quot;El protocolo {{1}} funciona en la capa {{2}} del modelo OSI.&quot;"><?= h($_POST['rh_plantilla'] ?? '') ?></textarea>
+        <p class="mt-1 text-xs text-slate-500">Usa marcadores <code>{{1}}</code>, <code>{{2}}</code>, ... para cada hueco.</p>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-3 mt-2">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Modo de corrección</label>
+          <select name="rh_modo"
+                  class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400">
+            <?php
+              $rhModoSel = (string)($_POST['rh_modo'] ?? 'exacto');
+              foreach (['exacto'=>'Exacto','regex'=>'Regex'] as $v=>$lab) {
+                $sel = ($rhModoSel===$v)?'selected':'';
+                echo '<option value="'.h($v).'" '.$sel.'>'.h($lab).'</option>';
+              }
+            ?>
+          </select>
+        </div>
+        <label class="inline-flex items-center gap-2 text-sm mt-6">
+          <input type="checkbox" name="rh_case_sensitive" class="h-4 w-4 rounded border-slate-300" <?= isset($_POST['rh_case_sensitive'])?'checked':'' ?>>
+          Sensible a mayúsculas
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm mt-6">
+          <input type="checkbox" name="rh_normalizar_acentos" class="h-4 w-4 rounded border-slate-300" <?= isset($_POST['rh_normalizar_acentos'])?'checked':'' ?>>
+          Normalizar acentos
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm mt-6">
+          <input type="checkbox" name="rh_trim" class="h-4 w-4 rounded border-slate-300" <?= isset($_POST['rh_trim'])?'checked':'' ?>>
+          Ignorar espacios extremos
+        </label>
+      </div>
+
+      <div class="mt-3">
+        <label class="mb-1 block text-sm font-medium text-slate-700">Soluciones (JSON) <span class="text-rose-600">*</span></label>
+        <textarea name="rh_soluciones_json" rows="4"
+                  class="w-full font-mono rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"
+                  placeholder='["TCP","Transporte"]  — o —  [["TCP","Protocolo de Control de Transmisión"],["Capa 4","Transporte"]]'><?= h($_POST['rh_soluciones_json'] ?? '') ?></textarea>
+        <p class="mt-1 text-xs text-slate-500">
+          Opción 1 (array plano): una solución por hueco si solo hay 1.<br>
+          Opción 2 (array de arrays): lista de soluciones por cada hueco en orden (<code>{{1}}</code>, <code>{{2}}</code>, ...).
+        </p>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2 mt-2">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Puntuación máxima</label>
+          <input type="number" min="0" name="rh_puntuacion_max" value="<?= h((string)($_POST['rh_puntuacion_max'] ?? '')) ?>"
+                 class="w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400" placeholder="Ej: 10">
+        </div>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2 mt-2">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Feedback si acierta</label>
+          <textarea name="rh_feedback_correcta" rows="3"
+                    class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($_POST['rh_feedback_correcta'] ?? '') ?></textarea>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Feedback si falla</label>
+          <textarea name="rh_feedback_incorrecta" rows="3"
+                    class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($_POST['rh_feedback_incorrecta'] ?? '') ?></textarea>
+        </div>
+      </div>
+    </div>
+    <!-- ====== /BLOQUE RELLENAR HUECOS ====== -->
+
     <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
       <a href="<?= PUBLIC_URL ?>/admin/actividades/index.php"
          class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancelar</a>
@@ -634,9 +756,13 @@ require_once __DIR__ . '/../../../partials/header.php';
   const selAsi = document.getElementById('asignatura_id');
   const selTem = document.getElementById('tema_id');
   const selTipo = document.getElementById('tipo');
+
   const bloqueTarea = document.getElementById('bloqueTarea');
   const bloqueVF = document.getElementById('bloqueVF');
   const bloqueRC = document.getElementById('bloqueRC');
+  const bloqueRH = document.getElementById('bloqueRH');
+
+  // RC subbloques
   const rcModoSel = document.getElementById('rc_modo');
   const rcBloqPal = document.getElementById('rc_palabras');
   const rcBloqReg = document.getElementById('rc_regex');
@@ -698,9 +824,11 @@ require_once __DIR__ . '/../../../partials/header.php';
     bloqueTarea.classList.toggle('hidden', t !== 'tarea');
     bloqueVF.classList.toggle('hidden', t !== 'verdadero_falso');
     bloqueRC.classList.toggle('hidden', t !== 'respuesta_corta');
+    bloqueRH.classList.toggle('hidden', t !== 'rellenar_huecos');
   }
 
   function toggleRcSub(){
+    if (!rcModoSel) return;
     const m = rcModoSel.value || 'palabras_clave';
     rcBloqPal.classList.toggle('hidden', m !== 'palabras_clave');
     rcBloqReg.classList.toggle('hidden', m !== 'regex');

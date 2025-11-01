@@ -7,8 +7,7 @@ require_login_or_redirect();
 $u = current_user();
 
 /**
- * Modo DEBUG opcional:
- *   - ?debug=1 evita redirecciones “ciegas” y muestra mensajes en crudo.
+ * Modo DEBUG opcional (añade ?debug=1)
  */
 $DEBUG = isset($_GET['debug']) && $_GET['debug'] !== '0';
 error_reporting(E_ALL);
@@ -25,7 +24,7 @@ if ($id <= 0) {
 }
 
 // --------- ACL (propietario profesor) ----------
-if ($u['role'] === 'admin') {
+if (($u['role'] ?? '') === 'admin') {
   // Admin solo visualiza
   flash('error', 'El administrador solo puede visualizar actividades.');
   header('Location: ' . $basePublic . '/admin/actividades/index.php'); exit;
@@ -87,6 +86,11 @@ $vfRow = $stVF->fetch() ?: [];
 $stRC = pdo()->prepare("SELECT * FROM actividades_rc WHERE actividad_id=:id LIMIT 1");
 $stRC->execute([':id'=>$id]);
 $rcRow = $stRC->fetch() ?: [];
+
+// Rellenar huecos (según tu tabla real: enunciado_html, huecos_json, sin 'modo')
+$stRH = pdo()->prepare("SELECT * FROM actividades_rh WHERE actividad_id=:id LIMIT 1");
+$stRH->execute([':id'=>$id]);
+$rhRow = $stRH->fetch() ?: [];
 
 // --------- POST: actualizar ----------
 $errors = [];
@@ -182,7 +186,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $rubrica_json  = trim((string)($_POST['t_rubrica_json'] ?? ''));
 
       if ($tareaRow) {
-        // UPDATE
         $upT = pdo()->prepare('
           UPDATE actividades_tarea
           SET instrucciones=:inst, perm_texto=:pt, perm_archivo=:pa, perm_enlace=:pe,
@@ -200,7 +203,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           ':aid'=>$id,
         ]);
       } else {
-        // INSERT
         $insT = pdo()->prepare('
           INSERT INTO actividades_tarea
             (actividad_id, instrucciones, perm_texto, perm_archivo, perm_enlace,
@@ -356,7 +358,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
       }
     }
-    // Si cambias a otro tipo, no borramos lo previo (tarea/vf/rc). Conservamos histórico.
+
+    // ——— Específico de RELLENAR HUECOS (según tu tabla): UPSERT en actividades_rh ———
+    if ($tipo === 'rellenar_huecos') {
+      // Aceptamos nombres antiguos del create por compatibilidad: rh_plantilla, rh_soluciones_json
+      $rh_enunciado = trim((string)($_POST['rh_enunciado_html'] ?? ($_POST['rh_plantilla'] ?? '')));
+      $rh_huecos    = trim((string)($_POST['rh_huecos_json'] ?? ($_POST['rh_soluciones_json'] ?? '')));
+      $rh_case      = isset($_POST['rh_case_sensitive']) ? 1 : 0;
+      $rh_acentos   = isset($_POST['rh_normalizar_acentos']) ? 1 : 0;
+      $rh_trim      = isset($_POST['rh_trim']) ? 1 : 0;
+      $rh_pmax      = ($_POST['rh_puntuacion_max'] !== '') ? max(0,(int)$_POST['rh_puntuacion_max']) : null;
+      $rh_fb_ok     = trim((string)($_POST['rh_feedback_correcta'] ?? ''));
+      $rh_fb_fail   = trim((string)($_POST['rh_feedback_incorrecta'] ?? ''));
+
+      if ($rh_enunciado === '') {
+        throw new RuntimeException('Debes indicar el texto con huecos.');
+      }
+      if ($rh_huecos !== '') {
+        $decoded = json_decode($rh_huecos, true);
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
+          throw new RuntimeException('El JSON de soluciones/huecos no es válido. Usa un array (p. ej. ["SQL","relacionales"]) o array de arrays.');
+        }
+      }
+
+      if ($rhRow) {
+        $upRH = pdo()->prepare('
+          UPDATE actividades_rh
+          SET enunciado_html=:enun, huecos_json=:huecos,
+              case_sensitive=:case_s, normalizar_acentos=:acentos, trim_espacios=:trim,
+              puntuacion_max=:pmax, feedback_correcta=:fb_ok, feedback_incorrecta=:fb_fail,
+              updated_at=NOW()
+          WHERE actividad_id=:aid
+        ');
+        $upRH->execute([
+          ':enun'=>$rh_enunciado,
+          ':huecos'=>($rh_huecos !== '' ? $rh_huecos : null),
+          ':case_s'=>$rh_case,
+          ':acentos'=>$rh_acentos,
+          ':trim'=>$rh_trim,
+          ':pmax'=>$rh_pmax,
+          ':fb_ok'=>($rh_fb_ok !== '' ? $rh_fb_ok : null),
+          ':fb_fail'=>($rh_fb_fail !== '' ? $rh_fb_fail : null),
+          ':aid'=>$id,
+        ]);
+      } else {
+        $insRH = pdo()->prepare('
+          INSERT INTO actividades_rh
+            (actividad_id, enunciado_html, huecos_json, case_sensitive, normalizar_acentos, trim_espacios,
+             puntuacion_max, feedback_correcta, feedback_incorrecta, created_at, updated_at)
+          VALUES
+            (:aid, :enun, :huecos, :case_s, :acentos, :trim,
+             :pmax, :fb_ok, :fb_fail, NOW(), NOW())
+        ');
+        $insRH->execute([
+          ':aid'=>$id,
+          ':enun'=>$rh_enunciado,
+          ':huecos'=>($rh_huecos !== '' ? $rh_huecos : null),
+          ':case_s'=>$rh_case,
+          ':acentos'=>$rh_acentos,
+          ':trim'=>$rh_trim,
+          ':pmax'=>$rh_pmax,
+          ':fb_ok'=>($rh_fb_ok !== '' ? $rh_fb_ok : null),
+          ':fb_fail'=>($rh_fb_fail !== '' ? $rh_fb_fail : null),
+        ]);
+      }
+    }
+    // Si cambias a otro tipo, no borramos lo previo (tarea/vf/rc/rh). Conservamos histórico.
 
     if ($DEBUG) { echo "[DBG] UPDATE OK"; exit; }
     flash('success','Actividad actualizada correctamente.');
@@ -411,6 +478,16 @@ $rc_regex_flags   = (string)($rcRow['regex_flags'] ?? '');
 $rc_resp_muestra  = (string)($rcRow['respuesta_muestra'] ?? '');
 $rc_fb_ok         = (string)($rcRow['feedback_correcta'] ?? '');
 $rc_fb_fail       = (string)($rcRow['feedback_incorrecta'] ?? '');
+
+// Valores actuales RH (si hay) — según tu tabla
+$rh_enunciado_html = (string)($rhRow['enunciado_html'] ?? '');
+$rh_huecos_json    = (string)($rhRow['huecos_json'] ?? '');
+$rh_case           = (int)($rhRow['case_sensitive'] ?? 0);
+$rh_acentos        = (int)($rhRow['normalizar_acentos'] ?? 0);
+$rh_trim           = (int)($rhRow['trim_espacios'] ?? 1);
+$rh_pmax           = ($rhRow['puntuacion_max'] ?? '');
+$rh_fb_ok          = (string)($rhRow['feedback_correcta'] ?? '');
+$rh_fb_fail        = (string)($rhRow['feedback_incorrecta'] ?? '');
 ?>
 
 <div class="mb-6 flex items-center justify-between">
@@ -543,7 +620,7 @@ $rc_fb_fail       = (string)($rcRow['feedback_incorrecta'] ?? '');
       </div>
     </div>
 
-    <!-- ====== BLOQUE ESPECÍFICO TAREA (solo cuando tipo = tarea) ====== -->
+    <!-- ====== BLOQUE ESPECÍFICO TAREA ====== -->
     <div id="bloqueTarea" class="<?= $tipo==='tarea' ? '' : 'hidden' ?> border-t pt-4">
       <h3 class="text-sm font-semibold text-slate-700 mb-2">Opciones de Tarea / Entrega</h3>
 
@@ -733,6 +810,67 @@ $rc_fb_fail       = (string)($rcRow['feedback_incorrecta'] ?? '');
     </div>
     <!-- ====== /BLOQUE RESPUESTA CORTA ====== -->
 
+    <!-- ====== BLOQUE ESPECÍFICO RELLENAR HUECOS (según tu tabla) ====== -->
+    <div id="bloqueRH" class="<?= $tipo==='rellenar_huecos' ? '' : 'hidden' ?> border-t pt-4">
+      <h3 class="text-sm font-semibold text-slate-700 mb-2">Configuración Rellenar huecos</h3>
+
+      <div>
+        <label class="mb-1 block text-sm font-medium text-slate-700">Texto con huecos <span class="text-rose-600">*</span></label>
+        <textarea name="rh_enunciado_html" rows="4"
+                  class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"
+                  placeholder="Ej: &quot;El lenguaje {{1}} es para bases de datos {{2}}&quot;. Usa {{n}} para cada hueco."><?= h($rh_enunciado_html) ?></textarea>
+        <p class="mt-1 text-xs text-slate-500">Usa marcadores <code>{{1}}</code>, <code>{{2}}</code>, ...</p>
+      </div>
+
+      <div class="mt-3">
+        <label class="mb-1 block text-sm font-medium text-slate-700">Soluciones (JSON)</label>
+        <textarea name="rh_huecos_json" rows="4"
+                  class="w-full font-mono rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"
+                  placeholder='["SQL","relacionales"]  — o —  [["SQL","Structured Query Language"],["relacionales","SQL"]]'><?= h($rh_huecos_json) ?></textarea>
+        <p class="mt-1 text-xs text-slate-500">
+          Opción 1 (array plano): una solución por hueco si solo hay 1.<br>
+          Opción 2 (array de arrays): lista de soluciones por cada hueco en orden (<code>{{1}}</code>, <code>{{2}}</code>, ...).
+        </p>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-3 mt-2">
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="rh_case_sensitive" class="h-4 w-4 rounded border-slate-300" <?= $rh_case? 'checked':'' ?>>
+          Sensible a mayúsculas
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="rh_normalizar_acentos" class="h-4 w-4 rounded border-slate-300" <?= $rh_acentos? 'checked':'' ?>>
+          Normalizar acentos
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="rh_trim" class="h-4 w-4 rounded border-slate-300" <?= $rh_trim? 'checked':'' ?>>
+          Ignorar espacios extremos
+        </label>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2 mt-2">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Puntuación máxima</label>
+          <input type="number" min="0" name="rh_puntuacion_max" value="<?= h((string)$rh_pmax) ?>"
+                 class="w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400" placeholder="Ej: 10">
+        </div>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2 mt-2">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Feedback si acierta</label>
+          <textarea name="rh_feedback_correcta" rows="3"
+                    class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($rh_fb_ok) ?></textarea>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Feedback si falla</label>
+          <textarea name="rh_feedback_incorrecta" rows="3"
+                    class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($rh_fb_fail) ?></textarea>
+        </div>
+      </div>
+    </div>
+    <!-- ====== /BLOQUE RELLENAR HUECOS ====== -->
+
     <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
       <a href="<?= $basePublic ?>/admin/actividades/index.php"
          class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancelar</a>
@@ -759,6 +897,7 @@ $rc_fb_fail       = (string)($rcRow['feedback_incorrecta'] ?? '');
   const bloqueTarea = document.getElementById('bloqueTarea');
   const bloqueVF = document.getElementById('bloqueVF');
   const bloqueRC = document.getElementById('bloqueRC');
+  const bloqueRH = document.getElementById('bloqueRH');
 
   const rcModoSel = document.getElementById('rc_modo');
   const rcBloqPal = document.getElementById('rc_palabras');
@@ -829,22 +968,22 @@ $rc_fb_fail       = (string)($rcRow['feedback_incorrecta'] ?? '');
 
   function toggleBloques(){
     const t = selTipo.value;
-    bloqueTarea.classList.toggle('hidden', t !== 'tarea');
-    bloqueVF.classList.toggle('hidden', t !== 'verdadero_falso');
-    bloqueRC.classList.toggle('hidden', t !== 'respuesta_corta');
+    if (bloqueTarea) bloqueTarea.classList.toggle('hidden', t !== 'tarea');
+    if (bloqueVF)    bloqueVF.classList.toggle('hidden', t !== 'verdadero_falso');
+    if (bloqueRC)    bloqueRC.classList.toggle('hidden', t !== 'respuesta_corta');
+    if (bloqueRH)    bloqueRH.classList.toggle('hidden', t !== 'rellenar_huecos');
   }
 
   function toggleRcSub(){
     if (!rcModoSel) return;
     const m = rcModoSel.value || 'palabras_clave';
-    rcBloqPal.classList.toggle('hidden', m !== 'palabras_clave');
-    rcBloqReg.classList.toggle('hidden', m !== 'regex');
+    if (rcBloqPal) rcBloqPal.classList.toggle('hidden', m !== 'palabras_clave');
+    if (rcBloqReg) rcBloqReg.classList.toggle('hidden', m !== 'regex');
   }
 
   selTipo.addEventListener('change', toggleBloques, {passive:true});
   if (rcModoSel) rcModoSel.addEventListener('change', toggleRcSub, {passive:true});
 
-  if (currentTipo) selTipo.value = currentTipo;
   toggleBloques();
   toggleRcSub();
 </script>
