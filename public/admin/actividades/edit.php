@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../../config.php';
 require_login_or_redirect();
+
 $u = current_user();
 
 /**
- * Modo DEBUG opcional (añade ?debug=1)
+ * DEBUG opcional (?debug=1)
  */
 $DEBUG = isset($_GET['debug']) && $_GET['debug'] !== '0';
 error_reporting(E_ALL);
@@ -72,6 +73,8 @@ if (!$row) {
   header('Location: ' . $basePublic . '/admin/actividades/index.php'); exit;
 }
 
+$tipoActual = (string)($row['tipo'] ?? 'opcion_multiple');
+
 // Tarea
 $stTarea = pdo()->prepare("SELECT * FROM actividades_tarea WHERE actividad_id=:id LIMIT 1");
 $stTarea->execute([':id'=>$id]);
@@ -87,10 +90,56 @@ $stRC = pdo()->prepare("SELECT * FROM actividades_rc WHERE actividad_id=:id LIMI
 $stRC->execute([':id'=>$id]);
 $rcRow = $stRC->fetch() ?: [];
 
-// Rellenar huecos (según tu tabla real: enunciado_html, huecos_json, sin 'modo')
+// Rellenar huecos
 $stRH = pdo()->prepare("SELECT * FROM actividades_rh WHERE actividad_id=:id LIMIT 1");
 $stRH->execute([':id'=>$id]);
 $rhRow = $stRH->fetch() ?: [];
+
+// Opción múltiple (esquema flexible)
+$stOM = pdo()->prepare("SELECT * FROM actividades_om WHERE actividad_id=:id LIMIT 1");
+try {
+  $stOM->execute([':id'=>$id]);
+  $omRow = $stOM->fetch() ?: [];
+} catch (Throwable $e) {
+  // Si no existe la tabla, seguimos sin romper
+  $omRow = [];
+}
+// Opciones de OM (múltiples filas)
+$stOMOpt = pdo()->prepare("
+  SELECT id, opcion_html, es_correcta, orden
+  FROM actividades_om_opciones
+  WHERE actividad_id = :id
+  ORDER BY COALESCE(orden, id) ASC, id ASC
+");
+try {
+  $stOMOpt->execute([':id'=>$id]);
+  $omOpts = $stOMOpt->fetchAll() ?: [];
+} catch (Throwable $e) {
+  $omOpts = [];
+}
+
+// Emparejar (múltiples filas) ———— CAMBIO MÍNIMO: inicializo $empRows antes del try ————
+$empRows = []; // <—— añadido para evitar "Undefined variable $empRows"
+$stEMP = pdo()->prepare("SELECT * FROM actividades_emp_pares WHERE actividad_id=:id ORDER BY orden_izq ASC, orden_der ASC, id ASC");
+try {
+  $stEMP->execute([':id'=>$id]);
+  $empRows = $stEMP->fetchAll() ?: [];
+} catch (Throwable $e) {
+  $empRows = [];
+}
+
+// Utilidad: columnas de tabla
+function table_columns(string $table): array {
+  try {
+    $q = pdo()->prepare("SHOW COLUMNS FROM `$table`");
+    $q->execute();
+    $cols = [];
+    foreach ($q->fetchAll() as $r) { $cols[] = (string)$r['Field']; }
+    return $cols;
+  } catch (Throwable $e) {
+    return [];
+  }
+}
 
 // --------- POST: actualizar ----------
 $errors = [];
@@ -109,7 +158,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $visibilidad   = trim((string)($_POST['visibilidad'] ?? 'privada'));
     $estado        = trim((string)($_POST['estado'] ?? 'borrador'));
 
-    // DIFICULTAD como ENUM (baja|media|alta) o vacío (NULL)
     $dificultad    = trim((string)($_POST['dificultad'] ?? ''));
     if ($dificultad !== '' && !in_array($dificultad, ['baja','media','alta'], true)) {
       throw new RuntimeException('Dificultad no válida.');
@@ -147,7 +195,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
     }
 
-    // Update actividad
+    // Update actividad (comunes)
     $up = pdo()->prepare('
       UPDATE actividades
       SET familia_id=:fam, curso_id=:cur, asignatura_id=:asi, tema_id=:tema,
@@ -170,7 +218,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       ':prof'=>$profesorId,
     ]);
 
-    // ——— Específico de TAREA: UPSERT en actividades_tarea ———
+    // ——— TAREA ———
     if ($tipo === 'tarea') {
       $instrucciones = trim((string)($_POST['t_instrucciones'] ?? ''));
       $perm_texto    = isset($_POST['t_perm_texto']) ? 1 : 0;
@@ -178,7 +226,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $perm_enlace   = isset($_POST['t_perm_enlace']) ? 1 : 0;
       $max_archivos  = ($_POST['t_max_archivos'] !== '') ? max(0,(int)$_POST['t_max_archivos']) : null;
       $max_peso_mb   = ($_POST['t_max_peso_mb'] !== '') ? max(0,(int)$_POST['t_max_peso_mb']) : null;
-      $eval_modo     = trim((string)($_POST['t_evaluacion_modo'] ?? '')); // '' | puntos | rubrica
+      $eval_modo     = trim((string)($_POST['t_evaluacion_modo'] ?? ''));
       if ($eval_modo !== '' && !in_array($eval_modo, ['puntos','rubrica'], true)) {
         throw new RuntimeException('Modo de evaluación no válido.');
       }
@@ -223,12 +271,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
     }
 
-    // ——— Específico de VERDADERO/FALSO: UPSERT en actividades_vf ———
+    // ——— VERDADERO/FALSO ———
     if ($tipo === 'verdadero_falso') {
       $vf_resp    = trim((string)($_POST['vf_respuesta_correcta'] ?? ''));
       $vf_fb_ok   = trim((string)($_POST['vf_feedback_correcta'] ?? ''));
       $vf_fb_fail = trim((string)($_POST['vf_feedback_incorrecta'] ?? ''));
-
       if (!in_array($vf_resp, ['verdadero','falso'], true)) {
         throw new RuntimeException('Debes indicar si la respuesta correcta es Verdadero o Falso.');
       }
@@ -261,7 +308,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
     }
 
-    // ——— Específico de RESPUESTA CORTA: UPSERT en actividades_rc ———
+    // ——— RESPUESTA CORTA ———
     if ($tipo === 'respuesta_corta') {
       $rc_modo   = trim((string)($_POST['rc_modo'] ?? ''));
       if (!in_array($rc_modo, ['palabras_clave','regex'], true)) {
@@ -359,9 +406,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
     }
 
-    // ——— Específico de RELLENAR HUECOS (según tu tabla): UPSERT en actividades_rh ———
+    // ——— RELLENAR HUECOS ———
     if ($tipo === 'rellenar_huecos') {
-      // Aceptamos nombres antiguos del create por compatibilidad: rh_plantilla, rh_soluciones_json
       $rh_enunciado = trim((string)($_POST['rh_enunciado_html'] ?? ($_POST['rh_plantilla'] ?? '')));
       $rh_huecos    = trim((string)($_POST['rh_huecos_json'] ?? ($_POST['rh_soluciones_json'] ?? '')));
       $rh_case      = isset($_POST['rh_case_sensitive']) ? 1 : 0;
@@ -377,7 +423,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       if ($rh_huecos !== '') {
         $decoded = json_decode($rh_huecos, true);
         if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
-          throw new RuntimeException('El JSON de soluciones/huecos no es válido. Usa un array (p. ej. ["SQL","relacionales"]) o array de arrays.');
+          throw new RuntimeException('El JSON de soluciones/huecos no es válido. Usa un array o array de arrays.');
         }
       }
 
@@ -423,7 +469,179 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
       }
     }
-    // Si cambias a otro tipo, no borramos lo previo (tarea/vf/rc/rh). Conservamos histórico.
+
+// ——— OPCIÓN MÚLTIPLE (actividades_om + actividades_om_opciones) ———
+if ($tipo === 'opcion_multiple') {
+  $om_enunciado = trim((string)($_POST['om_enunciado_html'] ?? ''));
+  $om_fb_ok     = trim((string)($_POST['om_feedback_correcta'] ?? ''));
+  $om_fb_fail   = trim((string)($_POST['om_feedback_incorrecta'] ?? ''));
+
+  $om_opciones = $_POST['om_opciones'] ?? [];
+  if (!is_array($om_opciones)) $om_opciones = [];
+  $om_opciones = array_map(fn($v)=>trim((string)$v), $om_opciones);
+
+  $opFilled = [];
+  foreach ($om_opciones as $idx => $txt) {
+    if ($txt !== '') $opFilled[] = ['txt' => $txt];
+  }
+
+  $om_correcta_raw = $_POST['om_correcta'] ?? '';
+  if (!ctype_digit((string)$om_correcta_raw)) $om_correcta_raw = '';
+
+  if ($om_enunciado === '') {
+    throw new RuntimeException('Debes indicar el enunciado de la pregunta.');
+  }
+  if (count($opFilled) < 2) {
+    throw new RuntimeException('Debes incluir al menos dos opciones con contenido.');
+  }
+  if ($om_correcta_raw === '') {
+    throw new RuntimeException('Debes marcar la opción correcta.');
+  }
+
+  $correctFilteredIdx = null;
+  $running = 0;
+  foreach ($om_opciones as $i => $txt) {
+    if ($txt === '') continue;
+    if ((int)$om_correcta_raw === (int)$i) {
+      $correctFilteredIdx = $running; break;
+    }
+    $running++;
+  }
+  if ($correctFilteredIdx === null || $correctFilteredIdx < 0 || $correctFilteredIdx >= count($opFilled)) {
+    throw new RuntimeException('La opción correcta no coincide con una opción válida.');
+  }
+
+  $exists = pdo()->prepare("SELECT actividad_id FROM actividades_om WHERE actividad_id=:aid LIMIT 1");
+  $exists->execute([':aid'=>$id]);
+  $hasOM = (bool)$exists->fetchColumn();
+
+  if ($hasOM) {
+    $sql = "UPDATE actividades_om
+            SET enunciado_html=:enun,
+                feedback_correcta=:fbok,
+                feedback_incorrecta=:fbko,
+                updated_at=NOW()
+            WHERE actividad_id=:aid";
+    pdo()->prepare($sql)->execute([
+      ':aid'=>$id,
+      ':enun'=>$om_enunciado,
+      ':fbok'=>($om_fb_ok!==''?$om_fb_ok:null),
+      ':fbko'=>($om_fb_fail!==''?$om_fb_fail:null),
+    ]);
+  } else {
+    $sql = "INSERT INTO actividades_om
+              (actividad_id, enunciado_html, feedback_correcta, feedback_incorrecta, created_at, updated_at)
+            VALUES
+              (:aid, :enun, :fbok, :fbko, NOW(), NOW())";
+    pdo()->prepare($sql)->execute([
+      ':aid'=>$id,
+      ':enun'=>$om_enunciado,
+      ':fbok'=>($om_fb_ok!==''?$om_fb_ok:null),
+      ':fbko'=>($om_fb_fail!==''?$om_fb_fail:null),
+    ]);
+  }
+
+  pdo()->beginTransaction();
+  try {
+    pdo()->prepare("DELETE FROM actividades_om_opciones WHERE actividad_id=:aid")
+        ->execute([':aid'=>$id]);
+
+    $ins = pdo()->prepare("
+      INSERT INTO actividades_om_opciones
+        (actividad_id, opcion_html, es_correcta, orden, created_at, updated_at)
+      VALUES
+        (:aid, :txt, :ok, :ord, NOW(), NOW())
+    ");
+    foreach ($opFilled as $k => $rowOpt) {
+      $ins->execute([
+        ':aid'=>$id,
+        ':txt'=>$rowOpt['txt'],
+        ':ok'=>($k == $correctFilteredIdx ? 1 : 0),
+        ':ord'=>($k+1),
+      ]);
+    }
+    pdo()->commit();
+  } catch (Throwable $e) {
+    pdo()->rollBack();
+    throw $e;
+  }
+}
+
+
+    // ——— EMPAREJAR ———
+    if ($tipo === 'emparejar') {
+      // Arrays paralelos
+      $izqs   = $_POST['emp_izq'] ?? [];
+      $ders   = $_POST['emp_der'] ?? [];
+      $alts   = $_POST['emp_alt_der'] ?? [];
+      $grps   = $_POST['emp_grupo'] ?? [];
+      $ordI   = $_POST['emp_orden_izq'] ?? [];
+      $ordD   = $_POST['emp_orden_der'] ?? [];
+      $acts   = $_POST['emp_activo'] ?? [];
+
+      // Normalizar a mismas longitudes
+      $n = max(count($izqs), count($ders), count($alts), count($grps), count($ordI), count($ordD), count($acts));
+      $rows = [];
+      for ($i=0; $i<$n; $i++) {
+        $iz  = trim((string)($izqs[$i] ?? ''));
+        $de  = trim((string)($ders[$i] ?? ''));
+        if ($iz === '' && $de === '') { continue; } // fila vacía
+        $al  = trim((string)($alts[$i] ?? ''));
+        $gr  = trim((string)($grps[$i] ?? ''));
+        $oi  = (int)($ordI[$i] ?? ($i+1));
+        $od  = (int)($ordD[$i] ?? ($i+1));
+        $ac  = isset($acts[$i]) ? 1 : 0;
+        $rows[] = [
+          'izquierda_html'=>$iz,
+          'derecha_html'=>$de,
+          'alternativas_derecha_json'=>($al !== '' ? $al : null),
+          'grupo'=>($gr !== '' ? $gr : null),
+          'orden_izq'=>$oi,
+          'orden_der'=>$od,
+          'activo'=>$ac,
+        ];
+      }
+
+      pdo()->beginTransaction();
+      try {
+        // delete + insert (más fácil para edición en bloque)
+        $del = pdo()->prepare("DELETE FROM actividades_emp_pares WHERE actividad_id=:aid");
+        $del->execute([':aid'=>$id]);
+
+        if ($rows) {
+          $ins = pdo()->prepare('
+            INSERT INTO actividades_emp_pares
+              (actividad_id, izquierda_html, derecha_html, alternativas_derecha_json, grupo,
+               orden_izq, orden_der, activo, created_at, updated_at)
+            VALUES
+              (:aid, :izq, :der, :alt, :grp, :oi, :od, :ac, NOW(), NOW())
+          ');
+          foreach ($rows as $r) {
+            // Validar JSON si viene alternativas
+            if ($r['alternativas_derecha_json'] !== null) {
+              json_decode($r['alternativas_derecha_json'], true);
+              if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new RuntimeException('Alternativas derecha (JSON) inválido en alguna fila.');
+              }
+            }
+            $ins->execute([
+              ':aid'=>$id,
+              ':izq'=>$r['izquierda_html'],
+              ':der'=>$r['derecha_html'],
+              ':alt'=>$r['alternativas_derecha_json'],
+              ':grp'=>$r['grupo'],
+              ':oi'=>$r['orden_izq'],
+              ':od'=>$r['orden_der'],
+              ':ac'=>$r['activo'],
+            ]);
+          }
+        }
+        pdo()->commit();
+      } catch (Throwable $e) {
+        pdo()->rollBack();
+        throw $e;
+      }
+    }
 
     if ($DEBUG) { echo "[DBG] UPDATE OK"; exit; }
     flash('success','Actividad actualizada correctamente.');
@@ -449,7 +667,7 @@ $visibilidad   = (string)($row['visibilidad'] ?? 'privada');
 $estado        = (string)($row['estado'] ?? 'borrador');
 $dificultad    = (string)($row['dificultad'] ?? '');
 
-// Valores actuales de tarea (si hay)
+// Tarea (si hay)
 $t_instrucciones = (string)($tareaRow['instrucciones'] ?? '');
 $t_perm_texto    = (int)($tareaRow['perm_texto'] ?? 0);
 $t_perm_archivo  = (int)($tareaRow['perm_archivo'] ?? 0);
@@ -460,12 +678,12 @@ $t_eval_modo     = (string)($tareaRow['evaluacion_modo'] ?? '');
 $t_puntos_max    = $tareaRow['puntuacion_max'] ?? '';
 $t_rubrica_json  = (string)($tareaRow['rubrica_json'] ?? '');
 
-// Valores actuales VF (si hay)
+// VF
 $vf_respuesta_correcta = (string)($vfRow['respuesta_correcta'] ?? '');
 $vf_feedback_correcta  = (string)($vfRow['feedback_correcta'] ?? '');
 $vf_feedback_incorrecta= (string)($vfRow['feedback_incorrecta'] ?? '');
 
-// Valores actuales RC (si hay)
+// RC
 $rc_modo          = (string)($rcRow['modo'] ?? 'palabras_clave');
 $rc_case          = (int)($rcRow['case_sensitive'] ?? 0);
 $rc_acentos       = (int)($rcRow['normalizar_acentos'] ?? 0);
@@ -479,7 +697,7 @@ $rc_resp_muestra  = (string)($rcRow['respuesta_muestra'] ?? '');
 $rc_fb_ok         = (string)($rcRow['feedback_correcta'] ?? '');
 $rc_fb_fail       = (string)($rcRow['feedback_incorrecta'] ?? '');
 
-// Valores actuales RH (si hay) — según tu tabla
+// RH
 $rh_enunciado_html = (string)($rhRow['enunciado_html'] ?? '');
 $rh_huecos_json    = (string)($rhRow['huecos_json'] ?? '');
 $rh_case           = (int)($rhRow['case_sensitive'] ?? 0);
@@ -488,8 +706,43 @@ $rh_trim           = (int)($rhRow['trim_espacios'] ?? 1);
 $rh_pmax           = ($rhRow['puntuacion_max'] ?? '');
 $rh_fb_ok          = (string)($rhRow['feedback_correcta'] ?? '');
 $rh_fb_fail        = (string)($rhRow['feedback_incorrecta'] ?? '');
-?>
 
+// OM (lectura de tablas OM + opciones)
+$om_enunciado_html = (string)($omRow['enunciado_html'] ?? '');
+$om_fb_ok          = (string)($omRow['feedback_correcta'] ?? '');
+$om_fb_fail        = (string)($omRow['feedback_incorrecta'] ?? '');
+
+// Si hubo POST con errores, respetamos lo enviado por el usuario
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $tipo === 'opcion_multiple') {
+  $om_enunciado_html = (string)($_POST['om_enunciado_html'] ?? $om_enunciado_html);
+  $om_fb_ok          = (string)($_POST['om_feedback_correcta'] ?? $om_fb_ok);
+  $om_fb_fail        = (string)($_POST['om_feedback_incorrecta'] ?? $om_fb_fail);
+
+  $postOpts = $_POST['om_opciones'] ?? [];
+  if (is_array($postOpts)) {
+    $omOpts = [];
+    foreach ($postOpts as $i => $txt) {
+      $txt = trim((string)$txt);
+      if ($txt === '' and $i > 3) continue;
+      $omOpts[] = [
+        'opcion_html' => $txt,
+        'es_correcta' => (isset($_POST['om_correcta']) && (int)$_POST['om_correcta'] === (int)$i) ? 1 : 0,
+        'orden'       => $i+1,
+      ];
+    }
+  }
+}
+
+// Aseguramos al menos 4 filas visuales
+if (empty($omOpts)) { $omOpts = []; }
+while (count($omOpts) < 4) {
+  $omOpts[] = ['opcion_html' => '', 'es_correcta' => 0, 'orden' => count($omOpts) + 1];
+}
+
+// EMP
+$empRows = $empRows ?? [];
+
+?>
 <div class="mb-6 flex items-center justify-between">
   <div>
     <h1 class="text-xl font-semibold tracking-tight">Editar actividad</h1>
@@ -510,7 +763,7 @@ $rh_fb_fail        = (string)($rhRow['feedback_incorrecta'] ?? '');
 <?php endif; ?>
 
 <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-  <form method="post" action="" class="space-y-5">
+  <form method="post" action="" class="space-y-5" id="formActividad">
     <?= csrf_field() ?>
 
     <div>
@@ -528,7 +781,7 @@ $rh_fb_fail        = (string)($rhRow['feedback_incorrecta'] ?? '');
           <?php
             $opts = [
               'opcion_multiple' => 'Opción múltiple',
-              'verdadero_falso' => 'Veradero/falso',
+              'verdadero_falso' => 'Verdadero/falso',
               'respuesta_corta' => 'Respuesta corta',
               'rellenar_huecos' => 'Rellenar huecos',
               'emparejar'       => 'Emparejar',
@@ -620,7 +873,7 @@ $rh_fb_fail        = (string)($rhRow['feedback_incorrecta'] ?? '');
       </div>
     </div>
 
-    <!-- ====== BLOQUE ESPECÍFICO TAREA ====== -->
+    <!-- ====== BLOQUE TAREA ====== -->
     <div id="bloqueTarea" class="<?= $tipo==='tarea' ? '' : 'hidden' ?> border-t pt-4">
       <h3 class="text-sm font-semibold text-slate-700 mb-2">Opciones de Tarea / Entrega</h3>
 
@@ -688,9 +941,9 @@ $rh_fb_fail        = (string)($rhRow['feedback_incorrecta'] ?? '');
         <p class="mt-1 text-xs text-slate-500">Opcional. Solo si usas evaluación por rúbrica.</p>
       </div>
     </div>
-    <!-- ====== /BLOQUE TAREA ====== -->
+    <!-- /TAREA -->
 
-    <!-- ====== BLOQUE ESPECÍFICO VERDADERO/FALSO ====== -->
+    <!-- ====== V/F ====== -->
     <div id="bloqueVF" class="<?= $tipo==='verdadero_falso' ? '' : 'hidden' ?> border-t pt-4">
       <h3 class="text-sm font-semibold text-slate-700 mb-2">Configuración Verdadero/Falso</h3>
 
@@ -717,9 +970,9 @@ $rh_fb_fail        = (string)($rhRow['feedback_incorrecta'] ?? '');
         </div>
       </div>
     </div>
-    <!-- ====== /BLOQUE VERDADERO/FALSO ====== -->
+    <!-- /V/F -->
 
-    <!-- ====== BLOQUE ESPECÍFICO RESPUESTA CORTA ====== -->
+    <!-- ====== RESPUESTA CORTA ====== -->
     <div id="bloqueRC" class="<?= $tipo==='respuesta_corta' ? '' : 'hidden' ?> border-t pt-4">
       <h3 class="text-sm font-semibold text-slate-700 mb-2">Configuración Respuesta corta</h3>
 
@@ -751,7 +1004,7 @@ $rh_fb_fail        = (string)($rhRow['feedback_incorrecta'] ?? '');
         </label>
       </div>
 
-      <!-- Sub-bloque: Palabras clave -->
+      <!-- Palabras clave -->
       <div id="rc_palabras" class="mt-3 <?= $rc_modo==='palabras_clave' ? '' : 'hidden' ?>">
         <div>
           <label class="mb-1 block text-sm font-medium text-slate-700">Palabras clave (JSON)</label>
@@ -774,7 +1027,7 @@ $rh_fb_fail        = (string)($rhRow['feedback_incorrecta'] ?? '');
         </div>
       </div>
 
-      <!-- Sub-bloque: Regex -->
+      <!-- Regex -->
       <div id="rc_regex" class="mt-3 <?= $rc_modo==='regex' ? '' : 'hidden' ?>">
         <div class="grid gap-4 sm:grid-cols-2">
           <div>
@@ -808,9 +1061,9 @@ $rh_fb_fail        = (string)($rhRow['feedback_incorrecta'] ?? '');
         </div>
       </div>
     </div>
-    <!-- ====== /BLOQUE RESPUESTA CORTA ====== -->
+    <!-- /RC -->
 
-    <!-- ====== BLOQUE ESPECÍFICO RELLENAR HUECOS (según tu tabla) ====== -->
+    <!-- ====== RELLENAR HUECOS ====== -->
     <div id="bloqueRH" class="<?= $tipo==='rellenar_huecos' ? '' : 'hidden' ?> border-t pt-4">
       <h3 class="text-sm font-semibold text-slate-700 mb-2">Configuración Rellenar huecos</h3>
 
@@ -827,10 +1080,6 @@ $rh_fb_fail        = (string)($rhRow['feedback_incorrecta'] ?? '');
         <textarea name="rh_huecos_json" rows="4"
                   class="w-full font-mono rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"
                   placeholder='["SQL","relacionales"]  — o —  [["SQL","Structured Query Language"],["relacionales","SQL"]]'><?= h($rh_huecos_json) ?></textarea>
-        <p class="mt-1 text-xs text-slate-500">
-          Opción 1 (array plano): una solución por hueco si solo hay 1.<br>
-          Opción 2 (array de arrays): lista de soluciones por cada hueco en orden (<code>{{1}}</code>, <code>{{2}}</code>, ...).
-        </p>
       </div>
 
       <div class="grid gap-4 sm:grid-cols-3 mt-2">
@@ -869,7 +1118,107 @@ $rh_fb_fail        = (string)($rhRow['feedback_incorrecta'] ?? '');
         </div>
       </div>
     </div>
-    <!-- ====== /BLOQUE RELLENAR HUECOS ====== -->
+    <!-- /RH -->
+
+        <!-- ====== BLOQUE ESPECÍFICO: OPCIÓN MÚLTIPLE ====== -->
+<div id="bloqueOM" class="<?= $tipo==='opcion_multiple' ? '' : 'hidden' ?> border-t pt-4">
+  <h3 class="text-sm font-semibold text-slate-700 mb-2">Configuración Opción múltiple</h3>
+
+  <div class="space-y-3">
+    <div>
+      <label class="mb-1 block text-sm font-medium text-slate-700">
+        Enunciado (HTML permitido) <span class="text-rose-600">*</span>
+      </label>
+      <textarea name="om_enunciado_html" rows="3"
+                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($om_enunciado_html) ?></textarea>
+    </div>
+
+    <div>
+      <label class="mb-2 block text-sm font-medium text-slate-700">Opciones (marca la correcta)</label>
+
+      <div id="omList" class="space-y-2">
+        <?php foreach ($omOpts as $i => $opt): ?>
+          <div class="om-row flex items-start gap-3">
+            <input type="radio" name="om_correcta" value="<?= (int)$i ?>" class="mt-2 h-4 w-4 border-slate-300" <?= ((int)$opt['es_correcta']===1?'checked':'') ?>>
+            <textarea name="om_opciones[]" rows="2" placeholder="Opción <?= (int)$i+1 ?>"
+                      class="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h((string)$opt['opcion_html']) ?></textarea>
+            <button type="button" class="om-del inline-flex shrink-0 items-center rounded-lg border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">
+              Eliminar
+            </button>
+          </div>
+        <?php endforeach; ?>
+      </div>
+
+      <div class="mt-2">
+        <button type="button" id="omAdd" class="inline-flex items-center rounded-lg bg-slate-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700">
+          Añadir opción
+        </button>
+        <p class="mt-1 text-xs text-slate-500">Debe haber al menos 2 opciones con contenido y una marcada como correcta.</p>
+      </div>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div>
+        <label class="mb-1 block text-sm font-medium text-slate-700">Feedback si acierta</label>
+        <textarea name="om_feedback_correcta" rows="2"
+                  class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($om_fb_ok) ?></textarea>
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium text-slate-700">Feedback si falla</label>
+        <textarea name="om_feedback_incorrecta" rows="2"
+                  class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($om_fb_fail) ?></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- ====== /BLOQUE OM ====== -->
+
+
+
+    <!-- ====== EMPAREJAR ====== -->
+    <div id="bloqueEMP" class="<?= $tipo==='emparejar' ? '' : 'hidden' ?> border-t pt-4">
+      <h3 class="text-sm font-semibold text-slate-700 mb-2">Configuración Emparejar</h3>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm border border-slate-200 rounded-lg">
+          <thead class="bg-slate-50">
+            <tr class="text-left">
+              <th class="p-2 border-b">Izquierda (HTML)</th>
+              <th class="p-2 border-b">Derecha (HTML)</th>
+              <th class="p-2 border-b">Alternativas derecha (JSON)</th>
+              <th class="p-2 border-b">Grupo</th>
+              <th class="p-2 border-b">Ord. Izq</th>
+              <th class="p-2 border-b">Ord. Der</th>
+              <th class="p-2 border-b">Activo</th>
+              <th class="p-2 border-b"></th>
+            </tr>
+          </thead>
+          <tbody id="empTBody">
+            <?php
+              $rows = $empRows ?: [
+                ['izquierda_html'=>'','derecha_html'=>'','alternativas_derecha_json'=>'','grupo'=>'','orden_izq'=>1,'orden_der'=>1,'activo'=>1]
+              ];
+              foreach ($rows as $r):
+            ?>
+            <tr class="align-top">
+              <td class="p-2 border-b"><textarea name="emp_izq[]" rows="2" class="w-64 rounded border border-slate-300 px-2 py-1"><?= h((string)($r['izquierda_html'] ?? '')) ?></textarea></td>
+              <td class="p-2 border-b"><textarea name="emp_der[]" rows="2" class="w-64 rounded border border-slate-300 px-2 py-1"><?= h((string)($r['derecha_html'] ?? '')) ?></textarea></td>
+              <td class="p-2 border-b"><textarea name="emp_alt_der[]" rows="2" class="w-64 font-mono rounded border border-slate-300 px-2 py-1" placeholder='["Sinónimo 1","Sinónimo 2"]'><?= h((string)($r['alternativas_derecha_json'] ?? '')) ?></textarea></td>
+              <td class="p-2 border-b"><input type="text" name="emp_grupo[]" value="<?= h((string)($r['grupo'] ?? '')) ?>" class="w-28 rounded border border-slate-300 px-2 py-1"></td>
+              <td class="p-2 border-b"><input type="number" name="emp_orden_izq[]" value="<?= h((string)($r['orden_izq'] ?? 1)) ?>" class="w-20 rounded border border-slate-300 px-2 py-1"></td>
+              <td class="p-2 border-b"><input type="number" name="emp_orden_der[]" value="<?= h((string)($r['orden_der'] ?? 1)) ?>" class="w-20 rounded border border-slate-300 px-2 py-1"></td>
+              <td class="p-2 border-b"><input type="checkbox" name="emp_activo[]" <?= (int)($r['activo'] ?? 1) ? 'checked' : '' ?>></td>
+              <td class="p-2 border-b"><button type="button" class="text-rose-600 hover:underline emp-del-row">Eliminar</button></td>
+            </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+      <div class="mt-3">
+        <button type="button" id="empAddRow" class="inline-flex items-center rounded-lg bg-slate-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700">Añadir fila</button>
+      </div>
+    </div>
+    <!-- /EMP -->
 
     <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
       <a href="<?= $basePublic ?>/admin/actividades/index.php"
@@ -888,16 +1237,18 @@ $rh_fb_fail        = (string)($rhRow['feedback_incorrecta'] ?? '');
   const asigsAll  = <?= json_encode($asigs,  JSON_UNESCAPED_UNICODE) ?>;
   const temasAll  = <?= json_encode($temas,  JSON_UNESCAPED_UNICODE) ?>;
 
-  const selFam = document.getElementById('familia_id');
-  const selCur = document.getElementById('curso_id');
-  const selAsi = document.getElementById('asignatura_id');
-  const selTem = document.getElementById('tema_id');
+  const selFam  = document.getElementById('familia_id');
+  const selCur  = document.getElementById('curso_id');
+  const selAsi  = document.getElementById('asignatura_id');
+  const selTem  = document.getElementById('tema_id');
   const selTipo = document.getElementById('tipo');
 
   const bloqueTarea = document.getElementById('bloqueTarea');
-  const bloqueVF = document.getElementById('bloqueVF');
-  const bloqueRC = document.getElementById('bloqueRC');
-  const bloqueRH = document.getElementById('bloqueRH');
+  const bloqueVF    = document.getElementById('bloqueVF');
+  const bloqueRC    = document.getElementById('bloqueRC');
+  const bloqueRH    = document.getElementById('bloqueRH');
+  const bloqueOM    = document.getElementById('bloqueOM');
+  const bloqueEMP   = document.getElementById('bloqueEMP');
 
   const rcModoSel = document.getElementById('rc_modo');
   const rcBloqPal = document.getElementById('rc_palabras');
@@ -907,7 +1258,6 @@ $rh_fb_fail        = (string)($rhRow['feedback_incorrecta'] ?? '');
   const currentCur = <?= (int)$curso_id ?>;
   const currentAsi = <?= (int)$asignatura_id ?>;
   const currentTem = <?= (int)$tema_id ?>;
-  const currentTipo = <?= json_encode($tipo) ?>;
 
   function opt(v,t){const o=document.createElement('option'); o.value=v; o.textContent=t; return o;}
 
@@ -943,7 +1293,6 @@ $rh_fb_fail        = (string)($rhRow['feedback_incorrecta'] ?? '');
       });
   }
 
-  // Estado inicial
   if (currentFam>0) renderCursos(currentFam, currentCur);
   if (currentCur>0) renderAsigs(currentCur, currentAsi);
   if (currentAsi>0) renderTemas(currentAsi, currentTem);
@@ -972,6 +1321,8 @@ $rh_fb_fail        = (string)($rhRow['feedback_incorrecta'] ?? '');
     if (bloqueVF)    bloqueVF.classList.toggle('hidden', t !== 'verdadero_falso');
     if (bloqueRC)    bloqueRC.classList.toggle('hidden', t !== 'respuesta_corta');
     if (bloqueRH)    bloqueRH.classList.toggle('hidden', t !== 'rellenar_huecos');
+    if (bloqueOM)    bloqueOM.classList.toggle('hidden', t !== 'opcion_multiple');
+    if (bloqueEMP)   bloqueEMP.classList.toggle('hidden', t !== 'emparejar');
   }
 
   function toggleRcSub(){
@@ -986,6 +1337,108 @@ $rh_fb_fail        = (string)($rhRow['feedback_incorrecta'] ?? '');
 
   toggleBloques();
   toggleRcSub();
+
+  // ===== Emparejar: añadir/eliminar filas (JS mínimo, sin romper estilos) =====
+  const empTBody = document.getElementById('empTBody');
+  const empAddRow = document.getElementById('empAddRow');
+  function bindEmpDelete(btn){
+    btn.addEventListener('click', ()=>{
+      const tr = btn.closest('tr');
+      if (tr && empTBody.rows.length > 1) tr.remove();
+      else {
+        // si es la única, limpiar
+        tr.querySelectorAll('textarea,input').forEach(el=>{
+          if (el.type === 'checkbox') el.checked = true;
+          else el.value = (el.name.includes('orden_') ? '1' : '');
+        });
+      }
+    }, {passive:true});
+  }
+  if (empTBody) {
+    empTBody.querySelectorAll('.emp-del-row').forEach(bindEmpDelete);
+  }
+  if (empAddRow) {
+    empAddRow.addEventListener('click', ()=>{
+      const tr = document.createElement('tr');
+      tr.className = 'align-top';
+      tr.innerHTML = `
+        <td class="p-2 border-b"><textarea name="emp_izq[]" rows="2" class="w-64 rounded border border-slate-300 px-2 py-1"></textarea></td>
+        <td class="p-2 border-b"><textarea name="emp_der[]" rows="2" class="w-64 rounded border border-slate-300 px-2 py-1"></textarea></td>
+        <td class="p-2 border-b"><textarea name="emp_alt_der[]" rows="2" class="w-64 font-mono rounded border border-slate-300 px-2 py-1" placeholder='["Sinónimo 1","Sinónimo 2"]'></textarea></td>
+        <td class="p-2 border-b"><input type="text" name="emp_grupo[]" class="w-28 rounded border border-slate-300 px-2 py-1"></td>
+        <td class="p-2 border-b"><input type="number" name="emp_orden_izq[]" value="1" class="w-20 rounded border border-slate-300 px-2 py-1"></td>
+        <td class="p-2 border-b"><input type="number" name="emp_orden_der[]" value="1" class="w-20 rounded border border-slate-300 px-2 py-1"></td>
+        <td class="p-2 border-b"><input type="checkbox" name="emp_activo[]" checked></td>
+        <td class="p-2 border-b"><button type="button" class="text-rose-600 hover:underline emp-del-row">Eliminar</button></td>
+      `;
+      empTBody.appendChild(tr);
+      bindEmpDelete(tr.querySelector('.emp-del-row'));
+    }, {passive:true});
+  }
+
+  // ===== Opción múltiple: añadir/eliminar/reindexar =====
+  (function(){
+    const omList = document.getElementById('omList');
+    const omAdd  = document.getElementById('omAdd');
+
+    function reindexOm() {
+      if (!omList) return;
+      const rows = omList.querySelectorAll('.om-row');
+      rows.forEach((row, i) => {
+        const radio = row.querySelector('input[type=radio][name="om_correcta"]');
+        const ta    = row.querySelector('textarea[name="om_opciones[]"]');
+        if (radio) radio.value = i;
+        if (ta && ta.placeholder) ta.placeholder = `Opción ${i+1}`;
+      });
+    }
+
+    function bindDel(btn){
+      btn.addEventListener('click', () => {
+        const row = btn.closest('.om-row');
+        if (!row || !omList) return;
+        const rows = omList.querySelectorAll('.om-row');
+        if (rows.length > 2) {
+          const wasChecked = row.querySelector('input[type=radio]')?.checked;
+          row.remove();
+          reindexOm();
+          if (wasChecked) {
+            const radios = omList.querySelectorAll('input[type=radio][name="om_correcta"]');
+            if (radios.length) radios[0].checked = true;
+          }
+        } else {
+          row.querySelectorAll('textarea').forEach(t=>t.value='');
+          const r = row.querySelector('input[type=radio]');
+          if (r) r.checked = false;
+        }
+      }, {passive:true});
+    }
+
+    function createRow() {
+      const div = document.createElement('div');
+      div.className = 'om-row flex items-start gap-3';
+      div.innerHTML = `
+        <input type="radio" name="om_correcta" class="mt-2 h-4 w-4 border-slate-300">
+        <textarea name="om_opciones[]" rows="2" class="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"></textarea>
+        <button type="button" class="om-del inline-flex shrink-0 items-center rounded-lg border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">
+          Eliminar
+        </button>
+      `;
+      omList.appendChild(div);
+      bindDel(div.querySelector('.om-del'));
+      reindexOm();
+    }
+
+    if (omList) {
+      omList.querySelectorAll('.om-del').forEach(bindDel);
+      reindexOm();
+    }
+    if (omAdd) {
+      omAdd.addEventListener('click', () => {
+        createRow();
+      }, {passive:true});
+    }
+  })();
+
 </script>
 
 <?php require_once __DIR__ . '/../../../partials/footer.php'; ?>

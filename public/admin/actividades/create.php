@@ -44,7 +44,7 @@ try {
 
 $errors = [];
 
-// POST: guardar actividad (campos comunes + tarea/vf/rc/rh si aplica)
+// POST: guardar actividad (campos comunes + bloques específicos)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   try {
     csrf_check($_POST['csrf'] ?? null);
@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $visibilidad   = trim((string)($_POST['visibilidad'] ?? 'privada'));
     $estado        = trim((string)($_POST['estado'] ?? 'borrador'));
 
-    // DIFICULTAD: ENUM o NULL (si viene vacío pasamos NULL para respetar tu lógica actual)
+    // Dificultad: ENUM o NULL
     $dificultad = trim((string)($_POST['dificultad'] ?? ''));
     if ($dificultad !== '' && !in_array($dificultad, ['baja','media','alta'], true)) {
       throw new RuntimeException('Dificultad no válida.');
@@ -97,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
     }
 
-    // Insert actividad
+    // Insert actividad (comunes)
     $ins = pdo()->prepare('
       INSERT INTO actividades
         (profesor_id, familia_id, curso_id, asignatura_id, tema_id,
@@ -123,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ]);
     $actividadId = (int)pdo()->lastInsertId();
 
-    // ----- Específico TAREA -----
+    // ----- TAREA -----
     if ($tipo === 'tarea') {
       $instrucciones = trim((string)($_POST['t_instrucciones'] ?? ''));
       $perm_texto    = isset($_POST['t_perm_texto']) ? 1 : 0;
@@ -157,7 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       ]);
     }
 
-    // ----- Específico VERDADERO/FALSO -----
+    // ----- VERDADERO/FALSO -----
     if ($tipo === 'verdadero_falso') {
       $vf_resp     = trim((string)($_POST['vf_respuesta_correcta'] ?? ''));
       $vf_fb_ok    = trim((string)($_POST['vf_feedback_correcta'] ?? ''));
@@ -181,7 +181,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       ]);
     }
 
-    // ----- Específico RESPUESTA CORTA -----
+    // ----- RESPUESTA CORTA -----
     if ($tipo === 'respuesta_corta') {
       $rc_modo   = trim((string)($_POST['rc_modo'] ?? ''));
       if (!in_array($rc_modo, ['palabras_clave','regex'], true)) {
@@ -192,12 +192,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $rc_acentos  = isset($_POST['rc_normalizar_acentos']) ? 1 : 0;
       $rc_trim     = isset($_POST['rc_trim']) ? 1 : 0;
 
-      // comunes/aux
       $rc_resp_muestra = trim((string)($_POST['rc_respuesta_muestra'] ?? ''));
       $rc_fb_ok        = trim((string)($_POST['rc_feedback_correcta'] ?? ''));
       $rc_fb_fail      = trim((string)($_POST['rc_feedback_incorrecta'] ?? ''));
 
-      // ramas
       $palabras_json   = null;
       $coinc_min       = null;
       $puntuacion_max  = null;
@@ -256,34 +254,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       ]);
     }
 
-    // ----- Específico RELLENAR HUECOS -----
+    // ----- RELLENAR HUECOS -----
     if ($tipo === 'rellenar_huecos') {
-      $rh_plantilla = trim((string)($_POST['rh_plantilla'] ?? ''));         // ← enunciado_html
-      $rh_modo      = trim((string)($_POST['rh_modo'] ?? 'exacto'));        // UI: se valida pero NO se guarda (no existe columna)
+      $rh_plantilla = trim((string)($_POST['rh_plantilla'] ?? ''));         // enunciado_html
       $rh_case      = isset($_POST['rh_case_sensitive']) ? 1 : 0;
       $rh_acentos   = isset($_POST['rh_normalizar_acentos']) ? 1 : 0;
       $rh_trim      = isset($_POST['rh_trim']) ? 1 : 0;
       $rh_pmax      = ($_POST['rh_puntuacion_max'] !== '') ? max(0,(int)$_POST['rh_puntuacion_max']) : null;
       $rh_fb_ok     = trim((string)($_POST['rh_feedback_correcta'] ?? ''));
       $rh_fb_fail   = trim((string)($_POST['rh_feedback_incorrecta'] ?? ''));
-      $rh_sol_json  = trim((string)($_POST['rh_soluciones_json'] ?? ''));   // ← huecos_json
+      $rh_sol_json  = trim((string)($_POST['rh_soluciones_json'] ?? ''));   // huecos_json
 
       if ($rh_plantilla === '') {
         throw new RuntimeException('Debes indicar el texto con huecos.');
       }
-      // El modo no se almacena en BDD, pero mantenemos la validación para no tocar el formulario
-      if (!in_array($rh_modo, ['exacto','regex'], true)) {
-        throw new RuntimeException('Modo de corrección no válido (rellenar huecos).');
-      }
-      // Validación mínima del JSON de soluciones: debe ser un array (de arrays o strings)
       if ($rh_sol_json !== '') {
         $decoded = json_decode($rh_sol_json, true);
         if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
-          throw new RuntimeException('El JSON de soluciones no es válido. Usa un array (p. ej. ["TCP","IP"]) o array de arrays.');
+          throw new RuntimeException('El JSON de soluciones no es válido. Usa un array o array de arrays.');
         }
       }
 
-      // MAPEO A BDD REAL: enunciado_html + huecos_json (NO existe 'modo' ni 'soluciones_json')
       $insRH = pdo()->prepare('
         INSERT INTO actividades_rh
           (actividad_id, enunciado_html, huecos_json, case_sensitive, normalizar_acentos, trim_espacios,
@@ -302,6 +293,89 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ':pmax'   => $rh_pmax,
         ':fb_ok'  => ($rh_fb_ok !== '' ? $rh_fb_ok : null),
         ':fb_fail'=> ($rh_fb_fail !== '' ? $rh_fb_fail : null),
+      ]);
+    }
+
+    // ----- OPCIÓN MÚLTIPLE (1 correcta, todo o nada) -----
+    if ($tipo === 'opcion_multiple') {
+      $om_enunciado = trim((string)($_POST['om_enunciado_html'] ?? ''));
+      $om_fb_ok     = trim((string)($_POST['om_feedback_correcta'] ?? ''));
+      $om_fb_fail   = trim((string)($_POST['om_feedback_incorrecta'] ?? ''));
+      // opciones como array; filtramos vacíos
+      $om_opciones  = $_POST['om_opciones'] ?? [];
+      if (!is_array($om_opciones)) $om_opciones = [];
+      $om_opciones  = array_values(array_filter(array_map(function($v){ return trim((string)$v); }, $om_opciones), fn($v)=>$v!==''));
+
+      $om_correcta  = $_POST['om_correcta'] ?? '';
+      if ($om_enunciado === '') {
+        throw new RuntimeException('Debes indicar el enunciado de la pregunta.');
+      }
+      if (count($om_opciones) < 2) {
+        throw new RuntimeException('Debes incluir al menos dos opciones.');
+      }
+      if ($om_correcta === '' || !ctype_digit((string)$om_correcta)) {
+        throw new RuntimeException('Debes indicar la opción correcta.');
+      }
+      $idx = (int)$om_correcta;
+      if ($idx < 0 || $idx >= count($om_opciones)) {
+        throw new RuntimeException('El índice de la opción correcta no es válido.');
+      }
+
+      $opciones_json = json_encode($om_opciones, JSON_UNESCAPED_UNICODE);
+      if ($opciones_json === false) {
+        throw new RuntimeException('No se pudieron serializar las opciones.');
+      }
+
+      // >>>> Ajusta NOMBRES DE COLUMNA si tu tabla difiere <<<<
+      $insOM = pdo()->prepare('
+        INSERT INTO actividades_om
+          (actividad_id, enunciado_html, opciones_json, indice_correcta, feedback_correcta, feedback_incorrecta, created_at, updated_at)
+        VALUES
+          (:aid, :enun, :opts, :idx, :fb_ok, :fb_fail, NOW(), NOW())
+      ');
+      $insOM->execute([
+        ':aid'    => $actividadId,
+        ':enun'   => $om_enunciado,
+        ':opts'   => $opciones_json,
+        ':idx'    => $idx,
+        ':fb_ok'  => ($om_fb_ok !== '' ? $om_fb_ok : null),
+        ':fb_fail'=> ($om_fb_fail !== '' ? $om_fb_fail : null),
+      ]);
+    }
+
+    // ----- EMPAREJAR (pares simples) -----
+    if ($tipo === 'emparejar') {
+      // Recogemos pares como lista de ["A","B"]
+      $pares_izq = $_POST['emp_izq'] ?? [];
+      $pares_der = $_POST['emp_der'] ?? [];
+      if (!is_array($pares_izq)) $pares_izq = [];
+      if (!is_array($pares_der)) $pares_der = [];
+
+      $pairs = [];
+      $n = max(count($pares_izq), count($pares_der));
+      for ($i=0; $i<$n; $i++) {
+        $a = isset($pares_izq[$i]) ? trim((string)$pares_izq[$i]) : '';
+        $b = isset($pares_der[$i]) ? trim((string)$pares_der[$i]) : '';
+        if ($a !== '' && $b !== '') $pairs[] = [$a, $b];
+      }
+      if (count($pairs) < 1) {
+        throw new RuntimeException('Debes indicar al menos un par para emparejar.');
+      }
+      $pares_json = json_encode($pairs, JSON_UNESCAPED_UNICODE);
+      if ($pares_json === false) {
+        throw new RuntimeException('No se pudieron serializar los pares.');
+      }
+
+      // >>>> Ajusta NOMBRES DE COLUMNA si tu tabla difiere <<<<
+      $insEMP = pdo()->prepare('
+        INSERT INTO actividades_emp_pares
+          (actividad_id, pares_json, created_at, updated_at)
+        VALUES
+          (:aid, :pares, NOW(), NOW())
+      ');
+      $insEMP->execute([
+        ':aid'   => $actividadId,
+        ':pares' => $pares_json,
       ]);
     }
 
@@ -464,6 +538,84 @@ require_once __DIR__ . '/../../../partials/header.php';
       </div>
     </div>
 
+    <!-- ====== BLOQUE ESPECÍFICO: OPCIÓN MÚLTIPLE ====== -->
+    <div id="bloqueOM" class="hidden border-t pt-4">
+      <h3 class="text-sm font-semibold text-slate-700 mb-2">Configuración Opción múltiple</h3>
+
+      <div class="space-y-3">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">Enunciado (HTML permitido) <span class="text-rose-600">*</span></label>
+          <textarea name="om_enunciado_html" rows="3"
+                    class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($_POST['om_enunciado_html'] ?? '') ?></textarea>
+        </div>
+
+        <div>
+          <label class="mb-2 block text-sm font-medium text-slate-700">Opciones (marca la correcta)</label>
+          <?php
+            // reconstruimos 4 inputs por defecto
+            $optsPrev = $_POST['om_opciones'] ?? [];
+            if (!is_array($optsPrev)) $optsPrev = [];
+            for ($i=0; $i<4; $i++):
+              $val = (string)($optsPrev[$i] ?? '');
+          ?>
+          <div class="flex items-start gap-3 mb-2">
+            <input type="radio" name="om_correcta" value="<?= $i ?>" class="mt-2 h-4 w-4 border-slate-300" <?= (isset($_POST['om_correcta']) && (string)$_POST['om_correcta']===(string)$i)?'checked':'' ?>>
+            <textarea name="om_opciones[]" rows="2" placeholder="Opción <?= $i+1 ?>"
+                      class="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($val) ?></textarea>
+          </div>
+          <?php endfor; ?>
+          <p class="mt-1 text-xs text-slate-500">Deja vacías las que no uses. Debe haber al menos 2 opciones con contenido.</p>
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-700">Feedback si acierta</label>
+            <textarea name="om_feedback_correcta" rows="2"
+                      class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($_POST['om_feedback_correcta'] ?? '') ?></textarea>
+          </div>
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-700">Feedback si falla</label>
+            <textarea name="om_feedback_incorrecta" rows="2"
+                      class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($_POST['om_feedback_incorrecta'] ?? '') ?></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- ====== /BLOQUE OM ====== -->
+
+    <!-- ====== BLOQUE ESPECÍFICO EMPAREJAR ====== -->
+    <div id="bloqueEMP" class="hidden border-t pt-4">
+      <h3 class="text-sm font-semibold text-slate-700 mb-2">Configuración Emparejar</h3>
+
+      <p class="text-xs text-slate-600 mb-2">Introduce pares (izquierda ↔ derecha). Se ignorarán filas vacías.</p>
+
+      <div id="empRows" class="space-y-2">
+        <?php
+          $empIzq = $_POST['emp_izq'] ?? [''];
+          $empDer = $_POST['emp_der'] ?? [''];
+          if (!is_array($empIzq)) $empIzq = [''];
+          if (!is_array($empDer)) $empDer = [''];
+          $n = max(count($empIzq), count($empDer), 4);
+          for ($i=0;$i<$n;$i++):
+        ?>
+        <div class="grid gap-2 sm:grid-cols-2">
+          <input type="text" name="emp_izq[]" value="<?= h((string)($empIzq[$i] ?? '')) ?>"
+                 class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"
+                 placeholder="Elemento izquierdo">
+          <input type="text" name="emp_der[]" value="<?= h((string)($empDer[$i] ?? '')) ?>"
+                 class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"
+                 placeholder="Elemento derecho">
+        </div>
+        <?php endfor; ?>
+      </div>
+
+      <button type="button" id="empAddRow"
+              class="mt-2 inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100">
+        + Añadir fila
+      </button>
+    </div>
+    <!-- ====== /BLOQUE EMPAREJAR ====== -->
+
     <!-- ====== BLOQUE ESPECÍFICO TAREA ====== -->
     <div id="bloqueTarea" class="hidden border-t pt-4">
       <h3 class="text-sm font-semibold text-slate-700 mb-2">Opciones de Tarea / Entrega</h3>
@@ -578,7 +730,7 @@ require_once __DIR__ . '/../../../partials/header.php';
           <select name="rc_modo" id="rc_modo"
                   class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400">
             <?php
-              $rcModo = (string)($_POST['rc_modo'] ?? '');
+              $rcModo = (string)($_POST['rc_modo'] ?? 'palabras_clave');
               $ops = ['palabras_clave'=>'Palabras clave','regex'=>'Regex'];
               foreach ($ops as $v=>$lab) {
                 $sel = ($rcModo===$v) ? 'selected' : '';
@@ -673,28 +825,15 @@ require_once __DIR__ . '/../../../partials/header.php';
       </div>
 
       <div class="grid gap-4 sm:grid-cols-3 mt-2">
-        <div>
-          <label class="mb-1 block text-sm font-medium text-slate-700">Modo de corrección</label>
-          <select name="rh_modo"
-                  class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400">
-            <?php
-              $rhModoSel = (string)($_POST['rh_modo'] ?? 'exacto');
-              foreach (['exacto'=>'Exacto','regex'=>'Regex'] as $v=>$lab) {
-                $sel = ($rhModoSel===$v)?'selected':'';
-                echo '<option value="'.h($v).'" '.$sel.'>'.h($lab).'</option>';
-              }
-            ?>
-          </select>
-        </div>
-        <label class="inline-flex items-center gap-2 text-sm mt-6">
+        <label class="inline-flex items-center gap-2 text-sm">
           <input type="checkbox" name="rh_case_sensitive" class="h-4 w-4 rounded border-slate-300" <?= isset($_POST['rh_case_sensitive'])?'checked':'' ?>>
           Sensible a mayúsculas
         </label>
-        <label class="inline-flex items-center gap-2 text-sm mt-6">
+        <label class="inline-flex items-center gap-2 text-sm">
           <input type="checkbox" name="rh_normalizar_acentos" class="h-4 w-4 rounded border-slate-300" <?= isset($_POST['rh_normalizar_acentos'])?'checked':'' ?>>
           Normalizar acentos
         </label>
-        <label class="inline-flex items-center gap-2 text-sm mt-6">
+        <label class="inline-flex items-center gap-2 text-sm">
           <input type="checkbox" name="rh_trim" class="h-4 w-4 rounded border-slate-300" <?= isset($_POST['rh_trim'])?'checked':'' ?>>
           Ignorar espacios extremos
         </label>
@@ -751,16 +890,19 @@ require_once __DIR__ . '/../../../partials/header.php';
   const asigsAll  = <?= json_encode($asigs,  JSON_UNESCAPED_UNICODE) ?>;
   const temasAll  = <?= json_encode($temas,  JSON_UNESCAPED_UNICODE) ?>;
 
-  const selFam = document.getElementById('familia_id');
-  const selCur = document.getElementById('curso_id');
-  const selAsi = document.getElementById('asignatura_id');
-  const selTem = document.getElementById('tema_id');
+  const selFam  = document.getElementById('familia_id');
+  const selCur  = document.getElementById('curso_id');
+  const selAsi  = document.getElementById('asignatura_id');
+  const selTem  = document.getElementById('tema_id');
   const selTipo = document.getElementById('tipo');
 
-  const bloqueTarea = document.getElementById('bloqueTarea');
-  const bloqueVF = document.getElementById('bloqueVF');
-  const bloqueRC = document.getElementById('bloqueRC');
-  const bloqueRH = document.getElementById('bloqueRH');
+  // Bloques específicos
+  const bloqueOM   = document.getElementById('bloqueOM');
+  const bloqueEMP  = document.getElementById('bloqueEMP');
+  const bloqueTarea= document.getElementById('bloqueTarea');
+  const bloqueVF   = document.getElementById('bloqueVF');
+  const bloqueRC   = document.getElementById('bloqueRC');
+  const bloqueRH   = document.getElementById('bloqueRH');
 
   // RC subbloques
   const rcModoSel = document.getElementById('rc_modo');
@@ -821,27 +963,51 @@ require_once __DIR__ . '/../../../partials/header.php';
 
   function toggleBloques(){
     const t = selTipo.value;
-    bloqueTarea.classList.toggle('hidden', t !== 'tarea');
-    bloqueVF.classList.toggle('hidden', t !== 'verdadero_falso');
-    bloqueRC.classList.toggle('hidden', t !== 'respuesta_corta');
-    bloqueRH.classList.toggle('hidden', t !== 'rellenar_huecos');
+    if (bloqueOM)    bloqueOM.classList.toggle('hidden', t !== 'opcion_multiple');
+    if (bloqueEMP)   bloqueEMP.classList.toggle('hidden', t !== 'emparejar');
+    if (bloqueTarea) bloqueTarea.classList.toggle('hidden', t !== 'tarea');
+    if (bloqueVF)    bloqueVF.classList.toggle('hidden', t !== 'verdadero_falso');
+    if (bloqueRC)    bloqueRC.classList.toggle('hidden', t !== 'respuesta_corta');
+    if (bloqueRH)    bloqueRH.classList.toggle('hidden', t !== 'rellenar_huecos');
   }
 
   function toggleRcSub(){
     if (!rcModoSel) return;
     const m = rcModoSel.value || 'palabras_clave';
-    rcBloqPal.classList.toggle('hidden', m !== 'palabras_clave');
-    rcBloqReg.classList.toggle('hidden', m !== 'regex');
+    if (rcBloqPal) rcBloqPal.classList.toggle('hidden', m !== 'palabras_clave');
+    if (rcBloqReg) rcBloqReg.classList.toggle('hidden', m !== 'regex');
   }
 
   selTipo.addEventListener('change', toggleBloques, {passive:true});
   if (rcModoSel) rcModoSel.addEventListener('change', toggleRcSub, {passive:true});
 
-  if (currentTipo) selTipo.value = currentTipo;
+  // Botón añadir fila (Emparejar)
+  const empContainer = document.getElementById('empRows');
+  const empAdd = document.getElementById('empAddRow');
+  if (empAdd && empContainer) {
+    empAdd.addEventListener('click', ()=>{
+      const row = document.createElement('div');
+      row.className = 'grid gap-2 sm:grid-cols-2';
+      row.innerHTML = `
+        <input type="text" name="emp_izq[]" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400" placeholder="Elemento izquierdo">
+        <input type="text" name="emp_der[]" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400" placeholder="Elemento derecho">
+      `;
+      empContainer.appendChild(row);
+    }, {passive:true});
+  }
+
+  // Estado inicial (mostrar bloque según el tipo actual)
+  if (<?= json_encode((string)($_POST['tipo'] ?? '')) ?>) {
+    selTipo.value = <?= json_encode((string)($_POST['tipo'] ?? '')) ?>;
+  }
   toggleBloques();
 
-  if (rcModoSel && currentRcModo) rcModoSel.value = currentRcModo;
+  // Subbloques RC
+  if (rcModoSel && <?= json_encode((string)($_POST['rc_modo'] ?? 'palabras_clave')) ?>) {
+    rcModoSel.value = <?= json_encode((string)($_POST['rc_modo'] ?? 'palabras_clave')) ?>;
+  }
   toggleRcSub();
 </script>
 
 <?php require_once __DIR__ . '/../../../partials/footer.php'; ?>
+
