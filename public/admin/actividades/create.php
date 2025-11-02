@@ -329,15 +329,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       // >>>> Ajusta NOMBRES DE COLUMNA si tu tabla difiere <<<<
       $insOM = pdo()->prepare('
         INSERT INTO actividades_om
-          (actividad_id, enunciado_html, opciones_json, indice_correcta, feedback_correcta, feedback_incorrecta, created_at, updated_at)
+          (actividad_id, enunciado_html,   feedback_correcta, feedback_incorrecta, created_at, updated_at)
         VALUES
-          (:aid, :enun, :opts, :idx, :fb_ok, :fb_fail, NOW(), NOW())
+          (:aid, :enun,   :fb_ok, :fb_fail, NOW(), NOW())
       ');
       $insOM->execute([
         ':aid'    => $actividadId,
         ':enun'   => $om_enunciado,
-        ':opts'   => $opciones_json,
-        ':idx'    => $idx,
+      //  ':opts'   => $opciones_json,
+       // ':idx'    => $idx,
         ':fb_ok'  => ($om_fb_ok !== '' ? $om_fb_ok : null),
         ':fb_fail'=> ($om_fb_fail !== '' ? $om_fb_fail : null),
       ]);
