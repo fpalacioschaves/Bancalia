@@ -6,11 +6,11 @@ require_once __DIR__ . '/../../../config.php';
 require_login_or_redirect();
 $u = current_user();
 
-if (($u['role'] ?? '') !== 'admin') {
+/*if (($u['role'] ?? '') !== 'admin') {
   flash('error', 'Acceso restringido a administradores.');
   header('Location: ' . PUBLIC_URL . '/dashboard.php');
   exit;
-}
+}*/
 
 // Datos para selects
 $fams = pdo()->query('SELECT id, nombre FROM familias_profesionales WHERE is_active=1 ORDER BY nombre ASC')->fetchAll();

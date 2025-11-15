@@ -38,11 +38,20 @@ if (!defined('PUBLIC_URL')) define('PUBLIC_URL', BASE_URL . '/public');
             <a href="<?= PUBLIC_URL ?>/admin/profesores/index.php" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Profesores</a>
             <!-- Admin solo ve listado de actividades (sin crear/editar/borrar) -->
             <a href="<?= PUBLIC_URL ?>/admin/actividades/index.php" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Actividades</a>
+            <a href="<?= PUBLIC_URL ?>/admin/examenes/index.php" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Exámenes</a>
 
           <?php elseif (($u['role'] ?? '') === 'profesor'): ?>
             <a href="<?= PUBLIC_URL ?>/mi-perfil.php" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Mi Perfil</a>
+
+            <!-- AÑADIDO: el profesor también puede gestionar catálogo académico -->
+            <a href="<?= PUBLIC_URL ?>/admin/familias/index.php" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Familias</a>
+            <a href="<?= PUBLIC_URL ?>/admin/cursos/index.php" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cursos</a>
+            <a href="<?= PUBLIC_URL ?>/admin/asignaturas/index.php" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Asignaturas</a>
+            <a href="<?= PUBLIC_URL ?>/admin/temas/index.php" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Temas</a>
+
             <a href="<?= PUBLIC_URL ?>/admin/centros/index.php" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Centros</a>
             <a href="<?= PUBLIC_URL ?>/admin/actividades/index.php" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Actividades</a>
+            <a href="<?= PUBLIC_URL ?>/admin/examenes/index.php" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Exámenes</a>
           <?php endif; ?>
         <?php endif; ?>
             <a href="<?= PUBLIC_URL ?>/ayuda.php" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Ayuda</a>
