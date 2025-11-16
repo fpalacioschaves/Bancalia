@@ -165,29 +165,35 @@ if (!$examen) {
     exit;
 }
 
+// Tipo de contenedor: examen formal o práctica
+$tipoRaw      = $examen['tipo'] ?? 'examen';
+$isPractica   = ($tipoRaw === 'practica');
+$labelTitulo  = $isPractica ? 'Hoja de actividades' : 'Examen';
+$labelCorto   = $isPractica ? 'práctica' : 'examen'; // para textos cortos
+
 // Validación básica de disponibilidad
 $hoy   = date('Y-m-d');
 $ahora = date('H:i:s');
 
 if ($examen['estado'] !== 'publicado') {
-    echo "<h1>Examen no disponible</h1><p>El examen no está publicado.</p>";
+    echo "<h1>$labelTitulo no disponible</h1><p>Este $labelCorto no está publicado.</p>";
     exit;
 }
 
 if ($examen['fecha'] !== null) {
     if ($examen['fecha'] > $hoy) {
-        echo "<h1>Aún no disponible</h1><p>El examen todavía no ha comenzado.</p>";
+        echo "<h1>Aún no disponible</h1><p>Este $labelCorto todavía no ha comenzado.</p>";
         exit;
     }
     if ($examen['fecha'] < $hoy) {
-        echo "<h1>Examen cerrado</h1><p>La fecha del examen ya ha pasado.</p>";
+        echo "<h1>$labelTitulo cerrado</h1><p>La fecha de este $labelCorto ya ha pasado.</p>";
         exit;
     }
 }
 
 if ($examen['hora'] !== null && $examen['fecha'] === $hoy) {
     if ($examen['hora'] > $ahora) {
-        echo "<h1>Aún no disponible</h1><p>El examen comenzará a las {$examen['hora']}.</p>";
+        echo "<h1>Aún no disponible</h1><p>Este $labelCorto comenzará a las {$examen['hora']}.</p>";
         exit;
     }
 }
@@ -224,7 +230,7 @@ if (!isset($_SESSION['examen_intento'])) {
     <html>
     <head>
         <meta charset="utf-8">
-        <title>Acceso al Examen</title>
+        <title>Acceso a la <?= htmlspecialchars($labelTitulo) ?></title>
         <script src="https://cdn.tailwindcss.com"></script>
     </head>
     <body class="bg-gray-100">
@@ -233,9 +239,12 @@ if (!isset($_SESSION['examen_intento'])) {
 
         <div class="w-full max-w-md bg-white shadow-xl rounded-2xl p-8">
 
-            <h1 class="text-3xl font-bold text-gray-900 mb-6 text-center">
-                Acceso al examen
+            <h1 class="text-3xl font-bold text-gray-900 mb-2 text-center">
+                Acceso a la <?= htmlspecialchars($labelTitulo) ?>
             </h1>
+            <p class="text-sm text-gray-600 mb-6 text-center">
+                <?= htmlspecialchars($examen['titulo']) ?>
+            </p>
 
             <?php if (isset($error)): ?>
                 <div class="bg-red-100 text-red-700 px-4 py-3 rounded mb-4">
@@ -279,7 +288,7 @@ if (!isset($_SESSION['examen_intento'])) {
                                text-center py-3 rounded-lg font-semibold tracking-wide 
                                shadow-md transition"
                     >
-                        Comenzar examen
+                        Comenzar <?= htmlspecialchars($labelCorto) ?>
                     </button>
                 </div>
 
@@ -328,13 +337,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fin_examen'])) {
     <html>
     <head>
         <meta charset="utf-8">
-        <title>Examen enviado</title>
+        <title><?= htmlspecialchars($labelTitulo) ?> enviada</title>
         <script src="https://cdn.tailwindcss.com"></script>
     </head>
     <body class="bg-gray-100">
         <div class="max-w-xl mx-auto mt-20 bg-white p-8 shadow-lg rounded-lg text-center">
-            <h1 class="text-2xl font-bold mb-6">Examen enviado correctamente</h1>
-            <p class="text-gray-700">Gracias por completar el examen.</p>
+            <h1 class="text-2xl font-bold mb-6"><?= htmlspecialchars($labelTitulo) ?> enviada correctamente</h1>
+            <p class="text-gray-700">Gracias por completar esta <?= htmlspecialchars($labelCorto) ?>.</p>
         </div>
     </body>
     </html>
@@ -354,165 +363,172 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fin_examen'])) {
 
 <div class="max-w-3xl mx-auto mt-10 bg-white p-10 shadow-lg rounded-lg">
 
-<h1 class="text-3xl font-bold mb-10"><?= htmlspecialchars($examen['titulo']) ?></h1>
-
-<form method="post">
-
-<?php foreach ($examen['actividades'] as $index => $a): 
-    $actividad = cargarActividad($pdo, $a['actividad_id']);
-    if (!$actividad) continue;
-?>
-    <div class="mb-10 pb-10 border-b">
-
-        <h2 class="text-xl font-semibold mb-2">Pregunta <?= $index + 1 ?></h2>
-
-        <div class="mb-4 text-lg leading-relaxed">
-            <?= nl2br(htmlspecialchars($actividad['titulo'])) ?>
+    <div class="mb-4 flex items-center justify-between gap-3">
+        <div>
+            <h1 class="text-3xl font-bold mb-1"><?= htmlspecialchars($examen['titulo']) ?></h1>
+            <p class="text-sm text-gray-500">
+                <?= htmlspecialchars($labelTitulo) ?>
+            </p>
         </div>
+    </div>
 
-        <?php if (!empty($actividad['descripcion'])): ?>
-            <div class="mb-4 text-gray-600 text-sm">
-                <?= nl2br(htmlspecialchars($actividad['descripcion'])) ?>
-            </div>
-        <?php endif; ?>
+    <form method="post">
 
+    <?php foreach ($examen['actividades'] as $index => $a): 
+        $actividad = cargarActividad($pdo, $a['actividad_id']);
+        if (!$actividad) continue;
+    ?>
+        <div class="mb-10 pb-10 border-b">
 
-        <?php if ($actividad['tipo'] === 'verdadero_falso'): ?>
+            <h2 class="text-xl font-semibold mb-2">Pregunta <?= $index + 1 ?></h2>
 
-            <label class="block mb-3">
-                <input type="radio" name="resp_<?= $a['actividad_id'] ?>" value="verdadero" class="mr-2">
-                Verdadero
-            </label>
-            <label class="block mb-3">
-                <input type="radio" name="resp_<?= $a['actividad_id'] ?>" value="falso" class="mr-2">
-                Falso
-            </label>
-
-        <?php elseif ($actividad['tipo'] === 'opcion_multiple'): ?>
-
-            <?php if (!empty($actividad['opciones'])): ?>
-                <?php foreach ($actividad['opciones'] as $op): ?>
-                    <label class="block mb-3">
-                        <input
-                            type="radio"
-                            name="resp_<?= $a['actividad_id'] ?>"
-                            value="<?= (int)$op['id'] ?>"
-                            class="mr-2"
-                        >
-                        <!-- usamos opcion_html, que es el campo real -->
-                        <?= $op['opcion_html'] ?>
-                    </label>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <p class="text-sm text-gray-500"><em>Esta pregunta no tiene opciones configuradas.</em></p>
-            <?php endif; ?>
-
-        <?php elseif ($actividad['tipo'] === 'respuesta_corta'): ?>
-
-            <textarea
-                name="resp_<?= $a['actividad_id'] ?>"
-                class="w-full border p-3 rounded"
-                rows="4"
-            ></textarea>
-
-        <?php elseif ($actividad['tipo'] === 'rellenar_huecos'): ?>
-
-            <?php
-                $texto   = $actividad['rh']['enunciado_html'] ?? '';
-                $huecos  = json_decode($actividad['rh']['huecos_json'] ?? '[]', true);
-                $num     = is_array($huecos) ? count($huecos) : 0;
-
-                for ($i = 1; $i <= $num; $i++) {
-                    $input = "<input class='border p-2 rounded w-40 inline-block mx-1' ".
-                             "name='resp_{$a['actividad_id']}_{$i}'>";
-                    $texto = str_replace('{{' . $i . '}}', $input, $texto);
-                }
-            ?>
-
-            <div class="leading-relaxed text-lg mb-4">
-                <?= $texto ?>
+            <div class="mb-4 text-lg leading-relaxed">
+                <?= nl2br(htmlspecialchars($actividad['titulo'])) ?>
             </div>
 
-        <?php elseif ($actividad['tipo'] === 'emparejar'): ?>
-
-            <?php if (!empty($actividad['pares'])): ?>
-                <?php
-                    // Creamos un array de "derechas" para los selects
-                    $derechas = [];
-                    foreach ($actividad['pares'] as $p) {
-                        $derechas[] = $p['derecha_html'];
-                    }
-                    $derechas = array_unique($derechas);
-                ?>
-                <?php foreach ($actividad['pares'] as $p): ?>
-                    <div class="flex items-center gap-4 mb-3">
-                        <span class="font-semibold"><?= $p['izquierda_html'] ?></span>
-                        →
-                        <select
-                            name="resp_<?= $a['actividad_id'] ?>_<?= $p['id'] ?>"
-                            class="border p-2 rounded"
-                        >
-                            <option value="">—</option>
-                            <?php foreach ($derechas as $der): ?>
-                                <option value="<?= htmlspecialchars($der) ?>">
-                                    <?= htmlspecialchars($der) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <p class="text-sm text-gray-500"><em>Esta actividad de emparejar no tiene pares configurados.</em></p>
-            <?php endif; ?>
-
-        <?php elseif ($actividad['tipo'] === 'tarea'): ?>
-
-            <?php if (!empty($actividad['tarea']['instrucciones'])): ?>
-                <div class="mb-3 text-gray-700">
-                    <?= nl2br(htmlspecialchars($actividad['tarea']['instrucciones'])) ?>
+            <?php if (!empty($actividad['descripcion'])): ?>
+                <div class="mb-4 text-gray-600 text-sm">
+                    <?= nl2br(htmlspecialchars($actividad['descripcion'])) ?>
                 </div>
             <?php endif; ?>
 
-            <?php if (!empty($actividad['tarea']['perm_texto'])): ?>
+
+            <?php if ($actividad['tipo'] === 'verdadero_falso'): ?>
+
                 <label class="block mb-3">
-                    Redacción:
-                    <textarea
-                        class="w-full border rounded p-3 mt-2"
-                        rows="6"
-                        name="resp_<?= $a['actividad_id'] ?>_texto"
-                    ></textarea>
+                    <input type="radio" name="resp_<?= $a['actividad_id'] ?>" value="verdadero" class="mr-2">
+                    Verdadero
                 </label>
-            <?php endif; ?>
-
-            <?php if (!empty($actividad['tarea']['perm_enlace'])): ?>
                 <label class="block mb-3">
-                    Enlace:
-                    <input
-                        class="w-full border p-2 rounded mt-2"
-                        name="resp_<?= $a['actividad_id'] ?>_enlace"
-                    >
+                    <input type="radio" name="resp_<?= $a['actividad_id'] ?>" value="falso" class="mr-2">
+                    Falso
                 </label>
+
+            <?php elseif ($actividad['tipo'] === 'opcion_multiple'): ?>
+
+                <?php if (!empty($actividad['opciones'])): ?>
+                    <?php foreach ($actividad['opciones'] as $op): ?>
+                        <label class="block mb-3">
+                            <input
+                                type="radio"
+                                name="resp_<?= $a['actividad_id'] ?>"
+                                value="<?= (int)$op['id'] ?>"
+                                class="mr-2"
+                            >
+                            <!-- usamos opcion_html, que es el campo real -->
+                            <?= $op['opcion_html'] ?>
+                        </label>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <p class="text-sm text-gray-500"><em>Esta pregunta no tiene opciones configuradas.</em></p>
+                <?php endif; ?>
+
+            <?php elseif ($actividad['tipo'] === 'respuesta_corta'): ?>
+
+                <textarea
+                    name="resp_<?= $a['actividad_id'] ?>"
+                    class="w-full border p-3 rounded"
+                    rows="4"
+                ></textarea>
+
+            <?php elseif ($actividad['tipo'] === 'rellenar_huecos'): ?>
+
+                <?php
+                    $texto   = $actividad['rh']['enunciado_html'] ?? '';
+                    $huecos  = json_decode($actividad['rh']['huecos_json'] ?? '[]', true);
+                    $num     = is_array($huecos) ? count($huecos) : 0;
+
+                    for ($i = 1; $i <= $num; $i++) {
+                        $input = "<input class='border p-2 rounded w-40 inline-block mx-1' ".
+                                 "name='resp_{$a['actividad_id']}_{$i}'>";
+                        $texto = str_replace('{{' . $i . '}}', $input, $texto);
+                    }
+                ?>
+
+                <div class="leading-relaxed text-lg mb-4">
+                    <?= $texto ?>
+                </div>
+
+            <?php elseif ($actividad['tipo'] === 'emparejar'): ?>
+
+                <?php if (!empty($actividad['pares'])): ?>
+                    <?php
+                        // Creamos un array de "derechas" para los selects
+                        $derechas = [];
+                        foreach ($actividad['pares'] as $p) {
+                            $derechas[] = $p['derecha_html'];
+                        }
+                        $derechas = array_unique($derechas);
+                    ?>
+                    <?php foreach ($actividad['pares'] as $p): ?>
+                        <div class="flex items-center gap-4 mb-3">
+                            <span class="font-semibold"><?= $p['izquierda_html'] ?></span>
+                            →
+                            <select
+                                name="resp_<?= $a['actividad_id'] ?>_<?= $p['id'] ?>"
+                                class="border p-2 rounded"
+                            >
+                                <option value="">—</option>
+                                <?php foreach ($derechas as $der): ?>
+                                    <option value="<?= htmlspecialchars($der) ?>">
+                                        <?= htmlspecialchars($der) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <p class="text-sm text-gray-500"><em>Esta actividad de emparejar no tiene pares configurados.</em></p>
+                <?php endif; ?>
+
+            <?php elseif ($actividad['tipo'] === 'tarea'): ?>
+
+                <?php if (!empty($actividad['tarea']['instrucciones'])): ?>
+                    <div class="mb-3 text-gray-700">
+                        <?= nl2br(htmlspecialchars($actividad['tarea']['instrucciones'])) ?>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (!empty($actividad['tarea']['perm_texto'])): ?>
+                    <label class="block mb-3">
+                        Redacción:
+                        <textarea
+                            class="w-full border rounded p-3 mt-2"
+                            rows="6"
+                            name="resp_<?= $a['actividad_id'] ?>_texto"
+                        ></textarea>
+                    </label>
+                <?php endif; ?>
+
+                <?php if (!empty($actividad['tarea']['perm_enlace'])): ?>
+                    <label class="block mb-3">
+                        Enlace:
+                        <input
+                            class="w-full border p-2 rounded mt-2"
+                            name="resp_<?= $a['actividad_id'] ?>_enlace"
+                        >
+                    </label>
+                <?php endif; ?>
+
+                <?php if (empty($actividad['tarea']['perm_texto']) && empty($actividad['tarea']['perm_enlace'])): ?>
+                    <p class="text-sm text-gray-500">
+                        <em>Esta tarea no tiene campos habilitados (texto/enlace).</em>
+                    </p>
+                <?php endif; ?>
+
             <?php endif; ?>
 
-            <?php if (empty($actividad['tarea']['perm_texto']) && empty($actividad['tarea']['perm_enlace'])): ?>
-                <p class="text-sm text-gray-500">
-                    <em>Esta tarea no tiene campos habilitados (texto/enlace).</em>
-                </p>
-            <?php endif; ?>
+        </div>
 
-        <?php endif; ?>
+    <?php endforeach; ?>
 
-    </div>
+    <input type="hidden" name="fin_examen" value="1">
 
-<?php endforeach; ?>
+    <button class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-lg text-lg font-semibold">
+        Enviar <?= htmlspecialchars($labelCorto) ?>
+    </button>
 
-<input type="hidden" name="fin_examen" value="1">
-
-<button class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-lg text-lg font-semibold">
-    Enviar examen
-</button>
-
-</form>
+    </form>
 
 </div>
 

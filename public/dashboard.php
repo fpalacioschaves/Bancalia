@@ -6,7 +6,7 @@ require_login_or_redirect();
 
 $u = current_user();
 require_once __DIR__ . '/../partials/header.php';
-$role = $u['role'] ?? '';
+$role       = $u['role'] ?? '';
 $profesorId = $u['profesor_id'] ?? null;
 
 // ---------- ADMIN ----------
@@ -123,30 +123,6 @@ if ($role === 'admin') {
     </a>
   </div>
 
-  <!-- Accesos rápidos 
-  <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-    <a href="<?= PUBLIC_URL ?>/admin/familias/create.php" class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
-      <div class="text-sm font-semibold">+ Nueva familia</div>
-      <p class="mt-1 text-xs text-slate-600">Crea una familia profesional.</p>
-    </a>
-    <a href="<?= PUBLIC_URL ?>/admin/cursos/create.php" class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
-      <div class="text-sm font-semibold">+ Nuevo curso</div>
-      <p class="mt-1 text-xs text-slate-600">Añade un curso a una familia.</p>
-    </a>
-    <a href="<?= PUBLIC_URL ?>/admin/asignaturas/create.php" class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
-      <div class="text-sm font-semibold">+ Nueva asignatura</div>
-      <p class="mt-1 text-xs text-slate-600">Define una asignatura para un curso.</p>
-    </a>
-    <a href="<?= PUBLIC_URL ?>/admin/temas/create.php" class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
-      <div class="text-sm font-semibold">+ Nuevo tema</div>
-      <p class="mt-1 text-xs text-slate-600">Crea un tema dentro de una asignatura.</p>
-    </a>
-    <a href="<?= PUBLIC_URL ?>/admin/centros/create.php" class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
-      <div class="text-sm font-semibold">+ Nuevo centro</div>
-      <p class="mt-1 text-xs text-slate-600">Registra un centro educativo.</p>
-    </a>
-  </div>
--->
   <!-- Recientes -->
   <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
     <!-- Familias + Cursos -->
@@ -250,6 +226,7 @@ if ($role === 'admin') {
 <?php else: ?>
   <?php
   // ---------- PROFESOR ----------
+
   // Resolver profesor_id si no viene en sesión (por si acaso)
   if (!$profesorId && !empty($u['email'])) {
     $st = pdo()->prepare('SELECT id FROM profesores WHERE email=:e LIMIT 1');
@@ -257,7 +234,7 @@ if ($role === 'admin') {
     if ($row = $st->fetch()) $profesorId = (int)$row['id'];
   }
 
-  // KPIs del profesor (distintos por asignación)
+  // KPIs del profesor
   $kpi_prof = [
     'cursos'      => 0,
     'asignaturas' => 0,
@@ -265,17 +242,25 @@ if ($role === 'admin') {
     'centros'     => 0,
   ];
 
+  // Pendientes del profesor
+  $pend_prof = [
+    'examenes_sin_corregir' => 0,
+    'intentos_hoy'          => 0,
+    'tareas_sin_puntuacion' => 0,
+  ];
+
   if ($profesorId) {
-    $kpi_prof['cursos'] = (int) pdo()->prepare('SELECT COUNT(DISTINCT curso_id) FROM profesor_asignacion WHERE profesor_id=:p')
-                                      ->execute([':p'=>$profesorId]) ?: 0;
+    // Cursos
     $stmt = pdo()->prepare('SELECT COUNT(DISTINCT curso_id) AS n FROM profesor_asignacion WHERE profesor_id=:p');
     $stmt->execute([':p'=>$profesorId]);
     $kpi_prof['cursos'] = (int)($stmt->fetchColumn() ?: 0);
 
+    // Asignaturas
     $stmt = pdo()->prepare('SELECT COUNT(DISTINCT asignatura_id) AS n FROM profesor_asignacion WHERE profesor_id=:p');
     $stmt->execute([':p'=>$profesorId]);
     $kpi_prof['asignaturas'] = (int)($stmt->fetchColumn() ?: 0);
 
+    // Temas
     $stmt = pdo()->prepare('
       SELECT COUNT(*) AS n
       FROM temas t
@@ -285,14 +270,53 @@ if ($role === 'admin') {
     $stmt->execute([':p'=>$profesorId]);
     $kpi_prof['temas'] = (int)($stmt->fetchColumn() ?: 0);
 
+    // Centros
     $stmt = pdo()->prepare('SELECT COUNT(DISTINCT centro_id) AS n FROM profesor_asignacion WHERE profesor_id=:p AND centro_id IS NOT NULL');
     $stmt->execute([':p'=>$profesorId]);
     $kpi_prof['centros'] = (int)($stmt->fetchColumn() ?: 0);
-  }
 
-  // Recientes profesor (limit 5)
-  $prof_recent_cursos = $prof_recent_asig = $prof_recent_temas = [];
-  if ($profesorId) {
+    // ---- Pendientes ----
+
+    // 1) Exámenes con intentos sin corregir
+    $stmt = pdo()->prepare('
+      SELECT COUNT(DISTINCT e.id) AS n
+      FROM examenes e
+      JOIN examen_intentos ei ON ei.examen_id = e.id
+      WHERE e.profesor_id = :p
+        AND (ei.corregido IS NULL OR ei.corregido = 0)
+    ');
+    $stmt->execute([':p' => $profesorId]);
+    $pend_prof['examenes_sin_corregir'] = (int)($stmt->fetchColumn() ?: 0);
+
+    // 2) Intentos nuevos hoy
+    // IMPORTANTE: ajusta "created_at" al nombre real de la columna de fecha en examen_intentos
+    $stmt = pdo()->prepare('
+      SELECT COUNT(*) AS n
+      FROM examenes e
+      JOIN examen_intentos ei ON ei.examen_id = e.id
+      WHERE e.profesor_id = :p
+        AND DATE(ei.created_at) = CURDATE()
+    ');
+    $stmt->execute([':p' => $profesorId]);
+    $pend_prof['intentos_hoy'] = (int)($stmt->fetchColumn() ?: 0);
+
+    // 3) Tareas sin puntuación
+    $stmt = pdo()->prepare('
+      SELECT COUNT(*) AS n
+      FROM examenes e
+      JOIN examen_intentos ei   ON ei.examen_id = e.id
+      JOIN examen_respuestas er ON er.intento_id = ei.id
+      JOIN actividades a        ON a.id = er.actividad_id
+      WHERE e.profesor_id = :p
+        AND a.tipo = "tarea"
+        AND er.puntuacion IS NULL
+    ');
+    $stmt->execute([':p' => $profesorId]);
+    $pend_prof['tareas_sin_puntuacion'] = (int)($stmt->fetchColumn() ?: 0);
+
+    // Recientes profesor (limit 5)
+    $prof_recent_cursos = $prof_recent_asig = $prof_recent_temas = [];
+
     $st = pdo()->prepare('
       SELECT DISTINCT c.id, c.nombre, MAX(pa.updated_at) AS updated_at
       FROM profesor_asignacion pa
@@ -331,10 +355,12 @@ if ($role === 'admin') {
     ');
     $st->execute([':p'=>$profesorId]);
     $prof_recent_temas = $st->fetchAll();
+  } else {
+    $prof_recent_cursos = $prof_recent_asig = $prof_recent_temas = [];
   }
   ?>
 
-  <!-- ======= PROFESOR: KPIs (mismo estilo) ======= -->
+  <!-- ======= PROFESOR: KPIs ======= -->
   <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
     <div class="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div class="text-xs font-medium text-slate-500">Tus cursos</div>
@@ -354,7 +380,69 @@ if ($role === 'admin') {
     </div>
   </div>
 
-  <!-- ======= PROFESOR: Recientes (mismo patrón de tarjetas) ======= -->
+  <!-- ======= PROFESOR: Tus pendientes ======= -->
+  <div class="mb-6">
+    <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
+      Tus pendientes
+    </h2>
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <!-- Exámenes con intentos sin corregir -->
+      <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 flex flex-col justify-between">
+        <div>
+          <div class="text-xs font-medium text-amber-700">Exámenes con intentos sin corregir</div>
+          <div class="mt-2 text-3xl font-semibold text-amber-900">
+            <?= number_format($pend_prof['examenes_sin_corregir']) ?>
+          </div>
+        </div>
+        <div class="mt-3">
+          <a
+            href="<?= PUBLIC_URL ?>/mis_pendientes.php#examenes"
+            class="inline-flex items-center rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-500"
+          >
+            Ver exámenes
+          </a>
+        </div>
+      </div>
+
+      <!-- Intentos nuevos hoy -->
+      <div class="rounded-xl border border-sky-200 bg-sky-50 p-4 flex flex-col justify-between">
+        <div>
+          <div class="text-xs font-medium text-sky-700">Intentos nuevos hoy</div>
+          <div class="mt-2 text-3xl font-semibold text-sky-900">
+            <?= number_format($pend_prof['intentos_hoy']) ?>
+          </div>
+        </div>
+        <div class="mt-3">
+          <a
+            href="<?= PUBLIC_URL ?>/mis_pendientes.php#examenes"
+            class="inline-flex items-center rounded-md bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-500"
+          >
+            Ver intentos
+          </a>
+        </div>
+      </div>
+
+      <!-- Tareas sin calificar -->
+      <div class="rounded-xl border border-fuchsia-200 bg-fuchsia-50 p-4 flex flex-col justify-between">
+        <div>
+          <div class="text-xs font-medium text-fuchsia-700">Tareas sin calificar</div>
+          <div class="mt-2 text-3xl font-semibold text-fuchsia-900">
+            <?= number_format($pend_prof['tareas_sin_puntuacion']) ?>
+          </div>
+        </div>
+        <div class="mt-3">
+          <a
+            href="<?= PUBLIC_URL ?>/mis_pendientes.php#tareas"
+            class="inline-flex items-center rounded-md bg-fuchsia-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-fuchsia-500"
+          >
+            Ver tareas
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======= PROFESOR: Recientes ======= -->
   <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
     <!-- Tus cursos -->
     <div class="rounded-xl border border-slate-200 bg-white p-0 shadow-sm overflow-hidden">
@@ -422,4 +510,3 @@ if ($role === 'admin') {
 <?php endif; ?>
 
 <?php require_once __DIR__ . '/../partials/footer.php'; ?>
-

@@ -59,6 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fecha_raw      = trim($_POST['fecha'] ?? '');
     $hora_raw       = trim($_POST['hora'] ?? '');
     $duracion_raw   = trim($_POST['duracion_minutos'] ?? '');
+    $tipo           = $_POST['tipo'] ?? 'examen';
 
     if ($profesor_id <= 0)   throw new RuntimeException('Selecciona un profesor.');
     if ($familia_id <= 0)    throw new RuntimeException('Selecciona una familia.');
@@ -68,6 +69,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!in_array($estado, ['borrador', 'publicado'], true)) {
       $estado = 'borrador';
+    }
+
+    if (!in_array($tipo, ['examen', 'practica'], true)) {
+      $tipo = 'examen';
     }
 
     $fecha = $fecha_raw !== '' ? $fecha_raw : null; // YYYY-MM-DD
@@ -99,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       throw new RuntimeException('La asignatura seleccionada no existe o no está activa.');
     }
 
-    // Inserción EXACTA según estructura de `examenes`
+    // Inserción EXACTA según estructura de `examenes` + campo `tipo`
     $ins = pdo()->prepare('
       INSERT INTO examenes (
         profesor_id,
@@ -109,6 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         titulo,
         descripcion,
         estado,
+        tipo,
         fecha,
         hora,
         duracion_minutos
@@ -120,6 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         :titulo,
         :descripcion,
         :estado,
+        :tipo,
         :fecha,
         :hora,
         :duracion_minutos
@@ -134,6 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       ':titulo'           => $titulo,
       ':descripcion'      => $descripcion !== '' ? $descripcion : null,
       ':estado'           => $estado,
+      ':tipo'             => $tipo,
       ':fecha'            => $fecha,
       ':hora'             => $hora,
       ':duracion_minutos' => $duracion_minutos
@@ -155,9 +163,9 @@ require_once __DIR__ . '/../../../partials/header.php';
 
 <div class="mb-6 flex items-center justify-between">
   <div>
-    <h1 class="text-xl font-semibold tracking-tight">Nuevo examen</h1>
+    <h1 class="text-xl font-semibold tracking-tight">Nuevo examen / hoja de actividades</h1>
     <p class="mt-1 text-sm text-slate-600">
-      Crea un examen asociado a profesor, familia, curso y asignatura.
+      Crea un examen formal o una hoja de actividades asociada a profesor, familia, curso y asignatura.
     </p>
   </div>
   <a href="<?= PUBLIC_URL ?>/admin/examenes/index.php"
@@ -236,10 +244,10 @@ require_once __DIR__ . '/../../../partials/header.php';
 
     <div>
       <label for="titulo" class="mb-1 block text-sm font-medium text-slate-700">
-        Título del examen <span class="text-rose-600">*</span>
+        Título <span class="text-rose-600">*</span>
       </label>
       <input id="titulo" name="titulo" type="text" required
-             placeholder='Ej. "Examen 1ª Evaluación – Bases de Datos"'
+             placeholder='Ej. "Examen 1ª Evaluación – Bases de Datos" o "Práctica Tema 3 – Arrays"'
              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
     </div>
 
@@ -249,10 +257,25 @@ require_once __DIR__ . '/../../../partials/header.php';
       </label>
       <textarea id="descripcion" name="descripcion" rows="4"
                 class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
-                placeholder="Añade detalles sobre el examen (contenidos, indicaciones para el alumnado, etc.)…"></textarea>
+                placeholder="Añade detalles sobre el examen o la hoja de actividades (contenidos, indicaciones para el alumnado, etc.)…"></textarea>
     </div>
 
+    <!-- Tipo de prueba: examen o práctica -->
     <div class="grid gap-4 sm:grid-cols-3">
+      <div>
+        <label for="tipo" class="mb-1 block text-sm font-medium text-slate-700">
+          Tipo de prueba
+        </label>
+        <select id="tipo" name="tipo"
+                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
+          <option value="examen" selected>Examen formal</option>
+          <option value="practica">Hoja de actividades / práctica</option>
+        </select>
+        <p class="mt-1 text-xs text-slate-500">
+          El tipo "Hoja de actividades" se puede usar para tareas o prácticas no necesariamente evaluables.
+        </p>
+      </div>
+
       <div>
         <label for="estado" class="mb-1 block text-sm font-medium text-slate-700">
           Estado
@@ -268,24 +291,6 @@ require_once __DIR__ . '/../../../partials/header.php';
       </div>
 
       <div>
-        <label for="fecha" class="mb-1 block text-sm font-medium text-slate-700">
-          Fecha del examen
-        </label>
-        <input id="fecha" name="fecha" type="date"
-               class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
-      </div>
-
-      <div>
-        <label for="hora" class="mb-1 block text-sm font-medium text-slate-700">
-          Hora del examen
-        </label>
-        <input id="hora" name="hora" type="time"
-               class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
-      </div>
-    </div>
-
-    <div class="grid gap-4 sm:grid-cols-3">
-      <div>
         <label for="duracion_minutos" class="mb-1 block text-sm font-medium text-slate-700">
           Duración (minutos)
         </label>
@@ -295,6 +300,24 @@ require_once __DIR__ . '/../../../partials/header.php';
         <p class="mt-1 text-xs text-slate-500">
           Puedes dejarlo vacío si no quieres fijar duración.
         </p>
+      </div>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div>
+        <label for="fecha" class="mb-1 block text-sm font-medium text-slate-700">
+          Fecha del examen / práctica
+        </label>
+        <input id="fecha" name="fecha" type="date"
+               class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
+      </div>
+
+      <div>
+        <label for="hora" class="mb-1 block text-sm font-medium text-slate-700">
+          Hora
+        </label>
+        <input id="hora" name="hora" type="time"
+               class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
       </div>
     </div>
 
@@ -312,3 +335,4 @@ require_once __DIR__ . '/../../../partials/header.php';
 </div>
 
 <?php require_once __DIR__ . '/../../../partials/footer.php'; ?>
+

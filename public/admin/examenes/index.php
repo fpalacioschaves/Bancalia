@@ -9,12 +9,15 @@ require_once __DIR__ . '/../../../partials/header.php';
 
 $q      = trim($_GET['q'] ?? '');
 $estado = $_GET['estado'] ?? '';
+$tipo   = $_GET['tipo'] ?? '';
 
 // Estados válidos según la BD
 $allowedEstados = ['borrador', 'publicado'];
+// Tipos válidos según la BD
+$allowedTipos   = ['examen', 'practica'];
 
 // Construcción de la consulta base
-$sql = "SELECT e.id, e.titulo, e.estado, e.fecha, e.hora
+$sql = "SELECT e.id, e.titulo, e.estado, e.tipo, e.fecha, e.hora
         FROM examenes e";
 $params = [];
 
@@ -32,6 +35,12 @@ if ($estado !== '' && in_array($estado, $allowedEstados, true)) {
   $params[':estado'] = $estado;
 }
 
+// Filtro por tipo
+if ($tipo !== '' && in_array($tipo, $allowedTipos, true)) {
+  $w[] = 'e.tipo = :tipo';
+  $params[':tipo'] = $tipo;
+}
+
 // Añadir WHERE si procede
 if ($w) {
   $sql .= ' WHERE ' . implode(' AND ', $w);
@@ -45,16 +54,16 @@ $st->execute($params);
 $rows = $st->fetchAll();
 ?>
 
-<h1 class="text-xl font-semibold tracking-tight mb-4">Exámenes</h1>
+<h1 class="text-xl font-semibold tracking-tight mb-4">Exámenes / Hojas de actividades</h1>
 
-<form method="get" action="" class="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-[1fr,240px,auto,auto] items-stretch">
+<form method="get" action="" class="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-[1fr,180px,180px,auto,auto] items-stretch">
   <label class="sr-only" for="q">Buscar</label>
   <input
     id="q"
     type="search"
     name="q"
     value="<?= htmlspecialchars($q) ?>"
-    placeholder="Buscar por título de examen"
+    placeholder="Buscar por título de examen o práctica"
     class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm
 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
   />
@@ -70,6 +79,17 @@ focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
     <option value="publicado" <?= $estado === 'publicado' ? 'selected' : '' ?>>Publicado</option>
   </select>
 
+  <select
+    name="tipo"
+    class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none
+focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
+    aria-label="Filtrar por tipo"
+  >
+    <option value="">Todos los tipos</option>
+    <option value="examen"   <?= $tipo === 'examen'   ? 'selected' : '' ?>>Examen formal</option>
+    <option value="practica" <?= $tipo === 'practica' ? 'selected' : '' ?>>Hoja de actividades</option>
+  </select>
+
   <button
     type="submit"
     class="inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 active:scale-[0.99] transition"
@@ -81,13 +101,13 @@ focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
     href="<?= PUBLIC_URL ?>/admin/examenes/create.php"
     class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 active:scale-[0.99] transition"
   >
-    Nuevo examen
+    Nuevo examen / práctica
   </a>
 </form>
 
 <?php if (!$rows): ?>
   <div class="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center text-slate-500 text-sm">
-    No hay ningún examen que coincida con los filtros.
+    No hay ningún examen ni práctica que coincida con los filtros.
   </div>
 <?php else: ?>
   <div class="overflow-x-auto rounded-lg border border-slate-200 bg-white">
@@ -96,6 +116,7 @@ focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
         <tr>
           <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">ID</th>
           <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Título</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Tipo</th>
           <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Estado</th>
           <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Fecha</th>
           <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Hora</th>
@@ -112,14 +133,23 @@ focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
               <?= htmlspecialchars($r['titulo']) ?>
             </td>
             <td class="px-4 py-3 text-sm">
+              <?php if (($r['tipo'] ?? 'examen') === 'practica'): ?>
+                <span class="inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-[12px] font-medium text-sky-700 ring-1 ring-sky-200">
+                  Hoja de actividades
+                </span>
+              <?php else: ?>
+                <span class="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-[12px] font-medium text-indigo-700 ring-1 ring-indigo-200">
+                  Examen
+                </span>
+              <?php endif; ?>
+            </td>
+            <td class="px-4 py-3 text-sm">
               <?php if ($r['estado'] === 'publicado'): ?>
-<span class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[12px] font-medium
-text-emerald-700 ring-1 ring-emerald-200">
+                <span class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[12px] font-medium text-emerald-700 ring-1 ring-emerald-200">
                   Publicado
                 </span>
               <?php else: ?>
-<span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[12px] font-medium
-text-slate-700 ring-1 ring-slate-200">
+                <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[12px] font-medium text-slate-700 ring-1 ring-slate-200">
                   Borrador
                 </span>
               <?php endif; ?>
@@ -131,16 +161,16 @@ text-slate-700 ring-1 ring-slate-200">
               <?= $r['hora'] !== null ? htmlspecialchars(substr($r['hora'], 0, 5)) : '—' ?>
             </td>
             <td class="px-4 py-3 text-sm">
-              <div class="flex justify-end gap-2">
+              <div class="flex justify-end gap-2 flex-wrap">
                 <a
                   href="<?= PUBLIC_URL ?>/admin/examenes/edit.php?id=<?= (int)$r['id'] ?>"
-class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm
+                  class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm
 font-medium text-slate-700 hover:bg-slate-100"
                 >Editar</a>
 
                 <a
                   href="<?= PUBLIC_URL ?>/admin/examenes/actividades.php?id=<?= (int)$r['id'] ?>"
-class="inline-flex items-center rounded-md border border-indigo-300 px-2 py-1 text-xs font-medium
+                  class="inline-flex items-center rounded-md border border-indigo-300 px-2 py-1 text-xs font-medium
 text-indigo-700 hover:bg-indigo-50"
                 >
                   Actividades
@@ -148,27 +178,35 @@ text-indigo-700 hover:bg-indigo-50"
 
                 <a
                   href="<?= PUBLIC_URL ?>/admin/examenes/preview.php?id=<?= (int)$r['id'] ?>"
-class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs
+                  class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs
 font-medium text-slate-700 hover:bg-slate-100"
                 >
                   Vista previa
                 </a>
 
-                <!-- 🔹 NUEVO BOTÓN: INTENTOS -->
+                <!-- Botón: INTENTOS -->
                 <a
-href="<?= PUBLIC_URL ?>/admin/examenes/intentos.php?examen_id=<?= (int)$r['id'] ?>"
-class="inline-flex items-center rounded-lg border border-fuchsia-200 bg-fuchsia-50 px-3 py-1.5
+                  href="<?= PUBLIC_URL ?>/admin/examenes/intentos.php?examen_id=<?= (int)$r['id'] ?>"
+                  class="inline-flex items-center rounded-lg border border-fuchsia-200 bg-fuchsia-50 px-3 py-1.5
 text-xs font-medium text-fuchsia-700 hover:bg-fuchsia-100"
                 >
                   Intentos
                 </a>
+                <!-- URL de acceso online al examen/práctica -->
+                <button 
+                  type="button"
+                  onclick="prompt('URL para compartir con los alumnos:', '<?= PUBLIC_URL ?>/examenes/online.php?examen_id=<?= (int)$r['id'] ?>');"
+                  class="inline-flex items-center rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100"
+                >
+                  URL Online
+                </button>
 
-                <form method="post" action="<?= PUBLIC_URL ?>/admin/examenes/delete.php" onsubmit="return confirm('¿Eliminar este examen?');">
+                <form method="post" action="<?= PUBLIC_URL ?>/admin/examenes/delete.php" onsubmit="return confirm('¿Eliminar este examen/práctica?');">
                   <?= csrf_field() ?>
                   <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
                   <button
                     type="submit"
-class="inline-flex items-center rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white
+                    class="inline-flex items-center rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white
 hover:bg-rose-500"
                   >Eliminar</button>
                 </form>

@@ -64,6 +64,7 @@ require_once __DIR__ . '/../../../partials/header.php';
           <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Alumno</th>
           <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Email</th>
           <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Fecha</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Nota</th>
           <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-600">Acciones</th>
         </tr>
       </thead>
@@ -71,7 +72,9 @@ require_once __DIR__ . '/../../../partials/header.php';
         <?php foreach ($intentos as $it): ?>
           <?php
             // Intentamos usar created_at, si no existe probamos con inicio, y si no, vacío
-            $fecha = $it['created_at'] ?? ($it['inicio'] ?? '');
+            $fecha     = $it['created_at'] ?? ($it['inicio'] ?? '');
+            $nota      = $it['nota'] ?? null;
+            $corregido = isset($it['corregido']) ? (int)$it['corregido'] : 0;
           ?>
           <tr class="hover:bg-slate-50">
             <td class="px-4 py-3 text-sm text-slate-700">
@@ -87,12 +90,26 @@ require_once __DIR__ . '/../../../partials/header.php';
               <?= $fecha ? htmlspecialchars($fecha) : '—' ?>
             </td>
             <td class="px-4 py-3 text-sm">
+              <?php if ($nota === null): ?>
+                <span class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[12px] font-medium text-amber-700 ring-1 ring-amber-200">
+                  Pendiente
+                </span>
+              <?php else: ?>
+                <span class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[12px] font-medium text-emerald-700 ring-1 ring-emerald-200">
+                  <?= htmlspecialchars(number_format((float)$nota, 2, ',', '.')) ?>
+                  <?php if ($corregido): ?>
+                    &nbsp;✔
+                  <?php endif; ?>
+                </span>
+              <?php endif; ?>
+            </td>
+            <td class="px-4 py-3 text-sm">
               <div class="flex justify-end">
                 <a
                   href="<?= PUBLIC_URL ?>/admin/examenes/intento_ver.php?intento_id=<?= (int)$it['id'] ?>"
                   class="inline-flex items-center rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
                 >
-                  Ver respuestas
+                  Ver / Calificar
                 </a>
               </div>
             </td>
