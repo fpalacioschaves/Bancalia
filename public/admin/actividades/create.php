@@ -32,6 +32,15 @@ if ($role !== 'profesor' || $profesorId <= 0) {
   header('Location: ' . PUBLIC_URL . '/mi-perfil.php'); exit;
 }
 
+// 🔹 NUEVO: obtener centro_id del profesor
+$centroId = null;
+$stCentro = pdo()->prepare('SELECT centro_id FROM profesores WHERE id = :id LIMIT 1');
+$stCentro->execute([':id' => $profesorId]);
+$centroId = (int)($stCentro->fetchColumn() ?? 0);
+if ($centroId <= 0) {
+  $centroId = null; // por si el profesor aún no tiene centro asignado
+}
+
 // Datos para selects (precargados)
 try {
   $familias = pdo()->query("SELECT id, nombre FROM familias_profesionales WHERE is_active=1 ORDER BY nombre ASC")->fetchAll();
@@ -70,7 +79,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($curso_id <= 0)      throw new RuntimeException('Selecciona un curso.');
     if ($asignatura_id <= 0) throw new RuntimeException('Selecciona una asignatura.');
     if (!in_array($tipo, ['opcion_multiple','verdadero_falso','respuesta_corta','rellenar_huecos','emparejar','tarea'], true)) throw new RuntimeException('Tipo de actividad no válido.');
-    if (!in_array($visibilidad, ['privada','publica'], true))  throw new RuntimeException('Visibilidad no válida.');
+    if (!in_array($visibilidad, ['privada','centro','publica'], true)) {
+      throw new RuntimeException('Visibilidad no válida.');
+    }
     if (!in_array($estado, ['borrador','publicada'], true))    throw new RuntimeException('Estado no válido.');
 
     // Coherencias
@@ -97,29 +108,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
     }
 
-    // Insert actividad (comunes)
+    // 🔹 Insert actividad (comunes) — con centro_id
     $ins = pdo()->prepare('
       INSERT INTO actividades
-        (profesor_id, familia_id, curso_id, asignatura_id, tema_id,
+        (profesor_id, centro_id, familia_id, curso_id, asignatura_id, tema_id,
          tipo, visibilidad, estado, titulo, descripcion, dificultad,
          created_at, updated_at)
       VALUES
-        (:prof, :fam, :cur, :asi, :tema,
+        (:prof, :centro, :fam, :cur, :asi, :tema,
          :tipo, :vis, :est, :tit, :des, :dif,
          NOW(), NOW())
     ');
     $ins->execute([
-      ':prof'=>$profesorId,
-      ':fam'=>$familia_id,
-      ':cur'=>$curso_id,
-      ':asi'=>$asignatura_id,
-      ':tema'=>$tema_id,
-      ':tipo'=>$tipo,
-      ':vis'=>$visibilidad,
-      ':est'=>$estado,
-      ':tit'=>$titulo,
-      ':des'=>($descripcion!=='' ? $descripcion : null),
-      ':dif'=>($dificultad!=='' ? $dificultad : null),
+      ':prof'   => $profesorId,
+      ':centro' => $centroId,
+      ':fam'    => $familia_id,
+      ':cur'    => $curso_id,
+      ':asi'    => $asignatura_id,
+      ':tema'   => $tema_id,
+      ':tipo'   => $tipo,
+      ':vis'    => $visibilidad,
+      ':est'    => $estado,
+      ':tit'    => $titulo,
+      ':des'    => ($descripcion!=='' ? $descripcion : null),
+      ':dif'    => ($dificultad!=='' ? $dificultad : null),
     ]);
     $actividadId = (int)pdo()->lastInsertId();
 
@@ -326,7 +338,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         throw new RuntimeException('No se pudieron serializar las opciones.');
       }
 
-      // >>>> Ajusta NOMBRES DE COLUMNA si tu tabla difiere <<<<
       $insOM = pdo()->prepare('
         INSERT INTO actividades_om
           (actividad_id, enunciado_html,   feedback_correcta, feedback_incorrecta, created_at, updated_at)
@@ -336,8 +347,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $insOM->execute([
         ':aid'    => $actividadId,
         ':enun'   => $om_enunciado,
-      //  ':opts'   => $opciones_json,
-       // ':idx'    => $idx,
         ':fb_ok'  => ($om_fb_ok !== '' ? $om_fb_ok : null),
         ':fb_fail'=> ($om_fb_fail !== '' ? $om_fb_fail : null),
       ]);
@@ -366,7 +375,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         throw new RuntimeException('No se pudieron serializar los pares.');
       }
 
-      // >>>> Ajusta NOMBRES DE COLUMNA si tu tabla difiere <<<<
       $insEMP = pdo()->prepare('
         INSERT INTO actividades_emp_pares
           (actividad_id, pares_json, created_at, updated_at)
@@ -512,15 +520,21 @@ require_once __DIR__ . '/../../../partials/header.php';
       <div>
         <label class="mb-1 block text-sm font-medium text-slate-700">Visibilidad</label>
         <select name="visibilidad"
-                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400">
+        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400">
           <?php
             $visSel = (string)($_POST['visibilidad'] ?? 'privada');
-            foreach (['privada'=>'Privada','publica'=>'Pública'] as $v=>$lab) {
+            $visOps = [
+              'privada' => 'Privada',
+              'centro'  => 'Centro',
+              'publica' => 'Pública',
+            ];
+            foreach ($visOps as $v => $lab) {
               $sel = ($visSel === $v) ? 'selected' : '';
-              echo '<option value="'.$v.'" '.$sel.'>'.$lab.'</option>';
+              echo '<option value="'.h($v).'" '.$sel.'>'.h($lab).'</option>';
             }
           ?>
         </select>
+
       </div>
 
       <div>
@@ -989,8 +1003,8 @@ require_once __DIR__ . '/../../../partials/header.php';
       const row = document.createElement('div');
       row.className = 'grid gap-2 sm:grid-cols-2';
       row.innerHTML = `
-        <input type="text" name="emp_izq[]" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400" placeholder="Elemento izquierdo">
-        <input type="text" name="emp_der[]" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400" placeholder="Elemento derecho">
+        <input type="text" name="emp_izq[]" class="rounded-lg border border-slate-300 bg_WHITE px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400" placeholder="Elemento izquierdo">
+        <input type="text" name="emp_der[]" class="rounded-lg border border-slate-300 bg_WHITE px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400" placeholder="Elemento derecho">
       `;
       empContainer.appendChild(row);
     }, {passive:true});
@@ -1010,4 +1024,3 @@ require_once __DIR__ . '/../../../partials/header.php';
 </script>
 
 <?php require_once __DIR__ . '/../../../partials/footer.php'; ?>
-

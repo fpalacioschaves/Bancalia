@@ -75,6 +75,26 @@ if (!$row) {
 
 $tipoActual = (string)($row['tipo'] ?? 'opcion_multiple');
 
+// --------- Centro del profesor / actividad (para actualización automática) ----------
+$centroId = 0;
+try {
+  // Intentamos sacar el centro directamente de la ficha del profesor
+  $stProf = pdo()->prepare('SELECT centro_id FROM profesores WHERE id = :id LIMIT 1');
+  $stProf->execute([':id' => $profesorId]);
+  $profCentro = $stProf->fetchColumn();
+  if ($profCentro !== false && (int)$profCentro > 0) {
+    $centroId = (int)$profCentro;
+  } elseif (isset($row['centro_id']) && (int)$row['centro_id'] > 0) {
+    // Si el profesor no tiene centro, mantenemos el que ya tuviera la actividad
+    $centroId = (int)$row['centro_id'];
+  }
+} catch (Throwable $e) {
+  // Como último recurso, mantenemos el centro actual de la actividad
+  if (isset($row['centro_id']) && (int)$row['centro_id'] > 0) {
+    $centroId = (int)$row['centro_id'];
+  }
+}
+
 // Tarea
 $stTarea = pdo()->prepare("SELECT * FROM actividades_tarea WHERE actividad_id=:id LIMIT 1");
 $stTarea->execute([':id'=>$id]);
@@ -118,14 +138,54 @@ try {
   $omOpts = [];
 }
 
-// Emparejar (múltiples filas) ———— CAMBIO MÍNIMO: inicializo $empRows antes del try ————
-$empRows = []; // <—— añadido para evitar "Undefined variable $empRows"
+// Emparejar (múltiples filas)
+$empRows = [];
 $stEMP = pdo()->prepare("SELECT * FROM actividades_emp_pares WHERE actividad_id=:id ORDER BY orden_izq ASC, orden_der ASC, id ASC");
 try {
   $stEMP->execute([':id'=>$id]);
   $empRows = $stEMP->fetchAll() ?: [];
 } catch (Throwable $e) {
   $empRows = [];
+}
+
+/**
+ * ===== ESTADÍSTICAS DE USO Y VALORACIÓN =====
+ */
+$statsUso = [
+  'profesores_usan' => null,
+  'examenes'        => null,
+];
+$statsValoracion = [
+  'media' => null,
+  'total' => 0,
+];
+$miValoracion = [
+  'id'         => null,
+  'valoracion' => null,
+  'comentario' => '',
+];
+
+try {
+  // 1) Uso en exámenes (examenes_actividades + examenes)
+  $sqlUso = "
+    SELECT
+      COUNT(DISTINCT e.profesor_id) AS profesores_usan,
+      COUNT(DISTINCT ea.examen_id)  AS examenes
+    FROM examenes_actividades ea
+    INNER JOIN examenes e ON e.id = ea.examen_id
+    WHERE ea.actividad_id = :aid
+  ";
+  $stUso = pdo()->prepare($sqlUso);
+  $stUso->execute([':aid' => $id]);
+  if ($rowUso = $stUso->fetch()) {
+    $statsUso['profesores_usan'] = (int)($rowUso['profesores_usan'] ?? 0);
+    $statsUso['examenes']        = (int)($rowUso['examenes'] ?? 0);
+  }
+
+  // 2) Valoraciones (tabla actividades_valoraciones con columna 'valoracion')
+  //    Usamos table_columns para asegurarnos de que existe la columna correcta.
+} catch (Throwable $e) {
+  // Si algo falla (tabla aún no creada, etc.), simplemente dejamos statsUso por defecto.
 }
 
 // Utilidad: columnas de tabla
@@ -139,6 +199,43 @@ function table_columns(string $table): array {
   } catch (Throwable $e) {
     return [];
   }
+}
+
+// Carga de valoraciones (media + la del profesor actual)
+try {
+  $colsVal = table_columns('actividades_valoraciones');
+  if (!empty($colsVal) && in_array('valoracion', $colsVal, true)) {
+    // Media y total de valoraciones
+    $stAvg = pdo()->prepare("
+      SELECT AVG(valoracion) AS media, COUNT(*) AS total
+      FROM actividades_valoraciones
+      WHERE actividad_id = :aid
+    ");
+    $stAvg->execute([':aid' => $id]);
+    if ($rowAvg = $stAvg->fetch()) {
+      $statsValoracion['media'] = $rowAvg['media'] !== null ? (float)$rowAvg['media'] : null;
+      $statsValoracion['total'] = (int)($rowAvg['total'] ?? 0);
+    }
+
+    // Valoración del profesor actual
+    $stMine = pdo()->prepare("
+      SELECT id, valoracion, comentario
+      FROM actividades_valoraciones
+      WHERE actividad_id = :aid AND profesor_id = :pid
+      LIMIT 1
+    ");
+    $stMine->execute([
+      ':aid' => $id,
+      ':pid' => $profesorId,
+    ]);
+    if ($rowMine = $stMine->fetch()) {
+      $miValoracion['id']         = (int)$rowMine['id'];
+      $miValoracion['valoracion'] = (int)$rowMine['valoracion'];
+      $miValoracion['comentario'] = (string)($rowMine['comentario'] ?? '');
+    }
+  }
+} catch (Throwable $e) {
+  // Si la tabla no existe o hay cualquier problema, ignoramos silenciosamente.
 }
 
 // --------- POST: actualizar ----------
@@ -168,7 +265,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($curso_id <= 0)      throw new RuntimeException('Selecciona un curso.');
     if ($asignatura_id <= 0) throw new RuntimeException('Selecciona una asignatura.');
     if (!in_array($tipo, ['opcion_multiple','verdadero_falso','respuesta_corta','rellenar_huecos','emparejar','tarea'], true)) throw new RuntimeException('Tipo de actividad no válido.');
-    if (!in_array($visibilidad, ['privada','publica'], true))  throw new RuntimeException('Visibilidad no válida.');
+    if (!in_array($visibilidad, ['privada','centro','publica'], true)) {
+      throw new RuntimeException('Visibilidad no válida.');
+    }
     if (!in_array($estado, ['borrador','publicada'], true))    throw new RuntimeException('Estado no válido.');
 
     // Coherencias
@@ -195,15 +294,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
     }
 
-    // Update actividad (comunes)
+    // Si por lo que sea $centroId sigue en 0, dejamos el que ya tuviera la actividad
+    if ($centroId <= 0 && isset($row['centro_id']) && (int)$row['centro_id'] > 0) {
+      $centroId = (int)$row['centro_id'];
+    }
+
+    // Update actividad (comunes + centro_id automático)
     $up = pdo()->prepare('
       UPDATE actividades
-      SET familia_id=:fam, curso_id=:cur, asignatura_id=:asi, tema_id=:tema,
+      SET centro_id=:centro,
+          familia_id=:fam, curso_id=:cur, asignatura_id=:asi, tema_id=:tema,
           tipo=:tipo, visibilidad=:vis, estado=:est, titulo=:tit,
           descripcion=:des, dificultad=:dif, updated_at=NOW()
       WHERE id=:id AND profesor_id=:prof
     ');
     $up->execute([
+      ':centro'=>$centroId > 0 ? $centroId : null,
       ':fam'=>$familia_id,
       ':cur'=>$curso_id,
       ':asi'=>$asignatura_id,
@@ -217,6 +323,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       ':id'=>$id,
       ':prof'=>$profesorId,
     ]);
+
+    // ===== VALORACIÓN DEL PROFESOR (1–5) =====
+    try {
+      $colsVal = table_columns('actividades_valoraciones');
+      if (!empty($colsVal) && in_array('valoracion', $colsVal, true)) {
+        $valRaw = $_POST['valoracion'] ?? '';
+        $valoracion = null;
+        if ($valRaw !== '') {
+          $valoracion = (int)$valRaw;
+          if ($valoracion < 1 || $valoracion > 5) {
+            throw new RuntimeException('La valoración debe estar entre 1 y 5.');
+          }
+        }
+
+        if ($valoracion !== null) {
+          // ¿Ya existe valoración del profesor?
+          $stVal = pdo()->prepare("
+            SELECT id
+            FROM actividades_valoraciones
+            WHERE actividad_id = :aid AND profesor_id = :pid
+            LIMIT 1
+          ");
+          $stVal->execute([
+            ':aid' => $id,
+            ':pid' => $profesorId,
+          ]);
+          $valId = $stVal->fetchColumn();
+
+          if ($valId) {
+            $upVal = pdo()->prepare("
+              UPDATE actividades_valoraciones
+              SET valoracion = :val, updated_at = NOW()
+              WHERE id = :id
+            ");
+            $upVal->execute([
+              ':val' => $valoracion,
+              ':id'  => $valId,
+            ]);
+          } else {
+            $insVal = pdo()->prepare("
+              INSERT INTO actividades_valoraciones
+                (actividad_id, profesor_id, valoracion, created_at, updated_at)
+              VALUES
+                (:aid, :pid, :val, NOW(), NOW())
+            ");
+            $insVal->execute([
+              ':aid' => $id,
+              ':pid' => $profesorId,
+              ':val' => $valoracion,
+            ]);
+          }
+        }
+      }
+    } catch (Throwable $eVal) {
+      // Si falla algo con las valoraciones, no tumbamos todo el guardado.
+      if ($DEBUG) {
+        throw $eVal; // En modo debug sí lo queremos ver.
+      }
+    }
 
     // ——— TAREA ———
     if ($tipo === 'tarea') {
@@ -470,107 +635,105 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
     }
 
-// ——— OPCIÓN MÚLTIPLE (actividades_om + actividades_om_opciones) ———
-if ($tipo === 'opcion_multiple') {
-  $om_enunciado = trim((string)($_POST['om_enunciado_html'] ?? ''));
-  $om_fb_ok     = trim((string)($_POST['om_feedback_correcta'] ?? ''));
-  $om_fb_fail   = trim((string)($_POST['om_feedback_incorrecta'] ?? ''));
+    // ——— OPCIÓN MÚLTIPLE (actividades_om + actividades_om_opciones) ———
+    if ($tipo === 'opcion_multiple') {
+      $om_enunciado = trim((string)($_POST['om_enunciado_html'] ?? ''));
+      $om_fb_ok     = trim((string)($_POST['om_feedback_correcta'] ?? ''));
+      $om_fb_fail   = trim((string)($_POST['om_feedback_incorrecta'] ?? ''));
 
-  $om_opciones = $_POST['om_opciones'] ?? [];
-  if (!is_array($om_opciones)) $om_opciones = [];
-  $om_opciones = array_map(fn($v)=>trim((string)$v), $om_opciones);
+      $om_opciones = $_POST['om_opciones'] ?? [];
+      if (!is_array($om_opciones)) $om_opciones = [];
+      $om_opciones = array_map(fn($v)=>trim((string)$v), $om_opciones);
 
-  $opFilled = [];
-  foreach ($om_opciones as $idx => $txt) {
-    if ($txt !== '') $opFilled[] = ['txt' => $txt];
-  }
+      $opFilled = [];
+      foreach ($om_opciones as $idx => $txt) {
+        if ($txt !== '') $opFilled[] = ['txt' => $txt];
+      }
 
-  $om_correcta_raw = $_POST['om_correcta'] ?? '';
-  if (!ctype_digit((string)$om_correcta_raw)) $om_correcta_raw = '';
+      $om_correcta_raw = $_POST['om_correcta'] ?? '';
+      if (!ctype_digit((string)$om_correcta_raw)) $om_correcta_raw = '';
 
-  if ($om_enunciado === '') {
-    throw new RuntimeException('Debes indicar el enunciado de la pregunta.');
-  }
-  if (count($opFilled) < 2) {
-    throw new RuntimeException('Debes incluir al menos dos opciones con contenido.');
-  }
-  if ($om_correcta_raw === '') {
-    throw new RuntimeException('Debes marcar la opción correcta.');
-  }
+      if ($om_enunciado === '') {
+        throw new RuntimeException('Debes indicar el enunciado de la pregunta.');
+      }
+      if (count($opFilled) < 2) {
+        throw new RuntimeException('Debes incluir al menos dos opciones con contenido.');
+      }
+      if ($om_correcta_raw === '') {
+        throw new RuntimeException('Debes marcar la opción correcta.');
+      }
 
-  $correctFilteredIdx = null;
-  $running = 0;
-  foreach ($om_opciones as $i => $txt) {
-    if ($txt === '') continue;
-    if ((int)$om_correcta_raw === (int)$i) {
-      $correctFilteredIdx = $running; break;
+      $correctFilteredIdx = null;
+      $running = 0;
+      foreach ($om_opciones as $i => $txt) {
+        if ($txt === '') continue;
+        if ((int)$om_correcta_raw === (int)$i) {
+          $correctFilteredIdx = $running; break;
+        }
+        $running++;
+      }
+      if ($correctFilteredIdx === null || $correctFilteredIdx < 0 || $correctFilteredIdx >= count($opFilled)) {
+        throw new RuntimeException('La opción correcta no coincide con una opción válida.');
+      }
+
+      $exists = pdo()->prepare("SELECT actividad_id FROM actividades_om WHERE actividad_id=:aid LIMIT 1");
+      $exists->execute([':aid'=>$id]);
+      $hasOM = (bool)$exists->fetchColumn();
+
+      if ($hasOM) {
+        $sql = "UPDATE actividades_om
+                SET enunciado_html=:enun,
+                    feedback_correcta=:fbok,
+                    feedback_incorrecta=:fbko,
+                    updated_at=NOW()
+                WHERE actividad_id=:aid";
+        pdo()->prepare($sql)->execute([
+          ':aid'=>$id,
+          ':enun'=>$om_enunciado,
+          ':fbok'=>($om_fb_ok!==''?$om_fb_ok:null),
+          ':fbko'=>($om_fb_fail!==''?$om_fb_fail:null),
+        ]);
+      } else {
+        $sql = "INSERT INTO actividades_om
+                  (actividad_id, enunciado_html, feedback_correcta, feedback_incorrecta, created_at, updated_at)
+                VALUES
+                  (:aid, :enun, :fbok, :fbko, NOW(), NOW())";
+        pdo()->prepare($sql)->execute([
+          ':aid'=>$id,
+          ':enun'=>$om_enunciado,
+          ':fbok'=>($om_fb_ok!==''?$om_fb_ok:null),
+          ':fbko'=>($om_fb_fail!==''?$om_fb_fail:null),
+        ]);
+      }
+
+      pdo()->beginTransaction();
+      try {
+        pdo()->prepare("DELETE FROM actividades_om_opciones WHERE actividad_id=:aid")
+            ->execute([':aid'=>$id]);
+
+        $ins = pdo()->prepare("
+          INSERT INTO actividades_om_opciones
+            (actividad_id, opcion_html, es_correcta, orden, created_at, updated_at)
+          VALUES
+            (:aid, :txt, :ok, :ord, NOW(), NOW())
+        ");
+        foreach ($opFilled as $k => $rowOpt) {
+          $ins->execute([
+            ':aid'=>$id,
+            ':txt'=>$rowOpt['txt'],
+            ':ok'=>($k == $correctFilteredIdx ? 1 : 0),
+            ':ord'=>($k+1),
+          ]);
+        }
+        pdo()->commit();
+      } catch (Throwable $e) {
+        pdo()->rollBack();
+        throw $e;
+      }
     }
-    $running++;
-  }
-  if ($correctFilteredIdx === null || $correctFilteredIdx < 0 || $correctFilteredIdx >= count($opFilled)) {
-    throw new RuntimeException('La opción correcta no coincide con una opción válida.');
-  }
-
-  $exists = pdo()->prepare("SELECT actividad_id FROM actividades_om WHERE actividad_id=:aid LIMIT 1");
-  $exists->execute([':aid'=>$id]);
-  $hasOM = (bool)$exists->fetchColumn();
-
-  if ($hasOM) {
-    $sql = "UPDATE actividades_om
-            SET enunciado_html=:enun,
-                feedback_correcta=:fbok,
-                feedback_incorrecta=:fbko,
-                updated_at=NOW()
-            WHERE actividad_id=:aid";
-    pdo()->prepare($sql)->execute([
-      ':aid'=>$id,
-      ':enun'=>$om_enunciado,
-      ':fbok'=>($om_fb_ok!==''?$om_fb_ok:null),
-      ':fbko'=>($om_fb_fail!==''?$om_fb_fail:null),
-    ]);
-  } else {
-    $sql = "INSERT INTO actividades_om
-              (actividad_id, enunciado_html, feedback_correcta, feedback_incorrecta, created_at, updated_at)
-            VALUES
-              (:aid, :enun, :fbok, :fbko, NOW(), NOW())";
-    pdo()->prepare($sql)->execute([
-      ':aid'=>$id,
-      ':enun'=>$om_enunciado,
-      ':fbok'=>($om_fb_ok!==''?$om_fb_ok:null),
-      ':fbko'=>($om_fb_fail!==''?$om_fb_fail:null),
-    ]);
-  }
-
-  pdo()->beginTransaction();
-  try {
-    pdo()->prepare("DELETE FROM actividades_om_opciones WHERE actividad_id=:aid")
-        ->execute([':aid'=>$id]);
-
-    $ins = pdo()->prepare("
-      INSERT INTO actividades_om_opciones
-        (actividad_id, opcion_html, es_correcta, orden, created_at, updated_at)
-      VALUES
-        (:aid, :txt, :ok, :ord, NOW(), NOW())
-    ");
-    foreach ($opFilled as $k => $rowOpt) {
-      $ins->execute([
-        ':aid'=>$id,
-        ':txt'=>$rowOpt['txt'],
-        ':ok'=>($k == $correctFilteredIdx ? 1 : 0),
-        ':ord'=>($k+1),
-      ]);
-    }
-    pdo()->commit();
-  } catch (Throwable $e) {
-    pdo()->rollBack();
-    throw $e;
-  }
-}
-
 
     // ——— EMPAREJAR ———
     if ($tipo === 'emparejar') {
-      // Arrays paralelos
       $izqs   = $_POST['emp_izq'] ?? [];
       $ders   = $_POST['emp_der'] ?? [];
       $alts   = $_POST['emp_alt_der'] ?? [];
@@ -579,19 +742,18 @@ if ($tipo === 'opcion_multiple') {
       $ordD   = $_POST['emp_orden_der'] ?? [];
       $acts   = $_POST['emp_activo'] ?? [];
 
-      // Normalizar a mismas longitudes
       $n = max(count($izqs), count($ders), count($alts), count($grps), count($ordI), count($ordD), count($acts));
-      $rows = [];
+      $rowsEmp = [];
       for ($i=0; $i<$n; $i++) {
         $iz  = trim((string)($izqs[$i] ?? ''));
         $de  = trim((string)($ders[$i] ?? ''));
-        if ($iz === '' && $de === '') { continue; } // fila vacía
+        if ($iz === '' && $de === '') { continue; }
         $al  = trim((string)($alts[$i] ?? ''));
         $gr  = trim((string)($grps[$i] ?? ''));
         $oi  = (int)($ordI[$i] ?? ($i+1));
         $od  = (int)($ordD[$i] ?? ($i+1));
         $ac  = isset($acts[$i]) ? 1 : 0;
-        $rows[] = [
+        $rowsEmp[] = [
           'izquierda_html'=>$iz,
           'derecha_html'=>$de,
           'alternativas_derecha_json'=>($al !== '' ? $al : null),
@@ -604,11 +766,10 @@ if ($tipo === 'opcion_multiple') {
 
       pdo()->beginTransaction();
       try {
-        // delete + insert (más fácil para edición en bloque)
         $del = pdo()->prepare("DELETE FROM actividades_emp_pares WHERE actividad_id=:aid");
         $del->execute([':aid'=>$id]);
 
-        if ($rows) {
+        if ($rowsEmp) {
           $ins = pdo()->prepare('
             INSERT INTO actividades_emp_pares
               (actividad_id, izquierda_html, derecha_html, alternativas_derecha_json, grupo,
@@ -616,8 +777,7 @@ if ($tipo === 'opcion_multiple') {
             VALUES
               (:aid, :izq, :der, :alt, :grp, :oi, :od, :ac, NOW(), NOW())
           ');
-          foreach ($rows as $r) {
-            // Validar JSON si viene alternativas
+          foreach ($rowsEmp as $r) {
             if ($r['alternativas_derecha_json'] !== null) {
               json_decode($r['alternativas_derecha_json'], true);
               if (json_last_error() !== JSON_ERROR_NONE) {
@@ -742,6 +902,11 @@ while (count($omOpts) < 4) {
 // EMP
 $empRows = $empRows ?? [];
 
+// Valoración actual del profesor
+$miValActual = (int)($miValoracion['valoracion'] ?? 0);
+$mediaVal    = $statsValoracion['media'];
+$totalVals   = (int)($statsValoracion['total'] ?? 0);
+
 ?>
 <div class="mb-6 flex items-center justify-between">
   <div>
@@ -856,8 +1021,14 @@ $empRows = $empRows ?? [];
         <label class="mb-1 block text-sm font-medium text-slate-700">Visibilidad</label>
         <select name="visibilidad"
                 class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400">
-          <?php foreach (['privada'=>'Privada','publica'=>'Pública'] as $v=>$lab): ?>
-            <option value="<?= $v ?>" <?= $visibilidad===$v?'selected':'' ?>><?= $lab ?></option>
+          <?php
+            $visOps = [
+              'privada' => 'Privada',
+              'centro'  => 'Centro',
+              'publica' => 'Pública',
+            ];
+            foreach ($visOps as $v => $lab): ?>
+              <option value="<?= h($v) ?>" <?= $visibilidad===$v ? 'selected' : '' ?>><?= h($lab) ?></option>
           <?php endforeach; ?>
         </select>
       </div>
@@ -1120,60 +1291,58 @@ $empRows = $empRows ?? [];
     </div>
     <!-- /RH -->
 
-        <!-- ====== BLOQUE ESPECÍFICO: OPCIÓN MÚLTIPLE ====== -->
-<div id="bloqueOM" class="<?= $tipo==='opcion_multiple' ? '' : 'hidden' ?> border-t pt-4">
-  <h3 class="text-sm font-semibold text-slate-700 mb-2">Configuración Opción múltiple</h3>
+    <!-- ====== BLOQUE ESPECÍFICO: OPCIÓN MÚLTIPLE ====== -->
+    <div id="bloqueOM" class="<?= $tipo==='opcion_multiple' ? '' : 'hidden' ?> border-t pt-4">
+      <h3 class="text-sm font-semibold text-slate-700 mb-2">Configuración Opción múltiple</h3>
 
-  <div class="space-y-3">
-    <div>
-      <label class="mb-1 block text-sm font-medium text-slate-700">
-        Enunciado (HTML permitido) <span class="text-rose-600">*</span>
-      </label>
-      <textarea name="om_enunciado_html" rows="3"
-                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($om_enunciado_html) ?></textarea>
-    </div>
+      <div class="space-y-3">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-700">
+            Enunciado (HTML permitido) <span class="text-rose-600">*</span>
+          </label>
+          <textarea name="om_enunciado_html" rows="3"
+                    class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($om_enunciado_html) ?></textarea>
+        </div>
 
-    <div>
-      <label class="mb-2 block text-sm font-medium text-slate-700">Opciones (marca la correcta)</label>
+        <div>
+          <label class="mb-2 block text-sm font-medium text-slate-700">Opciones (marca la correcta)</label>
 
-      <div id="omList" class="space-y-2">
-        <?php foreach ($omOpts as $i => $opt): ?>
-          <div class="om-row flex items-start gap-3">
-            <input type="radio" name="om_correcta" value="<?= (int)$i ?>" class="mt-2 h-4 w-4 border-slate-300" <?= ((int)$opt['es_correcta']===1?'checked':'') ?>>
-            <textarea name="om_opciones[]" rows="2" placeholder="Opción <?= (int)$i+1 ?>"
-                      class="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h((string)$opt['opcion_html']) ?></textarea>
-            <button type="button" class="om-del inline-flex shrink-0 items-center rounded-lg border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">
-              Eliminar
-            </button>
+          <div id="omList" class="space-y-2">
+            <?php foreach ($omOpts as $i => $opt): ?>
+              <div class="om-row flex items-start gap-3">
+                <input type="radio" name="om_correcta" value="<?= (int)$i ?>" class="mt-2 h-4 w-4 border-slate-300" <?= ((int)$opt['es_correcta']===1?'checked':'') ?>>
+                <textarea name="om_opciones[]" rows="2" placeholder="Opción <?= (int)$i+1 ?>"
+                          class="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h((string)$opt['opcion_html']) ?></textarea>
+                <button type="button" class="om-del inline-flex shrink-0 items-center rounded-lg border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">
+                  Eliminar
+                </button>
+              </div>
+            <?php endforeach; ?>
           </div>
-        <?php endforeach; ?>
-      </div>
 
-      <div class="mt-2">
-        <button type="button" id="omAdd" class="inline-flex items-center rounded-lg bg-slate-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700">
-          Añadir opción
-        </button>
-        <p class="mt-1 text-xs text-slate-500">Debe haber al menos 2 opciones con contenido y una marcada como correcta.</p>
+          <div class="mt-2">
+            <button type="button" id="omAdd" class="inline-flex items-center rounded-lg bg-slate-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700">
+              Añadir opción
+            </button>
+            <p class="mt-1 text-xs text-slate-500">Debe haber al menos 2 opciones con contenido y una marcada como correcta.</p>
+          </div>
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-700">Feedback si acierta</label>
+            <textarea name="om_feedback_correcta" rows="2"
+                      class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($om_fb_ok) ?></textarea>
+          </div>
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-700">Feedback si falla</label>
+            <textarea name="om_feedback_incorrecta" rows="2"
+                      class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($om_fb_fail) ?></textarea>
+          </div>
+        </div>
       </div>
     </div>
-
-    <div class="grid gap-4 sm:grid-cols-2">
-      <div>
-        <label class="mb-1 block text-sm font-medium text-slate-700">Feedback si acierta</label>
-        <textarea name="om_feedback_correcta" rows="2"
-                  class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($om_fb_ok) ?></textarea>
-      </div>
-      <div>
-        <label class="mb-1 block text-sm font-medium text-slate-700">Feedback si falla</label>
-        <textarea name="om_feedback_incorrecta" rows="2"
-                  class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400"><?= h($om_fb_fail) ?></textarea>
-      </div>
-    </div>
-  </div>
-</div>
-<!-- ====== /BLOQUE OM ====== -->
-
-
+    <!-- ====== /BLOQUE OM ====== -->
 
     <!-- ====== EMPAREJAR ====== -->
     <div id="bloqueEMP" class="<?= $tipo==='emparejar' ? '' : 'hidden' ?> border-t pt-4">
@@ -1195,10 +1364,10 @@ $empRows = $empRows ?? [];
           </thead>
           <tbody id="empTBody">
             <?php
-              $rows = $empRows ?: [
+              $rowsEmp = $empRows ?: [
                 ['izquierda_html'=>'','derecha_html'=>'','alternativas_derecha_json'=>'','grupo'=>'','orden_izq'=>1,'orden_der'=>1,'activo'=>1]
               ];
-              foreach ($rows as $r):
+              foreach ($rowsEmp as $r):
             ?>
             <tr class="align-top">
               <td class="p-2 border-b"><textarea name="emp_izq[]" rows="2" class="w-64 rounded border border-slate-300 px-2 py-1"><?= h((string)($r['izquierda_html'] ?? '')) ?></textarea></td>
@@ -1219,6 +1388,60 @@ $empRows = $empRows ?? [];
       </div>
     </div>
     <!-- /EMP -->
+
+    <!-- ===== BLOQUE ESTADÍSTICAS Y VALORACIÓN (AL FINAL) ===== -->
+    <div class="mt-4 border-t pt-4">
+      <h3 class="text-sm font-semibold text-slate-700 mb-2">Estadísticas de uso y valoración</h3>
+
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+          <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Usada por</div>
+          <div class="mt-1 text-lg font-semibold text-slate-800">
+            <?= $statsUso['profesores_usan'] !== null ? (int)$statsUso['profesores_usan'] : '—' ?>
+            <span class="text-sm font-normal text-slate-600">profesores</span>
+          </div>
+        </div>
+
+        <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+          <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Incluida en</div>
+          <div class="mt-1 text-lg font-semibold text-slate-800">
+            <?= $statsUso['examenes'] !== null ? (int)$statsUso['examenes'] : '—' ?>
+            <span class="text-sm font-normal text-slate-600">exámenes</span>
+          </div>
+        </div>
+
+        <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+          <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Valoración media</div>
+          <div class="mt-1 text-lg font-semibold text-slate-800">
+            <?php if ($mediaVal !== null): ?>
+              <?= number_format($mediaVal, 1, ',', '') ?> / 5
+              <span class="text-sm font-normal text-slate-600">(<?= $totalVals ?> voto<?= $totalVals===1?'':'s' ?>)</span>
+            <?php else: ?>
+              <span class="text-sm font-normal text-slate-600">Sin valoraciones todavía</span>
+            <?php endif; ?>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-3">
+        <label class="mb-1 block text-sm font-medium text-slate-700">
+          Tu valoración de esta actividad
+        </label>
+        <select name="valoracion"
+                class="inline-block w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400">
+          <option value="">— Sin valorar —</option>
+          <?php for ($i=1; $i<=5; $i++): ?>
+            <option value="<?= $i ?>" <?= $miValActual===$i ? 'selected' : '' ?>>
+              <?= $i ?> ★
+            </option>
+          <?php endfor; ?>
+        </select>
+        <p class="mt-1 text-xs text-slate-500">
+          Esta valoración es privada y sólo suma a la media global.
+        </p>
+      </div>
+    </div>
+    <!-- /ESTADÍSTICAS -->
 
     <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
       <a href="<?= $basePublic ?>/admin/actividades/index.php"
@@ -1338,7 +1561,7 @@ $empRows = $empRows ?? [];
   toggleBloques();
   toggleRcSub();
 
-  // ===== Emparejar: añadir/eliminar filas (JS mínimo, sin romper estilos) =====
+  // ===== Emparejar: añadir/eliminar filas =====
   const empTBody = document.getElementById('empTBody');
   const empAddRow = document.getElementById('empAddRow');
   function bindEmpDelete(btn){
@@ -1346,7 +1569,6 @@ $empRows = $empRows ?? [];
       const tr = btn.closest('tr');
       if (tr && empTBody.rows.length > 1) tr.remove();
       else {
-        // si es la única, limpiar
         tr.querySelectorAll('textarea,input').forEach(el=>{
           if (el.type === 'checkbox') el.checked = true;
           else el.value = (el.name.includes('orden_') ? '1' : '');
