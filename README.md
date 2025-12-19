@@ -1,40 +1,61 @@
 ✨ Características
-
 📚 Banco centralizado de actividades
 
-🧩 Tipos de actividad:
+Repositorio único de actividades educativas reutilizables, organizadas y accesibles según permisos.
+
+🧩 Tipos de actividad soportados
 
 Opción múltiple
 
 Verdadero / Falso
 
-Respuesta corta (palabras clave o regex)
+Respuesta corta
+
+Palabras clave
+
+Expresiones regulares (regex)
 
 Rellenar huecos
 
 Emparejar conceptos
 
-Tareas de entrega con rúbrica
+Tareas de entrega
 
-👥 Gestión de roles:
+Texto
 
-Profesor
+Archivos
 
-Alumno
+Enlaces
 
-Administrador
+Evaluación mediante rúbrica
 
-🔄 Estados de actividad:
+💡 Permite combinar corrección automática y evaluación manual según el tipo de actividad.
 
-Borrador
+👥 Gestión de roles
 
-Publicada
+👨‍🏫 Profesor
 
-Entregada
+🎓 Alumno
 
-Corregida
+🛠️ Administrador
 
-🏷️ Clasificación pedagógica completa:
+Cada rol dispone de permisos específicos y vistas adaptadas.
+
+🔄 Estados de actividad
+
+📝 Borrador
+
+📢 Publicada
+
+📥 Entregada
+
+✅ Corregida
+
+Estos estados permiten controlar todo el ciclo de vida de una actividad o examen.
+
+🏷️ Clasificación pedagógica completa
+
+Las actividades se organizan por:
 
 Familia profesional / Grado
 
@@ -46,34 +67,60 @@ Tema
 
 Dificultad
 
-Etiquetas compartidas
+Etiquetas compartidas entre profesores
+
+Esto facilita búsquedas avanzadas y reutilización de contenidos.
 
 🧠 Generación de actividades mediante IA (opcional)
 
-📱 Acceso rápido a actividades:
+Creación asistida de actividades educativas
 
-Código de acceso
+Enfoque controlado y revisable por el profesorado
 
-Código QR
+Pensado como ayuda, no como sustitución del docente
 
-🧩 Integración con LMS mediante iframe (Moodle, etc.)
+📱 Acceso rápido a actividades
 
-💳 Sistema de suscripciones:
+🔑 Código de acceso
 
-Plan gratuito
+📷 Código QR
 
-Plan Pro para profesorado
+Ideal para compartir actividades puntuales o evaluaciones rápidas.
+
+🧩 Integración con LMS
+
+Generación de iframe embebible
+
+Compatible con plataformas como Moodle
+
+Integración sin duplicar contenidos
+
+💳 Sistema de suscripciones
+
+🆓 Plan gratuito
+
+⭐ Plan Pro para profesorado
+
+Más actividades
+
+IA
+
+Funcionalidades avanzadas
 
 🖥️ Demo / Capturas
+🔗 Demo en vivo
 
-🔗 Demo en vivo:
 Próximamente
 
-🖼️ Capturas de pantalla:
+🖼️ Capturas de pantalla
+
 Próximamente
+
+![Panel del profesor](docs/screenshots/panel-profesor.png)
+![Creación de actividad](docs/screenshots/crear-actividad.png)
+![Vista del alumno](docs/screenshots/panel-alumno.png)
 
 🛠️ Tecnologías
-
 Frontend
 
 HTML5
@@ -107,25 +154,26 @@ Composer (opcional)
 Docker / docker-compose (opcional)
 
 🚀 Instalación rápida
-Clonar el repositorio
+1️⃣ Clonar el repositorio
 git clone https://github.com/fpalacioschaves/Bancalia.git
 cd Bancalia
 
-Configurar entorno
+2️⃣ Configurar entorno
+
 Edita el archivo config.php con tus credenciales de base de datos.
 
-Base de datos
+3️⃣ Base de datos
+
 Importa el esquema o dump inicial:
 
 mysql -u root -p bancalia < database/dump/bancalia.sql
 
-Arrancar servidor
+4️⃣ Arrancar servidor
 php -S localhost -t public
 
 
 Accede a:
 👉 http://localhost
-
 
 🗄️ Base de datos
 
@@ -150,28 +198,27 @@ Restaurar base de datos de ejemplo:
 mysql -u root -p bancalia < database/dump/example.sql
 
 ▶️ Uso
-Flujo típico (profesor)
+👨‍🏫 Flujo típico (profesor)
 
 Crear actividad
 
 Clasificarla (curso, asignatura, tema, etiquetas)
 
-Marcar como publicada
+Marcarla como publicada
 
-Compartir con el resto del profesorado o mantenerla privada
+Compartirla o mantenerla privada
 
-Usarla como parte de un exámen
+Usarla como parte de un examen
 
-Flujo típico (alumno)
+🎓 Flujo típico (alumno)
 
-Acceder a la actividad/exámen
+Acceder a la actividad o examen
 
 Resolverla
 
 Entregar
 
 Consultar feedback y estado
-
 
 ☁️ Despliegue
 
@@ -185,7 +232,7 @@ Backups periódicos de la base de datos
 
 Separar almacenamiento de archivos si se escala
 
-Soporte para Docker previsto.
+🐳 Soporte para Docker previsto.
 
 🤝 Contribuir
 
@@ -217,7 +264,7 @@ Envía un Pull Request bien documentado
 
 🔐 Seguridad
 
-Si detectas una vulnerabilidad, por favor repórtala de forma responsable a:
+Si detectas una vulnerabilidad, repórtala de forma responsable a:
 📧 fpalacioschaves@gmail.com
  (placeholder)
 
