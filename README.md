@@ -1,33 +1,40 @@
-📚 Bancalia
-Plataforma inteligente de banco de actividades, exámenes y evaluación educativa
+✨ Características
 
-Bancalia es una plataforma web orientada al ámbito educativo que permite a profesores, alumnos y administradores crear, gestionar y consumir actividades educativas de forma estructurada, reutilizable y escalable.
+📚 Banco centralizado de actividades
 
-El objetivo del proyecto es claro:
-👉 centralizar la creación de actividades,
-👉 facilitar la evaluación,
-👉 potenciar la reutilización de contenidos,
-👉 y apoyar al profesorado con herramientas inteligentes, incluyendo generación de actividades mediante IA.
+🧩 Tipos de actividad:
 
-🚀 ¿Qué es Bancalia?
+Opción múltiple
 
-Bancalia es un banco de actividades educativas que permite trabajar con:
+Verdadero / Falso
 
-Preguntas tipo test
-
-Verdadero / falso
-
-Respuesta corta (con corrección automática)
+Respuesta corta (palabras clave o regex)
 
 Rellenar huecos
 
 Emparejar conceptos
 
-Tareas de entrega (texto, archivos y enlaces)
+Tareas de entrega con rúbrica
 
-Exámenes generados a partir del banco de actividades
+👥 Gestión de roles:
 
-Todo ello clasificado pedagógicamente por:
+Profesor
+
+Alumno
+
+Administrador
+
+🔄 Estados de actividad:
+
+Borrador
+
+Publicada
+
+Entregada
+
+Corregida
+
+🏷️ Clasificación pedagógica completa:
 
 Familia profesional / Grado
 
@@ -41,119 +48,31 @@ Dificultad
 
 Etiquetas compartidas
 
-Resultados de Aprendizaje (RA)
+🧠 Generación de actividades mediante IA (opcional)
 
-👥 Perfiles de usuario
-👨‍🏫 Profesor
+📱 Acceso rápido a actividades:
 
-Crear, editar y eliminar sus propias actividades
+Código de acceso
 
-Marcar actividades como:
+Código QR
 
-privadas
+🧩 Integración con LMS mediante iframe (Moodle, etc.)
 
-compartidas con otros profesores
+💳 Sistema de suscripciones:
 
-publicadas para el alumnado
+Plan gratuito
 
-Acceder al banco compartido (solo lectura)
+Plan Pro para profesorado
 
-Crear y gestionar etiquetas globales
+🖥️ Demo / Capturas
 
-Generar actividades mediante IA
+🔗 Demo en vivo:
+Próximamente
 
-Crear exámenes seleccionando actividades del banco
+🖼️ Capturas de pantalla:
+Próximamente
 
-Asignar actividades a alumnos
-
-Compartir actividades mediante:
-
-📎 código de acceso
-
-📱 QR
-
-🧩 iframe para Moodle u otros LMS
-
-🎓 Alumno
-
-Acceder únicamente a actividades:
-
-publicadas
-
-asignadas explícitamente
-
-Realizar actividades online
-
-Entregar tareas (texto, archivos o enlaces)
-
-Consultar:
-
-estado de la actividad
-
-feedback
-
-historial de progreso
-
-Acceder a actividades mediante QR o código
-
-🛠️ Administrador
-
-Todas las capacidades del profesor
-
-Gestión completa de:
-
-usuarios
-
-roles
-
-centros educativos
-
-cursos y asignaturas
-
-Moderación de contenidos
-
-Gestión de planes de suscripción
-
-Auditoría y control del sistema
-
-🧠 Funcionalidades clave
-
-✔️ Banco centralizado de actividades
-✔️ Actividades reutilizables y compartidas
-✔️ Generación de actividades con IA
-✔️ Generación automática y manual de exámenes
-✔️ Corrección automática en múltiples tipos de actividades
-✔️ Sistema de estados (borrador / publicada / entregada / corregida)
-✔️ Etiquetas compartidas entre profesores
-✔️ Clasificación pedagógica completa
-✔️ Integración con LMS (iframe)
-✔️ Acceso rápido mediante QR o códigos
-✔️ Sistema de suscripción para monetización
-✔️ Diseño moderno, limpio y minimalista
-
-🧩 Tipos de actividades soportadas
-
-Opción múltiple
-
-Verdadero / Falso
-
-Respuesta corta (palabras clave o regex)
-
-Rellenar huecos
-
-Emparejar conceptos
-
-Tareas de entrega con:
-
-texto
-
-archivos
-
-enlaces
-
-rúbricas de evaluación
-
-🧱 Arquitectura técnica
+🛠️ Tecnologías
 
 Frontend
 
@@ -162,8 +81,6 @@ HTML5
 CSS3
 
 jQuery
-
-Diseño responsive y minimalista
 
 Backend
 
@@ -177,57 +94,141 @@ Base de datos
 
 MySQL / MariaDB
 
-Modelo relacional normalizado
+⚙️ Requisitos
 
-Soporte para N:N, auditoría y escalabilidad
+PHP >= 8.x
 
-💳 Monetización
+MySQL / MariaDB
 
-Bancalia está preparada para un modelo de suscripción para profesorado, permitiendo:
+Servidor web (Apache / Nginx)
 
-Plan gratuito (uso básico)
+Composer (opcional)
 
-Plan Pro (IA, más actividades, analíticas, exportaciones, etc.)
+Docker / docker-compose (opcional)
 
-❓ Sección de ayuda
+🚀 Instalación rápida
+Clonar el repositorio
+git clone https://github.com/fpalacioschaves/Bancalia.git
+cd Bancalia
 
-La plataforma incluye una sección de ayuda diferenciada para:
+Configurar entorno
+Edita el archivo config.php con tus credenciales de base de datos.
 
-Profesorado
+Base de datos
+Importa el esquema o dump inicial:
 
-Alumnado
+mysql -u root -p bancalia < database/dump/bancalia.sql
 
-Con:
+Arrancar servidor
+php -S localhost -t public
 
-guías paso a paso
 
-ejemplos
+Accede a:
+👉 http://localhost
 
-flujos de trabajo habituales
 
-🗺️ Roadmap (orientativo)
+🗄️ Base de datos
 
-MVP completo (CRUD + banco de actividades)
+Esquema relacional normalizado
 
-Asignaciones y entregas
+Soporte para:
 
-Exámenes y corrección
+actividades
 
-Integración LMS (QR / iframe)
+exámenes
 
-IA educativa controlada
+asignaciones
 
-Monetización
+entregas
 
-Analíticas y métricas
+usuarios y roles
 
-🧪 Estado del proyecto
+suscripciones
 
-🚧 En desarrollo activo
-Proyecto educativo real, pensado para centros de Formación Profesional y entornos de enseñanza reglada.
+Restaurar base de datos de ejemplo:
 
-📌 Filosofía del proyecto
+mysql -u root -p bancalia < database/dump/example.sql
 
-Bancalia no pretende sustituir al profesor,
-sino darle mejores herramientas para enseñar
-y mejor información para evaluar.
+▶️ Uso
+Flujo típico (profesor)
+
+Crear actividad
+
+Clasificarla (curso, asignatura, tema, etiquetas)
+
+Marcar como publicada
+
+Compartir con el resto del profesorado o mantenerla privada
+
+Usarla como parte de un exámen
+
+Flujo típico (alumno)
+
+Acceder a la actividad/exámen
+
+Resolverla
+
+Entregar
+
+Consultar feedback y estado
+
+
+☁️ Despliegue
+
+Recomendaciones:
+
+PHP 8+
+
+HTTPS (TLS)
+
+Backups periódicos de la base de datos
+
+Separar almacenamiento de archivos si se escala
+
+Soporte para Docker previsto.
+
+🤝 Contribuir
+
+¡Las contribuciones son bienvenidas!
+
+Abre un issue antes de cambios grandes
+
+Haz fork del proyecto
+
+Crea una rama feature/nombre
+
+Envía un Pull Request bien documentado
+
+🗺️ Roadmap
+
+✅ MVP: banco de actividades
+
+🔄 Asignaciones y entregas
+
+📝 Exámenes automáticos
+
+🧩 Integración LMS
+
+🤖 IA educativa (beta)
+
+📊 Analíticas y métricas
+
+💳 Monetización y planes avanzados
+
+🔐 Seguridad
+
+Si detectas una vulnerabilidad, por favor repórtala de forma responsable a:
+📧 fpalacioschaves@gmail.com
+ (placeholder)
+
+📄 Licencia
+
+Este proyecto está bajo licencia MIT.
+
+📬 Contacto
+
+👤 Mantenedor: Paco Palacios
+
+🐙 GitHub: https://github.com/fpalacioschaves
+
+📧 Email: fpalacioschaves@gmail.com
