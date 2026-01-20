@@ -6,19 +6,19 @@ require_login_or_redirect();
 
 $u = current_user();
 require_once __DIR__ . '/../partials/header.php';
-$role       = $u['role'] ?? '';
+$role = $u['role'] ?? '';
 $profesorId = $u['profesor_id'] ?? null;
 
 // ---------- ADMIN ----------
 if ($role === 'admin') {
   // KPIs
   $kpis = [
-    'familias'     => (int) pdo()->query('SELECT COUNT(*) FROM familias_profesionales')->fetchColumn(),
-    'cursos'       => (int) pdo()->query('SELECT COUNT(*) FROM cursos')->fetchColumn(),
-    'asignaturas'  => (int) pdo()->query('SELECT COUNT(*) FROM asignaturas')->fetchColumn(),
-    'temas'        => (int) pdo()->query('SELECT COUNT(*) FROM temas')->fetchColumn(),
-    'centros'      => (int) pdo()->query('SELECT COUNT(*) FROM centros')->fetchColumn(),
-    'profesores'   => (int) pdo()->query('SELECT COUNT(*) FROM profesores')->fetchColumn(),
+    'familias' => (int) pdo()->query('SELECT COUNT(*) FROM familias_profesionales')->fetchColumn(),
+    'cursos' => (int) pdo()->query('SELECT COUNT(*) FROM cursos')->fetchColumn(),
+    'asignaturas' => (int) pdo()->query('SELECT COUNT(*) FROM asignaturas')->fetchColumn(),
+    'temas' => (int) pdo()->query('SELECT COUNT(*) FROM temas')->fetchColumn(),
+    'centros' => (int) pdo()->query('SELECT COUNT(*) FROM centros')->fetchColumn(),
+    'profesores' => (int) pdo()->query('SELECT COUNT(*) FROM profesores')->fetchColumn(),
   ];
 
   // Recientes (limit 5)
@@ -70,15 +70,16 @@ if ($role === 'admin') {
 <div class="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
   <div>
     <h1 class="text-2xl font-semibold tracking-tight">Panel</h1>
-    <p class="mt-1 text-sm text-slate-600">Bienvenido, <?= htmlspecialchars($u['nombre'] ?? '') ?>.</p>
+    <p class="mt-1 text-sm text-slate-600">Bienvenido, <?= h($u['nombre'] ?? '') ?>.</p>
   </div>
 
   <!-- Buscador global -->
   <form method="get" action="<?= PUBLIC_URL ?>/search.php" class="flex items-center gap-2">
     <label for="q" class="sr-only">Buscar</label>
     <input id="q" name="q" type="search" placeholder="Buscar en Bancalia…"
-           class="w-64 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400">
-    <button class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Buscar</button>
+      class="w-64 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400">
+    <button
+      class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Buscar</button>
   </form>
 </div>
 
@@ -86,37 +87,43 @@ if ($role === 'admin') {
 
   <!-- ======= ADMIN: KPIs ======= -->
   <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-    <a href="<?= PUBLIC_URL ?>/admin/familias/index.php" class="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
+    <a href="<?= PUBLIC_URL ?>/admin/familias/index.php"
+      class="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
       <div class="text-xs font-medium text-slate-500">Familias</div>
       <div class="mt-2 text-3xl font-semibold"><?= number_format($kpis['familias']) ?></div>
       <div class="mt-2 text-xs text-slate-400 group-hover:text-slate-600">Gestionar familias →</div>
     </a>
 
-    <a href="<?= PUBLIC_URL ?>/admin/cursos/index.php" class="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
+    <a href="<?= PUBLIC_URL ?>/admin/cursos/index.php"
+      class="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
       <div class="text-xs font-medium text-slate-500">Cursos</div>
       <div class="mt-2 text-3xl font-semibold"><?= number_format($kpis['cursos']) ?></div>
       <div class="mt-2 text-xs text-slate-400 group-hover:text-slate-600">Gestionar cursos →</div>
     </a>
 
-    <a href="<?= PUBLIC_URL ?>/admin/asignaturas/index.php" class="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
+    <a href="<?= PUBLIC_URL ?>/admin/asignaturas/index.php"
+      class="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
       <div class="text-xs font-medium text-slate-500">Asignaturas</div>
       <div class="mt-2 text-3xl font-semibold"><?= number_format($kpis['asignaturas']) ?></div>
       <div class="mt-2 text-xs text-slate-400 group-hover:text-slate-600">Gestionar asignaturas →</div>
     </a>
 
-    <a href="<?= PUBLIC_URL ?>/admin/temas/index.php" class="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
+    <a href="<?= PUBLIC_URL ?>/admin/temas/index.php"
+      class="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
       <div class="text-xs font-medium text-slate-500">Temas</div>
       <div class="mt-2 text-3xl font-semibold"><?= number_format($kpis['temas']) ?></div>
       <div class="mt-2 text-xs text-slate-400 group-hover:text-slate-600">Gestionar temas →</div>
     </a>
 
-    <a href="<?= PUBLIC_URL ?>/admin/centros/index.php" class="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
+    <a href="<?= PUBLIC_URL ?>/admin/centros/index.php"
+      class="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
       <div class="text-xs font-medium text-slate-500">Centros</div>
       <div class="mt-2 text-3xl font-semibold"><?= number_format($kpis['centros']) ?></div>
       <div class="mt-2 text-xs text-slate-400 group-hover:text-slate-600">Gestionar centros →</div>
     </a>
 
-    <a href="<?= PUBLIC_URL ?>/admin/profesores/index.php" class="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
+    <a href="<?= PUBLIC_URL ?>/admin/profesores/index.php"
+      class="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow transition">
       <div class="text-xs font-medium text-slate-500">Profesores</div>
       <div class="mt-2 text-3xl font-semibold"><?= number_format($kpis['profesores']) ?></div>
       <div class="mt-2 text-xs text-slate-400 group-hover:text-slate-600">Gestionar profesores →</div>
@@ -135,8 +142,8 @@ if ($role === 'admin') {
           <ul class="divide-y divide-slate-200">
             <?php foreach ($recent_fams as $r): ?>
               <li class="flex items-center justify-between py-2">
-                <div class="text-sm text-slate-800"><?= htmlspecialchars($r['nombre']) ?></div>
-                <div class="text-xs text-slate-500"><?= htmlspecialchars($r['updated_at']) ?></div>
+                <div class="text-sm text-slate-800"><?= h($r['nombre']) ?></div>
+                <div class="text-xs text-slate-500"><?= h($r['updated_at']) ?></div>
               </li>
             <?php endforeach; ?>
           </ul>
@@ -151,8 +158,8 @@ if ($role === 'admin') {
           <ul class="divide-y divide-slate-200">
             <?php foreach ($recent_cursos as $r): ?>
               <li class="py-2">
-                <div class="text-sm font-medium text-slate-800"><?= htmlspecialchars($r['nombre']) ?></div>
-                <div class="text-xs text-slate-500"><?= htmlspecialchars($r['familia']) ?> · <?= htmlspecialchars($r['updated_at']) ?></div>
+                <div class="text-sm font-medium text-slate-800"><?= h($r['nombre']) ?></div>
+                <div class="text-xs text-slate-500"><?= h($r['familia']) ?> · <?= h($r['updated_at']) ?></div>
               </li>
             <?php endforeach; ?>
           </ul>
@@ -171,11 +178,11 @@ if ($role === 'admin') {
             <?php foreach ($recent_temas as $r): ?>
               <li class="py-2">
                 <div class="text-sm font-medium text-slate-800">
-                  <?= 'T'.(int)$r['numero'].' · '.htmlspecialchars($r['nombre']) ?>
+                  <?= 'T' . (int) $r['numero'] . ' · ' . h($r['nombre']) ?>
                 </div>
                 <div class="text-xs text-slate-500">
-                  <?= htmlspecialchars($r['familia']) ?> → <?= htmlspecialchars($r['curso']) ?> → <?= htmlspecialchars($r['asignatura']) ?>
-                  · <?= htmlspecialchars($r['updated_at']) ?>
+                  <?= h($r['familia']) ?> → <?= h($r['curso']) ?> → <?= h($r['asignatura']) ?>
+                  · <?= h($r['updated_at']) ?>
                 </div>
               </li>
             <?php endforeach; ?>
@@ -191,8 +198,10 @@ if ($role === 'admin') {
           <ul class="divide-y divide-slate-200">
             <?php foreach ($recent_asig as $r): ?>
               <li class="py-2">
-                <div class="text-sm font-medium text-slate-800"><?= htmlspecialchars($r['nombre']) ?></div>
-                <div class="text-xs text-slate-500"><?= htmlspecialchars($r['familia']) ?> → <?= htmlspecialchars($r['curso']) ?> · <?= htmlspecialchars($r['updated_at']) ?></div>
+                <div class="text-sm font-medium text-slate-800"><?= h($r['nombre']) ?></div>
+                <div class="text-xs text-slate-500"><?= h($r['familia']) ?> → <?= h($r['curso']) ?> ·
+                  <?= h($r['updated_at']) ?>
+                </div>
               </li>
             <?php endforeach; ?>
           </ul>
@@ -210,10 +219,10 @@ if ($role === 'admin') {
           <ul class="divide-y divide-slate-200">
             <?php foreach ($recent_centros as $r): ?>
               <li class="py-2">
-                <div class="text-sm font-medium text-slate-800"><?= htmlspecialchars($r['nombre']) ?></div>
+                <div class="text-sm font-medium text-slate-800"><?= h($r['nombre']) ?></div>
                 <div class="text-xs text-slate-500">
-                  <?= htmlspecialchars((string)($r['provincia'] ?? '—')) ?>, <?= htmlspecialchars((string)($r['comunidad'] ?? '—')) ?>
-                  · <?= htmlspecialchars($r['updated_at']) ?>
+                  <?= h((string) ($r['provincia'] ?? '—')) ?>, <?= h((string) ($r['comunidad'] ?? '—')) ?>
+                  · <?= h($r['updated_at']) ?>
                 </div>
               </li>
             <?php endforeach; ?>
@@ -230,35 +239,36 @@ if ($role === 'admin') {
   // Resolver profesor_id si no viene en sesión (por si acaso)
   if (!$profesorId && !empty($u['email'])) {
     $st = pdo()->prepare('SELECT id FROM profesores WHERE email=:e LIMIT 1');
-    $st->execute([':e'=>$u['email']]);
-    if ($row = $st->fetch()) $profesorId = (int)$row['id'];
+    $st->execute([':e' => $u['email']]);
+    if ($row = $st->fetch())
+      $profesorId = (int) $row['id'];
   }
 
   // KPIs del profesor
   $kpi_prof = [
-    'cursos'      => 0,
+    'cursos' => 0,
     'asignaturas' => 0,
-    'temas'       => 0,
-    'centros'     => 0,
+    'temas' => 0,
+    'centros' => 0,
   ];
 
   // Pendientes del profesor
   $pend_prof = [
     'examenes_sin_corregir' => 0,
-    'intentos_hoy'          => 0,
+    'intentos_hoy' => 0,
     'tareas_sin_puntuacion' => 0,
   ];
 
   if ($profesorId) {
     // Cursos
     $stmt = pdo()->prepare('SELECT COUNT(DISTINCT curso_id) AS n FROM profesor_asignacion WHERE profesor_id=:p');
-    $stmt->execute([':p'=>$profesorId]);
-    $kpi_prof['cursos'] = (int)($stmt->fetchColumn() ?: 0);
+    $stmt->execute([':p' => $profesorId]);
+    $kpi_prof['cursos'] = (int) ($stmt->fetchColumn() ?: 0);
 
     // Asignaturas
     $stmt = pdo()->prepare('SELECT COUNT(DISTINCT asignatura_id) AS n FROM profesor_asignacion WHERE profesor_id=:p');
-    $stmt->execute([':p'=>$profesorId]);
-    $kpi_prof['asignaturas'] = (int)($stmt->fetchColumn() ?: 0);
+    $stmt->execute([':p' => $profesorId]);
+    $kpi_prof['asignaturas'] = (int) ($stmt->fetchColumn() ?: 0);
 
     // Temas
     $stmt = pdo()->prepare('
@@ -267,13 +277,13 @@ if ($role === 'admin') {
       INNER JOIN profesor_asignacion pa ON pa.asignatura_id = t.asignatura_id
       WHERE pa.profesor_id = :p
     ');
-    $stmt->execute([':p'=>$profesorId]);
-    $kpi_prof['temas'] = (int)($stmt->fetchColumn() ?: 0);
+    $stmt->execute([':p' => $profesorId]);
+    $kpi_prof['temas'] = (int) ($stmt->fetchColumn() ?: 0);
 
     // Centros
     $stmt = pdo()->prepare('SELECT COUNT(DISTINCT centro_id) AS n FROM profesor_asignacion WHERE profesor_id=:p AND centro_id IS NOT NULL');
-    $stmt->execute([':p'=>$profesorId]);
-    $kpi_prof['centros'] = (int)($stmt->fetchColumn() ?: 0);
+    $stmt->execute([':p' => $profesorId]);
+    $kpi_prof['centros'] = (int) ($stmt->fetchColumn() ?: 0);
 
     // ---- Pendientes ----
 
@@ -286,7 +296,7 @@ if ($role === 'admin') {
         AND (ei.corregido IS NULL OR ei.corregido = 0)
     ');
     $stmt->execute([':p' => $profesorId]);
-    $pend_prof['examenes_sin_corregir'] = (int)($stmt->fetchColumn() ?: 0);
+    $pend_prof['examenes_sin_corregir'] = (int) ($stmt->fetchColumn() ?: 0);
 
     // 2) Intentos nuevos hoy
     // IMPORTANTE: ajusta "created_at" al nombre real de la columna de fecha en examen_intentos
@@ -298,7 +308,7 @@ if ($role === 'admin') {
         AND DATE(ei.created_at) = CURDATE()
     ');
     $stmt->execute([':p' => $profesorId]);
-    $pend_prof['intentos_hoy'] = (int)($stmt->fetchColumn() ?: 0);
+    $pend_prof['intentos_hoy'] = (int) ($stmt->fetchColumn() ?: 0);
 
     // 3) Tareas sin puntuación
     $stmt = pdo()->prepare('
@@ -312,7 +322,7 @@ if ($role === 'admin') {
         AND er.puntuacion IS NULL
     ');
     $stmt->execute([':p' => $profesorId]);
-    $pend_prof['tareas_sin_puntuacion'] = (int)($stmt->fetchColumn() ?: 0);
+    $pend_prof['tareas_sin_puntuacion'] = (int) ($stmt->fetchColumn() ?: 0);
 
     // Recientes profesor (limit 5)
     $prof_recent_cursos = $prof_recent_asig = $prof_recent_temas = [];
@@ -326,7 +336,7 @@ if ($role === 'admin') {
       ORDER BY updated_at DESC
       LIMIT 5
     ');
-    $st->execute([':p'=>$profesorId]);
+    $st->execute([':p' => $profesorId]);
     $prof_recent_cursos = $st->fetchAll();
 
     $st = pdo()->prepare('
@@ -338,7 +348,7 @@ if ($role === 'admin') {
       ORDER BY updated_at DESC
       LIMIT 5
     ');
-    $st->execute([':p'=>$profesorId]);
+    $st->execute([':p' => $profesorId]);
     $prof_recent_asig = $st->fetchAll();
 
     $st = pdo()->prepare('
@@ -353,7 +363,7 @@ if ($role === 'admin') {
       ORDER BY t.updated_at DESC, t.numero ASC
       LIMIT 5
     ');
-    $st->execute([':p'=>$profesorId]);
+    $st->execute([':p' => $profesorId]);
     $prof_recent_temas = $st->fetchAll();
   } else {
     $prof_recent_cursos = $prof_recent_asig = $prof_recent_temas = [];
@@ -395,10 +405,8 @@ if ($role === 'admin') {
           </div>
         </div>
         <div class="mt-3">
-          <a
-            href="<?= PUBLIC_URL ?>/mis_pendientes.php#examenes"
-            class="inline-flex items-center rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-500"
-          >
+          <a href="<?= PUBLIC_URL ?>/mis_pendientes.php#examenes"
+            class="inline-flex items-center rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-500">
             Ver exámenes
           </a>
         </div>
@@ -413,10 +421,8 @@ if ($role === 'admin') {
           </div>
         </div>
         <div class="mt-3">
-          <a
-            href="<?= PUBLIC_URL ?>/mis_pendientes.php#examenes"
-            class="inline-flex items-center rounded-md bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-500"
-          >
+          <a href="<?= PUBLIC_URL ?>/mis_pendientes.php#examenes"
+            class="inline-flex items-center rounded-md bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-500">
             Ver intentos
           </a>
         </div>
@@ -431,10 +437,8 @@ if ($role === 'admin') {
           </div>
         </div>
         <div class="mt-3">
-          <a
-            href="<?= PUBLIC_URL ?>/mis_pendientes.php#tareas"
-            class="inline-flex items-center rounded-md bg-fuchsia-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-fuchsia-500"
-          >
+          <a href="<?= PUBLIC_URL ?>/mis_pendientes.php#tareas"
+            class="inline-flex items-center rounded-md bg-fuchsia-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-fuchsia-500">
             Ver tareas
           </a>
         </div>
@@ -454,8 +458,8 @@ if ($role === 'admin') {
           <ul class="divide-y divide-slate-200">
             <?php foreach ($prof_recent_cursos as $r): ?>
               <li class="py-2">
-                <div class="text-sm font-medium text-slate-800"><?= htmlspecialchars($r['nombre']) ?></div>
-                <div class="text-xs text-slate-500"><?= htmlspecialchars($r['updated_at']) ?></div>
+                <div class="text-sm font-medium text-slate-800"><?= h($r['nombre']) ?></div>
+                <div class="text-xs text-slate-500"><?= h($r['updated_at']) ?></div>
               </li>
             <?php endforeach; ?>
           </ul>
@@ -474,11 +478,11 @@ if ($role === 'admin') {
             <?php foreach ($prof_recent_temas as $r): ?>
               <li class="py-2">
                 <div class="text-sm font-medium text-slate-800">
-                  <?= 'T'.(int)$r['numero'].' · '.htmlspecialchars($r['nombre']) ?>
+                  <?= 'T' . (int) $r['numero'] . ' · ' . h($r['nombre']) ?>
                 </div>
                 <div class="text-xs text-slate-500">
-                  <?= htmlspecialchars($r['familia']) ?> → <?= htmlspecialchars($r['curso']) ?> → <?= htmlspecialchars($r['asignatura']) ?>
-                  · <?= htmlspecialchars($r['updated_at']) ?>
+                  <?= h($r['familia']) ?> → <?= h($r['curso']) ?> → <?= h($r['asignatura']) ?>
+                  · <?= h($r['updated_at']) ?>
                 </div>
               </li>
             <?php endforeach; ?>
@@ -497,8 +501,8 @@ if ($role === 'admin') {
           <ul class="divide-y divide-slate-200">
             <?php foreach ($prof_recent_asig as $r): ?>
               <li class="py-2">
-                <div class="text-sm font-medium text-slate-800"><?= htmlspecialchars($r['nombre']) ?></div>
-                <div class="text-xs text-slate-500"><?= htmlspecialchars($r['updated_at']) ?></div>
+                <div class="text-sm font-medium text-slate-800"><?= h($r['nombre']) ?></div>
+                <div class="text-xs text-slate-500"><?= h($r['updated_at']) ?></div>
               </li>
             <?php endforeach; ?>
           </ul>

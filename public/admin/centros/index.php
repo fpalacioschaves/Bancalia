@@ -41,8 +41,7 @@ $rows = $st->fetchAll();
 
 <form method="get" action="" class="mb-4">
   <div class="flex gap-2">
-    <input type="text" name="q" value="<?= htmlspecialchars($q) ?>"
-      placeholder="Buscar por nombre, localidad, provincia…"
+    <input type="text" name="q" value="<?= h($q) ?>" placeholder="Buscar por nombre, localidad, provincia…"
       class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-slate-400">
     <button
       class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Buscar</button>
@@ -64,17 +63,17 @@ $rows = $st->fetchAll();
       <?php foreach ($rows as $r): ?>
         <tr>
           <td class="px-3 py-2">
-            <div class="font-medium"><?= htmlspecialchars($r['nombre']) ?></div>
-            <div class="text-xs text-slate-500"><?= htmlspecialchars($r['slug']) ?></div>
+            <div class="font-medium"><?= h($r['nombre']) ?></div>
+            <div class="text-xs text-slate-500"><?= h($r['slug']) ?></div>
           </td>
           <td class="px-3 py-2 text-sm text-slate-700">
-            <?= htmlspecialchars(implode(', ', array_filter([$r['localidad'], $r['provincia'], $r['comunidad']]))) ?>
+            <?= h(implode(', ', array_filter([$r['localidad'], $r['provincia'], $r['comunidad']]))) ?>
           </td>
           <td class="px-3 py-2 text-sm text-slate-700">
             <?php if ($r['telefono']): ?>
-              <div><?= htmlspecialchars($r['telefono']) ?></div><?php endif; ?>
+              <div><?= h($r['telefono']) ?></div><?php endif; ?>
             <?php if ($r['email']): ?>
-              <div class="text-slate-600"><?= htmlspecialchars($r['email']) ?></div><?php endif; ?>
+              <div class="text-slate-600"><?= h($r['email']) ?></div><?php endif; ?>
           </td>
           <td class="px-3 py-2">
             <?php if ((int) $r['is_active'] === 1): ?>

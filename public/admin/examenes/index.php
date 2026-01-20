@@ -58,8 +58,7 @@ $rows = $st->fetchAll();
 
 <form method="get" action="" class="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-[1fr,180px,180px,auto,auto] items-stretch">
   <label class="sr-only" for="q">Buscar</label>
-  <input id="q" type="search" name="q" value="<?= htmlspecialchars($q) ?>"
-    placeholder="Buscar por título de examen o práctica" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm
+  <input id="q" type="search" name="q" value="<?= h($q) ?>" placeholder="Buscar por título de examen o práctica" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm
 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400" />
 
   <select name="estado" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none
@@ -113,7 +112,7 @@ focus:ring-2 focus:ring-slate-400 focus:border-slate-400" aria-label="Filtrar po
               #<?= (int) $r['id'] ?>
             </td>
             <td class="px-4 py-3 text-sm text-slate-800">
-              <?= htmlspecialchars($r['titulo']) ?>
+              <?= h($r['titulo']) ?>
             </td>
             <td class="px-4 py-3 text-sm">
               <?php if (($r['tipo'] ?? 'examen') === 'practica'): ?>
@@ -142,10 +141,10 @@ focus:ring-2 focus:ring-slate-400 focus:border-slate-400" aria-label="Filtrar po
               <?php endif; ?>
             </td>
             <td class="px-4 py-3 text-sm text-slate-800">
-              <?= $r['fecha'] !== null ? htmlspecialchars($r['fecha']) : '—' ?>
+              <?= $r['fecha'] !== null ? h($r['fecha']) : '—' ?>
             </td>
             <td class="px-4 py-3 text-sm text-slate-800">
-              <?= $r['hora'] !== null ? htmlspecialchars(substr($r['hora'], 0, 5)) : '—' ?>
+              <?= $r['hora'] !== null ? h(substr($r['hora'], 0, 5)) : '—' ?>
             </td>
             <td class="px-4 py-3 text-sm">
               <div class="flex justify-end gap-2 flex-wrap">

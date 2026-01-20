@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
 
 if ($id <= 0) {
     die('ID de examen inválido.');
@@ -23,7 +23,7 @@ try {
     $stmt->execute([':id' => $id]);
 
 } catch (PDOException $e) {
-    die('Error al borrar el examen: ' . htmlspecialchars($e->getMessage()));
+    die('Error al borrar el examen: ' . h($e->getMessage()));
 }
 
 // Volvemos al listado

@@ -145,7 +145,7 @@ require_once __DIR__ . '/../../../partials/header.php';
           class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
           <option value="">— Selecciona centro —</option>
           <?php foreach ($centros as $c): ?>
-            <option value="<?= (int) $c['id'] ?>"><?= htmlspecialchars($c['nombre']) ?></option>
+            <option value="<?= (int) $c['id'] ?>"><?= h($c['nombre']) ?></option>
           <?php endforeach; ?>
         </select>
         <p class="mt-1 text-xs text-slate-500">Se usará como centro de las asignaciones creadas (puedes cambiar esto más

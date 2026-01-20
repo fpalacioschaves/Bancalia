@@ -8,12 +8,12 @@ $q = trim($_GET['q'] ?? '');
 $hasQuery = ($q !== '');
 
 $results = [
-  'familias'    => [],
-  'cursos'      => [],
+  'familias' => [],
+  'cursos' => [],
   'asignaturas' => [],
-  'temas'       => [],
-  'centros'     => [],
-  'profesores'  => [],
+  'temas' => [],
+  'centros' => [],
+  'profesores' => [],
 ];
 
 if ($hasQuery) {
@@ -27,7 +27,7 @@ if ($hasQuery) {
     ORDER BY nombre ASC
     LIMIT 10
   ");
-  $st->execute([':q'=>$like]);
+  $st->execute([':q' => $like]);
   $results['familias'] = $st->fetchAll();
 
   // Cursos (con familia)
@@ -39,7 +39,7 @@ if ($hasQuery) {
     ORDER BY f.nombre ASC, c.orden ASC, c.nombre ASC
     LIMIT 10
   ");
-  $st->execute([':q'=>$like]);
+  $st->execute([':q' => $like]);
   $results['cursos'] = $st->fetchAll();
 
   // Asignaturas (con curso y familia)
@@ -53,7 +53,7 @@ if ($hasQuery) {
     ORDER BY f.nombre ASC, c.orden ASC, a.orden ASC, a.nombre ASC
     LIMIT 10
   ");
-  $st->execute([':q'=>$like]);
+  $st->execute([':q' => $like]);
   $results['asignaturas'] = $st->fetchAll();
 
   // Temas (con asignatura, curso, familia)
@@ -69,7 +69,7 @@ if ($hasQuery) {
     ORDER BY f.nombre ASC, c.orden ASC, a.orden ASC, t.numero ASC, t.nombre ASC
     LIMIT 10
   ");
-  $st->execute([':q'=>$like]);
+  $st->execute([':q' => $like]);
   $results['temas'] = $st->fetchAll();
 
   // Centros
@@ -81,7 +81,7 @@ if ($hasQuery) {
     ORDER BY nombre ASC
     LIMIT 10
   ");
-  $st->execute([':q'=>$like]);
+  $st->execute([':q' => $like]);
   $results['centros'] = $st->fetchAll();
 
   // Profesores (con centro)
@@ -93,7 +93,7 @@ if ($hasQuery) {
     ORDER BY p.apellidos ASC, p.nombre ASC
     LIMIT 10
   ");
-  $st->execute([':q'=>$like]);
+  $st->execute([':q' => $like]);
   $results['profesores'] = $st->fetchAll();
 }
 ?>
@@ -106,10 +106,10 @@ if ($hasQuery) {
 
   <form method="get" action="<?= PUBLIC_URL ?>/search.php" class="flex items-center gap-2">
     <label for="q" class="sr-only">Buscar</label>
-    <input id="q" name="q" type="search" value="<?= htmlspecialchars($q) ?>"
-           placeholder="Escribe para buscar…"
-           class="w-64 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400">
-    <button class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Buscar</button>
+    <input id="q" name="q" type="search" value="<?= h($q) ?>" placeholder="Escribe para buscar…"
+      class="w-64 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400">
+    <button
+      class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Buscar</button>
   </form>
 </div>
 
@@ -132,12 +132,13 @@ if ($hasQuery) {
             <?php foreach ($results['familias'] as $r): ?>
               <li class="flex items-center justify-between py-2">
                 <div>
-                  <div class="text-sm font-medium text-slate-800"><?= htmlspecialchars($r['nombre']) ?></div>
+                  <div class="text-sm font-medium text-slate-800"><?= h($r['nombre']) ?></div>
                   <div class="text-xs text-slate-500">
-                    <code class="rounded bg-slate-100 px-1.5 py-0.5"><?= htmlspecialchars($r['slug']) ?></code>
+                    <code class="rounded bg-slate-100 px-1.5 py-0.5"><?= h($r['slug']) ?></code>
                   </div>
                 </div>
-                <a href="<?= PUBLIC_URL ?>/admin/familias/edit.php?id=<?= (int)$r['id'] ?>" class="text-sm text-indigo-600 hover:underline">Abrir</a>
+                <a href="<?= PUBLIC_URL ?>/admin/familias/edit.php?id=<?= (int) $r['id'] ?>"
+                  class="text-sm text-indigo-600 hover:underline">Abrir</a>
               </li>
             <?php endforeach; ?>
           </ul>
@@ -158,13 +159,14 @@ if ($hasQuery) {
             <?php foreach ($results['cursos'] as $r): ?>
               <li class="flex items-center justify-between py-2">
                 <div>
-                  <div class="text-sm font-medium text-slate-800"><?= htmlspecialchars($r['nombre']) ?></div>
+                  <div class="text-sm font-medium text-slate-800"><?= h($r['nombre']) ?></div>
                   <div class="text-xs text-slate-500">
-                    <?= htmlspecialchars($r['familia']) ?> ·
-                    <code class="rounded bg-slate-100 px-1.5 py-0.5"><?= htmlspecialchars($r['slug']) ?></code>
+                    <?= h($r['familia']) ?> ·
+                    <code class="rounded bg-slate-100 px-1.5 py-0.5"><?= h($r['slug']) ?></code>
                   </div>
                 </div>
-                <a href="<?= PUBLIC_URL ?>/admin/cursos/edit.php?id=<?= (int)$r['id'] ?>" class="text-sm text-indigo-600 hover:underline">Abrir</a>
+                <a href="<?= PUBLIC_URL ?>/admin/cursos/edit.php?id=<?= (int) $r['id'] ?>"
+                  class="text-sm text-indigo-600 hover:underline">Abrir</a>
               </li>
             <?php endforeach; ?>
           </ul>
@@ -185,13 +187,14 @@ if ($hasQuery) {
             <?php foreach ($results['asignaturas'] as $r): ?>
               <li class="flex items-center justify-between py-2">
                 <div>
-                  <div class="text-sm font-medium text-slate-800"><?= htmlspecialchars($r['nombre']) ?></div>
+                  <div class="text-sm font-medium text-slate-800"><?= h($r['nombre']) ?></div>
                   <div class="text-xs text-slate-500">
-                    <?= htmlspecialchars($r['familia']) ?> → <?= htmlspecialchars($r['curso']) ?>
-                    <?= $r['codigo'] ? '· '.htmlspecialchars($r['codigo']) : '' ?>
+                    <?= h($r['familia']) ?> → <?= h($r['curso']) ?>
+                    <?= $r['codigo'] ? '· ' . h($r['codigo']) : '' ?>
                   </div>
                 </div>
-                <a href="<?= PUBLIC_URL ?>/admin/asignaturas/edit.php?id=<?= (int)$r['id'] ?>" class="text-sm text-indigo-600 hover:underline">Abrir</a>
+                <a href="<?= PUBLIC_URL ?>/admin/asignaturas/edit.php?id=<?= (int) $r['id'] ?>"
+                  class="text-sm text-indigo-600 hover:underline">Abrir</a>
               </li>
             <?php endforeach; ?>
           </ul>
@@ -213,16 +216,17 @@ if ($hasQuery) {
               <li class="flex items-center justify-between py-2">
                 <div>
                   <div class="text-sm font-medium text-slate-800">
-                    <?= 'T'.(int)$r['numero'].' · '.htmlspecialchars($r['nombre']) ?>
+                    <?= 'T' . (int) $r['numero'] . ' · ' . h($r['nombre']) ?>
                   </div>
                   <div class="text-xs text-slate-500">
-                    <?= htmlspecialchars($r['familia']) ?> → <?= htmlspecialchars($r['curso']) ?> → <?= htmlspecialchars($r['asignatura']) ?>
+                    <?= h($r['familia']) ?> → <?= h($r['curso']) ?> → <?= h($r['asignatura']) ?>
                     <?php if (!empty($r['slug'])): ?>
-                      · <code class="rounded bg-slate-100 px-1.5 py-0.5"><?= htmlspecialchars($r['slug']) ?></code>
+                      · <code class="rounded bg-slate-100 px-1.5 py-0.5"><?= h($r['slug']) ?></code>
                     <?php endif; ?>
                   </div>
                 </div>
-                <a href="<?= PUBLIC_URL ?>/admin/temas/edit.php?id=<?= (int)$r['id'] ?>" class="text-sm text-indigo-600 hover:underline">Abrir</a>
+                <a href="<?= PUBLIC_URL ?>/admin/temas/edit.php?id=<?= (int) $r['id'] ?>"
+                  class="text-sm text-indigo-600 hover:underline">Abrir</a>
               </li>
             <?php endforeach; ?>
           </ul>
@@ -243,13 +247,14 @@ if ($hasQuery) {
             <?php foreach ($results['centros'] as $r): ?>
               <li class="flex items-center justify-between py-2">
                 <div>
-                  <div class="text-sm font-medium text-slate-800"><?= htmlspecialchars($r['nombre']) ?></div>
+                  <div class="text-sm font-medium text-slate-800"><?= h($r['nombre']) ?></div>
                   <div class="text-xs text-slate-500">
-                    <?= htmlspecialchars((string)$r['provincia'] ?: '—') ?>, <?= htmlspecialchars((string)$r['comunidad'] ?: '—') ?>
-                    · <code class="rounded bg-slate-100 px-1.5 py-0.5"><?= htmlspecialchars($r['slug']) ?></code>
+                    <?= h((string) $r['provincia'] ?: '—') ?>, <?= h((string) $r['comunidad'] ?: '—') ?>
+                    · <code class="rounded bg-slate-100 px-1.5 py-0.5"><?= h($r['slug']) ?></code>
                   </div>
                 </div>
-                <a href="<?= PUBLIC_URL ?>/admin/centros/edit.php?id=<?= (int)$r['id'] ?>" class="text-sm text-indigo-600 hover:underline">Abrir</a>
+                <a href="<?= PUBLIC_URL ?>/admin/centros/edit.php?id=<?= (int) $r['id'] ?>"
+                  class="text-sm text-indigo-600 hover:underline">Abrir</a>
               </li>
             <?php endforeach; ?>
           </ul>
@@ -271,14 +276,15 @@ if ($hasQuery) {
               <li class="flex items-center justify-between py-2">
                 <div>
                   <div class="text-sm font-medium text-slate-800">
-                    <?= htmlspecialchars($r['apellidos'].', '.$r['nombre']) ?>
+                    <?= h($r['apellidos'] . ', ' . $r['nombre']) ?>
                   </div>
                   <div class="text-xs text-slate-500">
-                    <?= htmlspecialchars($r['email']) ?>
-                    · <?= htmlspecialchars((string)$r['centro'] ?: '—') ?>
+                    <?= h($r['email']) ?>
+                    · <?= h((string) $r['centro'] ?: '—') ?>
                   </div>
                 </div>
-                <a href="<?= PUBLIC_URL ?>/admin/profesores/edit.php?id=<?= (int)$r['id'] ?>" class="text-sm text-indigo-600 hover:underline">Abrir</a>
+                <a href="<?= PUBLIC_URL ?>/admin/profesores/edit.php?id=<?= (int) $r['id'] ?>"
+                  class="text-sm text-indigo-600 hover:underline">Abrir</a>
               </li>
             <?php endforeach; ?>
           </ul>
@@ -289,4 +295,3 @@ if ($hasQuery) {
 <?php endif; ?>
 
 <?php require_once __DIR__ . '/../partials/footer.php'; ?>
-

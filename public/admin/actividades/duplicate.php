@@ -7,10 +7,10 @@ require_once __DIR__ . '/../../../config.php';
 
 require_login_or_redirect();
 
-$u          = current_user();
-$role       = $u['role'] ?? '';
-$profesorId = (int)($u['profesor_id'] ?? 0);
-$centroId   = (int)($u['centro_id'] ?? 0);
+$u = current_user();
+$role = $u['role'] ?? '';
+$profesorId = (int) ($u['profesor_id'] ?? 0);
+$centroId = (int) ($u['centro_id'] ?? 0);
 
 if (!in_array($role, ['profesor', 'admin'], true)) {
   http_response_code(403);
@@ -44,15 +44,15 @@ try {
 
   // 2. Comprobar permisos: propia o visible (si no es admin)
   if ($role !== 'admin') {
-    $esMia     = ((int)$act['profesor_id'] === $profesorId);
-    $visible   = in_array($act['visibilidad'], ['publica', 'centro'], true);
+    $esMia = ((int) $act['profesor_id'] === $profesorId);
+    $visible = in_array($act['visibilidad'], ['publica', 'centro'], true);
 
     if (!$esMia && !$visible) {
       throw new RuntimeException('No tienes permisos para duplicar esta actividad');
     }
   }
 
-  $oldId = (int)$act['id'];
+  $oldId = (int) $act['id'];
 
   // 3. Preparar datos de la nueva actividad
   $nuevoTitulo = $act['titulo'] . ' (copia)';
@@ -60,12 +60,12 @@ try {
     $nuevoTitulo = mb_substr($nuevoTitulo, 0, 252) . '...';
   }
 
-  $nuevoProfesorId = $profesorId ?: (int)$act['profesor_id'];
-  $nuevoCentroId   = $centroId ?: (int)($act['centro_id'] ?? 0);
+  $nuevoProfesorId = $profesorId ?: (int) $act['profesor_id'];
+  $nuevoCentroId = $centroId ?: (int) ($act['centro_id'] ?? 0);
 
   // Siempre duplicamos como privada y borrador
   $nuevoVisibilidad = 'privada';
-  $nuevoEstado      = 'borrador';
+  $nuevoEstado = 'borrador';
 
   // 4. Insertar en actividades (ahora con centro_id)
   $stIns = $db->prepare("
@@ -78,21 +78,21 @@ try {
   ");
 
   $stIns->execute([
-    ':profesor_id'   => $nuevoProfesorId,
-    ':centro_id'     => $nuevoCentroId,
-    ':familia_id'    => $act['familia_id'],
-    ':curso_id'      => $act['curso_id'],
+    ':profesor_id' => $nuevoProfesorId,
+    ':centro_id' => $nuevoCentroId,
+    ':familia_id' => $act['familia_id'],
+    ':curso_id' => $act['curso_id'],
     ':asignatura_id' => $act['asignatura_id'],
-    ':tema_id'       => $act['tema_id'],
-    ':tipo'          => $act['tipo'],
-    ':titulo'        => $nuevoTitulo,
-    ':descripcion'   => $act['descripcion'],
-    ':dificultad'    => $act['dificultad'],
-    ':visibilidad'   => $nuevoVisibilidad,
-    ':estado'        => $nuevoEstado,
+    ':tema_id' => $act['tema_id'],
+    ':tipo' => $act['tipo'],
+    ':titulo' => $nuevoTitulo,
+    ':descripcion' => $act['descripcion'],
+    ':dificultad' => $act['dificultad'],
+    ':visibilidad' => $nuevoVisibilidad,
+    ':estado' => $nuevoEstado,
   ]);
 
-  $newId = (int)$db->lastInsertId();
+  $newId = (int) $db->lastInsertId();
 
   // ---- DUPLICADO ESPECÍFICO POR TIPO ----
 
@@ -106,7 +106,7 @@ try {
         SELECT :newId, barajar, enunciado_html, puntuacion_max,
                feedback_correcta, feedback_incorrecta, NOW(), NOW()
         FROM actividades_om WHERE actividad_id=:oldId
-      ")->execute([':newId'=>$newId, ':oldId'=>$oldId]);
+      ")->execute([':newId' => $newId, ':oldId' => $oldId]);
 
       // Opciones
       $db->prepare("
@@ -114,7 +114,7 @@ try {
           (actividad_id, opcion_html, es_correcta, orden, created_at, updated_at)
         SELECT :newId, opcion_html, es_correcta, orden, NOW(), NOW()
         FROM actividades_om_opciones WHERE actividad_id=:oldId
-      ")->execute([':newId'=>$newId, ':oldId'=>$oldId]);
+      ")->execute([':newId' => $newId, ':oldId' => $oldId]);
       break;
 
     case 'verdadero_falso':
@@ -123,7 +123,7 @@ try {
           (actividad_id, respuesta_correcta, feedback_correcta, feedback_incorrecta, created_at, updated_at)
         SELECT :newId, respuesta_correcta, feedback_correcta, feedback_incorrecta, NOW(), NOW()
         FROM actividades_vf WHERE actividad_id=:oldId
-      ")->execute([':newId'=>$newId, ':oldId'=>$oldId]);
+      ")->execute([':newId' => $newId, ':oldId' => $oldId]);
       break;
 
     case 'respuesta_corta':
@@ -140,7 +140,7 @@ try {
                feedback_correcta, feedback_incorrecta,
                NOW(), NOW()
         FROM actividades_rc WHERE actividad_id=:oldId
-      ")->execute([':newId'=>$newId, ':oldId'=>$oldId]);
+      ")->execute([':newId' => $newId, ':oldId' => $oldId]);
       break;
 
     case 'rellenar_huecos':
@@ -155,7 +155,7 @@ try {
                puntuacion_max, feedback_correcta, feedback_incorrecta,
                NOW(), NOW()
         FROM actividades_rh WHERE actividad_id=:oldId
-      ")->execute([':newId'=>$newId, ':oldId'=>$oldId]);
+      ")->execute([':newId' => $newId, ':oldId' => $oldId]);
       break;
 
     case 'emparejar':
@@ -171,7 +171,7 @@ try {
                feedback_correcta, feedback_incorrecta,
                NOW(), NOW()
         FROM actividades_emp WHERE actividad_id=:oldId
-      ")->execute([':newId'=>$newId, ':oldId'=>$oldId]);
+      ")->execute([':newId' => $newId, ':oldId' => $oldId]);
 
       // Pares
       $db->prepare("
@@ -185,7 +185,7 @@ try {
                orden_izq, orden_der, activo,
                NOW(), NOW()
         FROM actividades_emp_pares WHERE actividad_id=:oldId
-      ")->execute([':newId'=>$newId, ':oldId'=>$oldId]);
+      ")->execute([':newId' => $newId, ':oldId' => $oldId]);
       break;
 
     case 'tarea':
@@ -202,7 +202,7 @@ try {
                evaluacion_modo, puntuacion_max, rubrica_json,
                NOW(), NOW()
         FROM actividades_tarea WHERE actividad_id=:oldId
-      ")->execute([':newId'=>$newId, ':oldId'=>$oldId]);
+      ")->execute([':newId' => $newId, ':oldId' => $oldId]);
       break;
   }
 
@@ -213,6 +213,6 @@ try {
 
 } catch (Throwable $e) {
   $db->rollBack();
-  echo 'Error al duplicar la actividad: ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
+  echo 'Error al duplicar la actividad: ' . h($e->getMessage());
   exit;
 }

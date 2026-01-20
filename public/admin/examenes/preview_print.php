@@ -9,10 +9,10 @@ $u = current_user();
 // =======================
 //   ID DEL EXAMEN
 // =======================
-$examenId = (int)($_GET['id'] ?? 0);
+$examenId = (int) ($_GET['id'] ?? 0);
 if ($examenId <= 0) {
-    http_response_code(400);
-    exit('ID de examen inválido.');
+  http_response_code(400);
+  exit('ID de examen inválido.');
 }
 
 // =======================
@@ -37,8 +37,8 @@ $stEx->execute([':id' => $examenId]);
 $examen = $stEx->fetch(PDO::FETCH_ASSOC);
 
 if (!$examen) {
-    http_response_code(404);
-    exit('Examen no encontrado.');
+  http_response_code(404);
+  exit('Examen no encontrado.');
 }
 
 // =======================
@@ -111,12 +111,17 @@ require_once __DIR__ . '/../../../partials/header.php';
 <style>
   /* Ajustes básicos para impresión */
   @media print {
-    header, nav, .no-print {
+
+    header,
+    nav,
+    .no-print {
       display: none !important;
     }
+
     body {
       background: #ffffff !important;
     }
+
     main {
       max-width: 100% !important;
       padding: 0 1.5cm !important;
@@ -127,15 +132,12 @@ require_once __DIR__ . '/../../../partials/header.php';
 <div class="no-print mb-4 flex items-center justify-between">
   <h1 class="text-xl font-semibold tracking-tight">Versión imprimible del examen</h1>
   <div class="flex gap-2">
-    <a href="<?= PUBLIC_URL ?>/admin/examenes/preview.php?id=<?= (int)$examen['id'] ?>"
-       class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
+    <a href="<?= PUBLIC_URL ?>/admin/examenes/preview.php?id=<?= (int) $examen['id'] ?>"
+      class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
       Volver a vista previa
     </a>
-    <button
-      type="button"
-      onclick="window.print()"
-      class="inline-flex items-center rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-    >
+    <button type="button" onclick="window.print()"
+      class="inline-flex items-center rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800">
       Imprimir / PDF
     </button>
   </div>
@@ -147,29 +149,29 @@ require_once __DIR__ . '/../../../partials/header.php';
     <div class="flex flex-wrap gap-4">
       <div class="flex-1 min-w-[180px]">
         <span class="font-semibold">Asignatura:</span>
-        <span><?= htmlspecialchars($examen['asignatura_nombre'] ?? '________________') ?></span>
+        <span><?= h($examen['asignatura_nombre'] ?? '________________') ?></span>
       </div>
       <div class="flex-1 min-w-[120px]">
         <span class="font-semibold">Curso:</span>
-        <span><?= htmlspecialchars($examen['curso_nombre'] ?? '________________') ?></span>
+        <span><?= h($examen['curso_nombre'] ?? '________________') ?></span>
       </div>
     </div>
 
     <div class="flex flex-wrap gap-4">
       <div class="flex-1 min-w-[220px]">
         <span class="font-semibold">Título del examen:</span>
-        <span><?= htmlspecialchars($examen['titulo']) ?></span>
+        <span><?= h($examen['titulo']) ?></span>
       </div>
       <div class="flex-1 min-w-[120px]">
         <span class="font-semibold">Fecha:</span>
-        <span><?= !empty($examen['fecha']) ? htmlspecialchars($examen['fecha']) : '____ / ____ / ______' ?></span>
+        <span><?= !empty($examen['fecha']) ? h($examen['fecha']) : '____ / ____ / ______' ?></span>
       </div>
       <div class="flex-1 min-w-[100px]">
         <span class="font-semibold">Duración:</span>
         <span>
           <?php
           $dur = $examen['duracion_minutos'] ?? null;
-          echo $dur !== null && $dur !== '' ? ((int)$dur . ' min') : '________';
+          echo $dur !== null && $dur !== '' ? ((int) $dur . ' min') : '________';
           ?>
         </span>
       </div>
@@ -182,7 +184,7 @@ require_once __DIR__ . '/../../../partials/header.php';
       </div>
       <div class="flex-1 min-w-[180px]">
         <span class="font-semibold">Profesor/a:</span>
-        <span><?= htmlspecialchars(trim(($examen['profesor_apellidos'] ?? '') . ' ' . ($examen['profesor_nombre'] ?? ''))) ?: '________________' ?></span>
+        <span><?= h(trim(($examen['profesor_apellidos'] ?? '') . ' ' . ($examen['profesor_nombre'] ?? ''))) ?: '________________' ?></span>
       </div>
     </div>
   </div>
@@ -193,7 +195,7 @@ require_once __DIR__ . '/../../../partials/header.php';
   <div class="mb-6 rounded-xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
     <h2 class="text-sm font-semibold text-slate-700 mb-2">Instrucciones</h2>
     <p class="text-sm text-slate-800 whitespace-pre-line">
-      <?= htmlspecialchars($examen['descripcion']) ?>
+      <?= h($examen['descripcion']) ?>
     </p>
   </div>
 <?php endif; ?>
@@ -208,23 +210,23 @@ require_once __DIR__ . '/../../../partials/header.php';
     <ol class="space-y-6">
       <?php foreach ($actividades as $a): ?>
         <?php
-          $tipo   = $a['tipo'];
-          $orden  = (int)$a['orden'];
-          $puntos = $a['puntuacion'] ?? null;
+        $tipo = $a['tipo'];
+        $orden = (int) $a['orden'];
+        $puntos = $a['puntuacion'] ?? null;
         ?>
         <li>
           <!-- Enunciado de la pregunta -->
           <p class="text-sm font-semibold text-slate-900">
             <?= $orden ?>.
-            <?= htmlspecialchars($a['titulo']) ?>
+            <?= h($a['titulo']) ?>
             <?php if ($puntos !== null): ?>
-              <span class="text-xs font-normal text-slate-500">(<?= htmlspecialchars((string)$puntos) ?> ptos)</span>
+              <span class="text-xs font-normal text-slate-500">(<?= h((string) $puntos) ?> ptos)</span>
             <?php endif; ?>
           </p>
 
           <?php if (!empty($a['descripcion'])): ?>
             <p class="mt-1 text-sm text-slate-800 whitespace-pre-line">
-              <?= htmlspecialchars($a['descripcion']) ?>
+              <?= h($a['descripcion']) ?>
             </p>
           <?php endif; ?>
 
@@ -232,8 +234,8 @@ require_once __DIR__ . '/../../../partials/header.php';
           <div class="mt-2 text-sm text-slate-800 space-y-2">
             <?php if ($tipo === 'opcion_multiple'): ?>
               <?php
-                $stmOMOpciones->execute([':id' => $a['id']]);
-                $ops = $stmOMOpciones->fetchAll(PDO::FETCH_ASSOC);
+              $stmOMOpciones->execute([':id' => $a['id']]);
+              $ops = $stmOMOpciones->fetchAll(PDO::FETCH_ASSOC);
               ?>
               <?php if ($ops): ?>
                 <ul class="mt-1 space-y-1">
@@ -269,8 +271,8 @@ require_once __DIR__ . '/../../../partials/header.php';
 
             <?php elseif ($tipo === 'rellenar_huecos'): ?>
               <?php
-                $stmRH->execute([':id' => $a['id']]);
-                $rh = $stmRH->fetchColumn();
+              $stmRH->execute([':id' => $a['id']]);
+              $rh = $stmRH->fetchColumn();
               ?>
               <div class="mt-1 text-sm text-slate-800">
                 <?= $rh ?: '<span class="text-xs text-amber-700">(Enunciado no configurado)</span>' ?>
@@ -278,11 +280,11 @@ require_once __DIR__ . '/../../../partials/header.php';
 
             <?php elseif ($tipo === 'emparejar'): ?>
               <?php
-                $stmEMP->execute([':id' => $a['id']]);
-                $enunEmp = $stmEMP->fetchColumn();
+              $stmEMP->execute([':id' => $a['id']]);
+              $enunEmp = $stmEMP->fetchColumn();
 
-                $stmEMPPares->execute([':id' => $a['id']]);
-                $pares = $stmEMPPares->fetchAll(PDO::FETCH_ASSOC);
+              $stmEMPPares->execute([':id' => $a['id']]);
+              $pares = $stmEMPPares->fetchAll(PDO::FETCH_ASSOC);
               ?>
               <?php if ($enunEmp): ?>
                 <div class="mb-2 text-sm text-slate-800">
@@ -321,12 +323,12 @@ require_once __DIR__ . '/../../../partials/header.php';
 
             <?php elseif ($tipo === 'tarea'): ?>
               <?php
-                $stmTarea->execute([':id' => $a['id']]);
-                $txTarea = $stmTarea->fetchColumn();
+              $stmTarea->execute([':id' => $a['id']]);
+              $txTarea = $stmTarea->fetchColumn();
               ?>
               <?php if ($txTarea): ?>
                 <p class="mt-1 text-sm text-slate-800 whitespace-pre-line">
-                  <?= htmlspecialchars($txTarea) ?>
+                  <?= h($txTarea) ?>
                 </p>
               <?php endif; ?>
               <div class="mt-3 h-32 border border-slate-300 rounded-md"></div>

@@ -169,13 +169,13 @@ require_once __DIR__ . '/../../../partials/header.php';
   <div>
     <h1 class="text-xl font-semibold tracking-tight">Actividades del examen</h1>
     <p class="mt-1 text-sm text-slate-600">
-      Asocia actividades al examen <strong><?= htmlspecialchars($examen['titulo']) ?></strong>.
+      Asocia actividades al examen <strong><?= h($examen['titulo']) ?></strong>.
     </p>
     <p class="mt-1 text-xs text-slate-500">
-      Profesor: <?= htmlspecialchars(($examen['profesor_apellidos'] ?? '') . ' ' . ($examen['profesor_nombre'] ?? '')) ?><br>
-      Familia: <?= htmlspecialchars($examen['familia_nombre'] ?? '') ?> ·
-      Curso: <?= htmlspecialchars($examen['curso_nombre'] ?? '') ?> ·
-      Asignatura: <?= htmlspecialchars($examen['asignatura_nombre'] ?? '') ?>
+      Profesor: <?= h(($examen['profesor_apellidos'] ?? '') . ' ' . ($examen['profesor_nombre'] ?? '')) ?><br>
+      Familia: <?= h($examen['familia_nombre'] ?? '') ?> ·
+      Curso: <?= h($examen['curso_nombre'] ?? '') ?> ·
+      Asignatura: <?= h($examen['asignatura_nombre'] ?? '') ?>
     </p>
   </div>
 
@@ -192,7 +192,7 @@ require_once __DIR__ . '/../../../partials/header.php';
     <input
       type="search"
       name="q"
-      value="<?= htmlspecialchars($q) ?>"
+      value="<?= h($q) ?>"
       placeholder="Buscar actividad por título"
       class="w-64 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm"
     >
@@ -257,22 +257,22 @@ require_once __DIR__ . '/../../../partials/header.php';
               </td>
 
               <td class="px-3 py-2">
-                <strong><?= htmlspecialchars($a['titulo']) ?></strong>
+                <strong><?= h($a['titulo']) ?></strong>
                 <div class="text-xs text-slate-500">ID: <?= $actId ?></div>
-                <div class="text-xs text-slate-500">Creada: <?= htmlspecialchars($a['created_at']) ?></div>
+                <div class="text-xs text-slate-500">Creada: <?= h($a['created_at']) ?></div>
               </td>
 
-              <td class="px-3 py-2"><?= htmlspecialchars($a['tipo']) ?></td>
+              <td class="px-3 py-2"><?= h($a['tipo']) ?></td>
 
               <td class="px-3 py-2">
                 <span class="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                  <?= htmlspecialchars($a['dificultad']) ?>
+                  <?= h($a['dificultad']) ?>
                 </span>
               </td>
 
               <td class="px-3 py-2">
                 <span class="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                  <?= htmlspecialchars($a['visibilidad']) ?>
+                  <?= h($a['visibilidad']) ?>
                 </span>
               </td>
 
@@ -300,7 +300,7 @@ require_once __DIR__ . '/../../../partials/header.php';
                   step="0.25"
                   min="0"
                   name="actividades[<?= $actId ?>][puntuacion]"
-                  value="<?= htmlspecialchars((string)$puntuacion) ?>"
+                  value="<?= h((string)$puntuacion) ?>"
                   class="w-20 rounded-lg border border-slate-300 px-2 py-1 text-xs"
                 >
               </td>

@@ -42,8 +42,7 @@ $rows = $st->fetchAll();
 <h1 class="text-xl font-semibold tracking-tight mb-4">Profesores</h1>
 
 <form method="get" action="" class="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-[1fr,260px,160px,auto,auto] items-stretch">
-  <input type="search" name="q" value="<?= htmlspecialchars($q) ?>"
-    placeholder="Buscar por nombre, apellidos, email o teléfono…"
+  <input type="search" name="q" value="<?= h($q) ?>" placeholder="Buscar por nombre, apellidos, email o teléfono…"
     class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400" />
 
   <select name="centro_id"
@@ -51,7 +50,7 @@ $rows = $st->fetchAll();
     <option value="0">Todos los centros</option>
     <?php foreach ($centros as $c): ?>
       <option value="<?= (int) $c['id'] ?>" <?= $centro === (int) $c['id'] ? 'selected' : '' ?>>
-        <?= htmlspecialchars($c['nombre']) ?>
+        <?= h($c['nombre']) ?>
       </option>
     <?php endforeach; ?>
   </select>
@@ -93,12 +92,12 @@ $rows = $st->fetchAll();
       <tbody class="divide-y divide-slate-200">
         <?php foreach ($rows as $r): ?>
           <tr class="hover:bg-slate-50">
-            <td class="px-4 py-3 text-sm text-slate-800 font-medium">
-              <?= htmlspecialchars($r['apellidos'] . ', ' . $r['nombre']) ?>
+            <td class="px-4 py-3 text-sm text-slate-800">
+              <?= h($r['apellidos'] . ', ' . $r['nombre']) ?>
             </td>
-            <td class="px-4 py-3 text-sm text-slate-800"><?= htmlspecialchars($r['email']) ?></td>
-            <td class="px-4 py-3 text-sm text-slate-800"><?= htmlspecialchars((string) $r['telefono'] ?: '—') ?></td>
-            <td class="px-4 py-3 text-sm text-slate-800"><?= htmlspecialchars((string) $r['centro'] ?: '—') ?></td>
+            <td class="px-4 py-3 text-sm text-slate-800"><?= h($r['email']) ?></td>
+            <td class="px-4 py-3 text-sm text-slate-800"><?= h((string) $r['telefono'] ?: '—') ?></td>
+            <td class="px-4 py-3 text-sm text-slate-800"><?= h((string) $r['centro'] ?: '—') ?></td>
             <td class="px-4 py-3 text-sm">
               <?php if ((int) $r['is_active'] === 1): ?>
                 <span

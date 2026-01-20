@@ -98,6 +98,30 @@ function h(?string $s): string
   return htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
 }
 
+/**
+ * Genera un slug amigable para URLs a partir de una cadena.
+ */
+function str_slug(string $text): string
+{
+  // Reemplaza caracteres no alfanuméricos por guiones
+  $text = preg_replace('~[^\pL\d]+~u', '-', $text);
+  // Transliteración de caracteres especiales
+  $text = iconv('utf-8', 'us-ascii//TRANSLIT', $text);
+  // Elimina caracteres no deseados
+  $text = preg_replace('~[^-\w]+~', '', $text);
+  // Trim de guiones
+  $text = trim($text, '-');
+  // Elimina guiones duplicados
+  $text = preg_replace('~-+~', '-', $text);
+  // Minúsculas
+  $text = strtolower($text);
+
+  if (empty($text)) {
+    return 'n-a';
+  }
+  return $text;
+}
+
 function flash(string $key, ?string $value = null): ?string
 {
   if (!isset($_SESSION['flash']) || !is_array($_SESSION['flash']))

@@ -8,9 +8,9 @@ $u = current_user();
 require_once __DIR__ . '/../../../partials/header.php';
 
 
-$q       = trim($_GET['q'] ?? '');
-$famId   = (int)($_GET['familia_id'] ?? 0);
-$cursoId = (int)($_GET['curso_id'] ?? 0);
+$q = trim($_GET['q'] ?? '');
+$famId = (int) ($_GET['familia_id'] ?? 0);
+$cursoId = (int) ($_GET['curso_id'] ?? 0);
 
 $fams = pdo()->query('SELECT id, nombre FROM familias_profesionales WHERE is_active=1 ORDER BY nombre ASC')->fetchAll();
 $cursos = pdo()->query('SELECT c.id, c.nombre, c.familia_id, f.nombre AS familia
@@ -37,7 +37,8 @@ if ($cursoId > 0) {
   $w[] = 'a.curso_id = :curso';
   $params[':curso'] = $cursoId;
 }
-if ($w) $sql .= ' WHERE '.implode(' AND ', $w);
+if ($w)
+  $sql .= ' WHERE ' . implode(' AND ', $w);
 $sql .= ' ORDER BY f.nombre ASC, c.orden ASC, a.orden ASC, a.nombre ASC';
 
 $st = pdo()->prepare($sql);
@@ -47,40 +48,37 @@ $rows = $st->fetchAll();
 <h1 class="text-xl font-semibold tracking-tight mb-4">Asignaturas</h1>
 
 <form method="get" action="" class="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-[1fr,240px,240px,auto,auto] items-stretch">
-  <input
-    type="search" name="q" value="<?= htmlspecialchars($q) ?>"
-    placeholder="Buscar por asignatura, código, slug, familia o curso"
+  <input type="search" name="q" value="<?= h($q) ?>" placeholder="Buscar por asignatura, código, slug, familia o curso"
     class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400" />
 
   <select name="familia_id"
-          class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
+    class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
     <option value="0">Todas las familias</option>
     <?php foreach ($fams as $f): ?>
-      <option value="<?= (int)$f['id'] ?>" <?= $famId===(int)$f['id']?'selected':'' ?>>
-        <?= htmlspecialchars($f['nombre']) ?>
+      <option value="<?= (int) $f['id'] ?>" <?= $famId === (int) $f['id'] ? 'selected' : '' ?>>
+        <?= h($f['nombre']) ?>
       </option>
     <?php endforeach; ?>
   </select>
 
   <select name="curso_id"
-          class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
+    class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
     <option value="0">Todos los cursos</option>
     <?php foreach ($cursos as $c): ?>
-      <option value="<?= (int)$c['id'] ?>"
-        data-familia="<?= (int)$c['familia_id'] ?>"
-        <?= $cursoId===(int)$c['id']?'selected':'' ?>>
-        <?= htmlspecialchars($c['familia'].' — '.$c['nombre']) ?>
+      <option value="<?= (int) $c['id'] ?>" data-familia="<?= (int) $c['familia_id'] ?>"
+        <?= $cursoId === (int) $c['id'] ? 'selected' : '' ?>>
+        <?= h($c['familia'] . ' — ' . $c['nombre']) ?>
       </option>
     <?php endforeach; ?>
   </select>
 
   <button type="submit"
-          class="inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 active:scale-[0.99] transition">
+    class="inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 active:scale-[0.99] transition">
     Buscar
   </button>
 
   <a href="<?= PUBLIC_URL ?>/admin/asignaturas/create.php"
-     class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 active:scale-[0.99] transition">
+    class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 active:scale-[0.99] transition">
     + Nueva asignatura
   </a>
 </form>
@@ -88,7 +86,8 @@ $rows = $st->fetchAll();
 <?php if (!$rows): ?>
   <div class="rounded-lg border border-slate-200 bg-white p-6 text-slate-600">
     No hay asignaturas todavía.
-    <a href="<?= PUBLIC_URL ?>/admin/asignaturas/create.php" class="text-indigo-600 hover:underline font-medium">Crea la primera</a>.
+    <a href="<?= PUBLIC_URL ?>/admin/asignaturas/create.php" class="text-indigo-600 hover:underline font-medium">Crea la
+      primera</a>.
   </div>
 <?php else: ?>
   <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -108,29 +107,31 @@ $rows = $st->fetchAll();
       <tbody class="divide-y divide-slate-200">
         <?php foreach ($rows as $r): ?>
           <tr class="hover:bg-slate-50">
-            <td class="px-4 py-3 text-sm text-slate-800"><?= htmlspecialchars($r['familia']) ?></td>
-            <td class="px-4 py-3 text-sm text-slate-800"><?= htmlspecialchars($r['curso']) ?></td>
-            <td class="px-4 py-3 text-sm text-slate-800"><?= htmlspecialchars($r['nombre']) ?></td>
-            <td class="px-4 py-3 text-sm text-slate-700"><?= htmlspecialchars((string)$r['codigo']) ?></td>
-            <td class="px-4 py-3 text-sm text-slate-800"><?= $r['horas'] !== null ? (int)$r['horas'] : '—' ?></td>
-            <td class="px-4 py-3 text-sm text-slate-800"><?= (int)$r['orden'] ?></td>
+            <td class="px-4 py-3 text-sm text-slate-800"><?= h($r['familia']) ?></td>
+            <td class="px-4 py-3 text-sm text-slate-800"><?= h($r['curso']) ?></td>
+            <td class="px-4 py-3 text-sm text-slate-800"><?= h($r['nombre']) ?></td>
+            <td class="px-4 py-3 text-sm text-slate-700"><?= h((string) $r['codigo']) ?></td>
+            <td class="px-4 py-3 text-sm text-slate-800"><?= $r['horas'] !== null ? (int) $r['horas'] : '—' ?></td>
+            <td class="px-4 py-3 text-sm text-slate-800"><?= (int) $r['orden'] ?></td>
             <td class="px-4 py-3 text-sm">
-              <?php if ((int)$r['is_active'] === 1): ?>
-                <span class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[12px] font-medium text-emerald-700 ring-1 ring-emerald-200">Sí</span>
+              <?php if ((int) $r['is_active'] === 1): ?>
+                <span
+                  class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[12px] font-medium text-emerald-700 ring-1 ring-emerald-200">Sí</span>
               <?php else: ?>
-                <span class="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[12px] font-medium text-rose-700 ring-1 ring-rose-200">No</span>
+                <span
+                  class="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[12px] font-medium text-rose-700 ring-1 ring-rose-200">No</span>
               <?php endif; ?>
             </td>
             <td class="px-4 py-3 text-sm">
               <div class="flex justify-end gap-2">
-                <a href="<?= PUBLIC_URL ?>/admin/asignaturas/edit.php?id=<?= (int)$r['id'] ?>"
-                   class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100">Editar</a>
+                <a href="<?= PUBLIC_URL ?>/admin/asignaturas/edit.php?id=<?= (int) $r['id'] ?>"
+                  class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100">Editar</a>
                 <form method="post" action="<?= PUBLIC_URL ?>/admin/asignaturas/delete.php"
-                      onsubmit="return confirm('¿Eliminar esta asignatura?');">
+                  onsubmit="return confirm('¿Eliminar esta asignatura?');">
                   <?= csrf_field() ?>
-                  <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
+                  <input type="hidden" name="id" value="<?= (int) $r['id'] ?>">
                   <button type="submit"
-                          class="inline-flex items-center rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-rose-500">Eliminar</button>
+                    class="inline-flex items-center rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-rose-500">Eliminar</button>
                 </form>
               </div>
             </td>

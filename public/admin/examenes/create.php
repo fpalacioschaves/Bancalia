@@ -49,23 +49,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   try {
     csrf_check($_POST['csrf'] ?? null);
 
-    $profesor_id    = (int)($_POST['profesor_id'] ?? 0);
-    $familia_id     = (int)($_POST['familia_id'] ?? 0);
-    $curso_id       = (int)($_POST['curso_id'] ?? 0);
-    $asignatura_id  = (int)($_POST['asignatura_id'] ?? 0);
-    $titulo         = trim($_POST['titulo'] ?? '');
-    $descripcion    = trim($_POST['descripcion'] ?? '');
-    $estado         = $_POST['estado'] ?? 'borrador';
-    $fecha_raw      = trim($_POST['fecha'] ?? '');
-    $hora_raw       = trim($_POST['hora'] ?? '');
-    $duracion_raw   = trim($_POST['duracion_minutos'] ?? '');
-    $tipo           = $_POST['tipo'] ?? 'examen';
+    $profesor_id = (int) ($_POST['profesor_id'] ?? 0);
+    $familia_id = (int) ($_POST['familia_id'] ?? 0);
+    $curso_id = (int) ($_POST['curso_id'] ?? 0);
+    $asignatura_id = (int) ($_POST['asignatura_id'] ?? 0);
+    $titulo = trim($_POST['titulo'] ?? '');
+    $descripcion = trim($_POST['descripcion'] ?? '');
+    $estado = $_POST['estado'] ?? 'borrador';
+    $fecha_raw = trim($_POST['fecha'] ?? '');
+    $hora_raw = trim($_POST['hora'] ?? '');
+    $duracion_raw = trim($_POST['duracion_minutos'] ?? '');
+    $tipo = $_POST['tipo'] ?? 'examen';
 
-    if ($profesor_id <= 0)   throw new RuntimeException('Selecciona un profesor.');
-    if ($familia_id <= 0)    throw new RuntimeException('Selecciona una familia.');
-    if ($curso_id <= 0)      throw new RuntimeException('Selecciona un curso.');
-    if ($asignatura_id <= 0) throw new RuntimeException('Selecciona una asignatura.');
-    if ($titulo === '')      throw new RuntimeException('El título es obligatorio.');
+    if ($profesor_id <= 0)
+      throw new RuntimeException('Selecciona un profesor.');
+    if ($familia_id <= 0)
+      throw new RuntimeException('Selecciona una familia.');
+    if ($curso_id <= 0)
+      throw new RuntimeException('Selecciona un curso.');
+    if ($asignatura_id <= 0)
+      throw new RuntimeException('Selecciona una asignatura.');
+    if ($titulo === '')
+      throw new RuntimeException('El título es obligatorio.');
 
     if (!in_array($estado, ['borrador', 'publicado'], true)) {
       $estado = 'borrador';
@@ -76,8 +81,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $fecha = $fecha_raw !== '' ? $fecha_raw : null; // YYYY-MM-DD
-    $hora  = $hora_raw  !== '' ? $hora_raw  : null; // HH:MM
-    $duracion_minutos = $duracion_raw !== '' ? (int)$duracion_raw : null;
+    $hora = $hora_raw !== '' ? $hora_raw : null; // HH:MM
+    $duracion_minutos = $duracion_raw !== '' ? (int) $duracion_raw : null;
 
     // Validaciones de existencia (coherentes con FKs)
     $chkProf = pdo()->prepare('SELECT 1 FROM profesores WHERE id = :id AND is_active = 1 LIMIT 1');
@@ -134,16 +139,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ');
 
     $ins->execute([
-      ':profesor_id'      => $profesor_id,
-      ':familia_id'       => $familia_id,
-      ':curso_id'         => $curso_id,
-      ':asignatura_id'    => $asignatura_id,
-      ':titulo'           => $titulo,
-      ':descripcion'      => $descripcion !== '' ? $descripcion : null,
-      ':estado'           => $estado,
-      ':tipo'             => $tipo,
-      ':fecha'            => $fecha,
-      ':hora'             => $hora,
+      ':profesor_id' => $profesor_id,
+      ':familia_id' => $familia_id,
+      ':curso_id' => $curso_id,
+      ':asignatura_id' => $asignatura_id,
+      ':titulo' => $titulo,
+      ':descripcion' => $descripcion !== '' ? $descripcion : null,
+      ':estado' => $estado,
+      ':tipo' => $tipo,
+      ':fecha' => $fecha,
+      ':hora' => $hora,
       ':duracion_minutos' => $duracion_minutos
     ]);
 
@@ -169,7 +174,7 @@ require_once __DIR__ . '/../../../partials/header.php';
     </p>
   </div>
   <a href="<?= PUBLIC_URL ?>/admin/examenes/index.php"
-     class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
+    class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
     Volver al listado
   </a>
 </div>
@@ -184,11 +189,11 @@ require_once __DIR__ . '/../../../partials/header.php';
           Profesor <span class="text-rose-600">*</span>
         </label>
         <select id="profesor_id" name="profesor_id" required
-                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
+          class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
           <option value="">Selecciona un profesor…</option>
           <?php foreach ($profes as $p): ?>
-            <option value="<?= (int)$p['id'] ?>">
-              <?= htmlspecialchars($p['apellidos'] . ', ' . $p['nombre']) ?>
+            <option value="<?= (int) $p['id'] ?>">
+              <?= h($p['apellidos'] . ', ' . $p['nombre']) ?>
             </option>
           <?php endforeach; ?>
         </select>
@@ -199,11 +204,11 @@ require_once __DIR__ . '/../../../partials/header.php';
           Familia <span class="text-rose-600">*</span>
         </label>
         <select id="familia_id" name="familia_id" required
-                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
+          class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
           <option value="">Selecciona una familia…</option>
           <?php foreach ($fams as $f): ?>
-            <option value="<?= (int)$f['id'] ?>">
-              <?= htmlspecialchars($f['nombre']) ?>
+            <option value="<?= (int) $f['id'] ?>">
+              <?= h($f['nombre']) ?>
             </option>
           <?php endforeach; ?>
         </select>
@@ -216,11 +221,11 @@ require_once __DIR__ . '/../../../partials/header.php';
           Curso <span class="text-rose-600">*</span>
         </label>
         <select id="curso_id" name="curso_id" required
-                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
+          class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
           <option value="">Selecciona un curso…</option>
           <?php foreach ($cursos as $c): ?>
-            <option value="<?= (int)$c['id'] ?>">
-              <?= htmlspecialchars($c['familia'] . ' · ' . $c['nombre']) ?>
+            <option value="<?= (int) $c['id'] ?>">
+              <?= h($c['familia'] . ' · ' . $c['nombre']) ?>
             </option>
           <?php endforeach; ?>
         </select>
@@ -231,11 +236,11 @@ require_once __DIR__ . '/../../../partials/header.php';
           Asignatura <span class="text-rose-600">*</span>
         </label>
         <select id="asignatura_id" name="asignatura_id" required
-                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
+          class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
           <option value="">Selecciona una asignatura…</option>
           <?php foreach ($asigs as $a): ?>
-            <option value="<?= (int)$a['id'] ?>">
-              <?= htmlspecialchars($a['familia'] . ' · ' . $a['curso'] . ' · ' . $a['nombre']) ?>
+            <option value="<?= (int) $a['id'] ?>">
+              <?= h($a['familia'] . ' · ' . $a['curso'] . ' · ' . $a['nombre']) ?>
             </option>
           <?php endforeach; ?>
         </select>
@@ -247,8 +252,8 @@ require_once __DIR__ . '/../../../partials/header.php';
         Título <span class="text-rose-600">*</span>
       </label>
       <input id="titulo" name="titulo" type="text" required
-             placeholder='Ej. "Examen 1ª Evaluación – Bases de Datos" o "Práctica Tema 3 – Arrays"'
-             class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
+        placeholder='Ej. "Examen 1ª Evaluación – Bases de Datos" o "Práctica Tema 3 – Arrays"'
+        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
     </div>
 
     <div>
@@ -256,8 +261,8 @@ require_once __DIR__ . '/../../../partials/header.php';
         Descripción (opcional)
       </label>
       <textarea id="descripcion" name="descripcion" rows="4"
-                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
-                placeholder="Añade detalles sobre el examen o la hoja de actividades (contenidos, indicaciones para el alumnado, etc.)…"></textarea>
+        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
+        placeholder="Añade detalles sobre el examen o la hoja de actividades (contenidos, indicaciones para el alumnado, etc.)…"></textarea>
     </div>
 
     <!-- Tipo de prueba: examen o práctica -->
@@ -267,7 +272,7 @@ require_once __DIR__ . '/../../../partials/header.php';
           Tipo de prueba
         </label>
         <select id="tipo" name="tipo"
-                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
+          class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
           <option value="examen" selected>Examen formal</option>
           <option value="practica">Hoja de actividades / práctica</option>
         </select>
@@ -281,7 +286,7 @@ require_once __DIR__ . '/../../../partials/header.php';
           Estado
         </label>
         <select id="estado" name="estado"
-                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
+          class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
           <option value="borrador" selected>Borrador</option>
           <option value="publicado">Publicado</option>
         </select>
@@ -295,8 +300,8 @@ require_once __DIR__ . '/../../../partials/header.php';
           Duración (minutos)
         </label>
         <input id="duracion_minutos" name="duracion_minutos" type="number" min="1" step="1"
-               class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
-               placeholder="Ej. 60">
+          class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
+          placeholder="Ej. 60">
         <p class="mt-1 text-xs text-slate-500">
           Puedes dejarlo vacío si no quieres fijar duración.
         </p>
@@ -309,7 +314,7 @@ require_once __DIR__ . '/../../../partials/header.php';
           Fecha del examen / práctica
         </label>
         <input id="fecha" name="fecha" type="date"
-               class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
+          class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
       </div>
 
       <div>
@@ -317,17 +322,17 @@ require_once __DIR__ . '/../../../partials/header.php';
           Hora
         </label>
         <input id="hora" name="hora" type="time"
-               class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
+          class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
       </div>
     </div>
 
     <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
       <a href="<?= PUBLIC_URL ?>/admin/examenes/index.php"
-         class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
+        class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
         Cancelar
       </a>
       <button type="submit"
-              class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 active:scale-[0.99] transition">
+        class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 active:scale-[0.99] transition">
         Crear examen
       </button>
     </div>
@@ -335,4 +340,3 @@ require_once __DIR__ . '/../../../partials/header.php';
 </div>
 
 <?php require_once __DIR__ . '/../../../partials/footer.php'; ?>
-

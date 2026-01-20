@@ -129,12 +129,12 @@ require_once __DIR__ . '/../../../partials/header.php';
     <div class="grid gap-4 sm:grid-cols-3">
       <div class="sm:col-span-2">
         <label for="nombre" class="mb-1 block text-sm font-medium text-slate-700">Nombre</label>
-        <input id="nombre" name="nombre" type="text" required value="<?= htmlspecialchars($prof['nombre']) ?>"
+        <input id="nombre" name="nombre" type="text" required value="<?= h($prof['nombre']) ?>"
           class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
       </div>
       <div>
         <label for="apellidos" class="mb-1 block text-sm font-medium text-slate-700">Apellidos</label>
-        <input id="apellidos" name="apellidos" type="text" required value="<?= htmlspecialchars($prof['apellidos']) ?>"
+        <input id="apellidos" name="apellidos" type="text" required value="<?= h($prof['apellidos']) ?>"
           class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
       </div>
     </div>
@@ -142,12 +142,12 @@ require_once __DIR__ . '/../../../partials/header.php';
     <div class="grid gap-4 sm:grid-cols-3">
       <div>
         <label for="email" class="mb-1 block text-sm font-medium text-slate-700">Email</label>
-        <input id="email" name="email" type="email" required value="<?= htmlspecialchars($prof['email']) ?>"
+        <input id="email" name="email" type="email" required value="<?= h($prof['email']) ?>"
           class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
       </div>
       <div>
         <label for="telefono" class="mb-1 block text-sm font-medium text-slate-700">Teléfono</label>
-        <input id="telefono" name="telefono" type="text" value="<?= htmlspecialchars((string) $prof['telefono']) ?>"
+        <input id="telefono" name="telefono" type="text" value="<?= h((string) $prof['telefono']) ?>"
           class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
       </div>
       <div>
@@ -157,7 +157,7 @@ require_once __DIR__ . '/../../../partials/header.php';
           <option value="">— Selecciona centro —</option>
           <?php foreach ($centros as $c): ?>
             <option value="<?= (int) $c['id'] ?>" <?= (int) $prof['centro_id'] === (int) $c['id'] ? 'selected' : '' ?>>
-              <?= htmlspecialchars($c['nombre']) ?>
+              <?= h($c['nombre']) ?>
             </option>
           <?php endforeach; ?>
         </select>
@@ -168,7 +168,7 @@ require_once __DIR__ . '/../../../partials/header.php';
     <div>
       <label for="notas" class="mb-1 block text-sm font-medium text-slate-700">Notas</label>
       <textarea id="notas" name="notas" rows="3"
-        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"><?= htmlspecialchars((string) $prof['notas']) ?></textarea>
+        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"><?= h((string) $prof['notas']) ?></textarea>
     </div>
 
     <div class="flex items-center gap-2">
@@ -212,7 +212,7 @@ require_once __DIR__ . '/../../../partials/header.php';
                     <option value="">— Familia/Grado —</option>
                     <?php foreach ($fams as $f): ?>
                       <option value="<?= (int) $f['id'] ?>" <?= (int) $r['familia_id'] === (int) $f['id'] ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($f['nombre']) ?>
+                        <?= h($f['nombre']) ?>
                       </option>
                     <?php endforeach; ?>
                   </select>
@@ -230,16 +230,16 @@ require_once __DIR__ . '/../../../partials/header.php';
                   </select>
                 </td>
                 <td class="px-3 py-2">
-                  <input name="asig_anio[]" type="text" value="<?= htmlspecialchars($r['anio_academico']) ?>"
-                    placeholder="2025-2026" required
+                  <input name="asig_anio[]" type="text" value="<?= h($r['anio_academico']) ?>" placeholder="2025-2026"
+                    required
                     class="w-28 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400">
                 </td>
                 <td class="px-3 py-2">
-                  <input name="asig_horas[]" type="number" min="0" value="<?= htmlspecialchars((string) $r['horas']) ?>"
+                  <input name="asig_horas[]" type="number" min="0" value="<?= h((string) $r['horas']) ?>"
                     class="w-20 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400">
                 </td>
                 <td class="px-3 py-2">
-                  <input name="asig_obs[]" type="text" value="<?= htmlspecialchars((string) $r['observaciones']) ?>"
+                  <input name="asig_obs[]" type="text" value="<?= h((string) $r['observaciones']) ?>"
                     class="w-48 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
                     placeholder="Notas">
                 </td>
