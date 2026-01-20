@@ -23,6 +23,62 @@ if (!defined('PUBLIC_URL'))
   <link href="https://cdn.jsdelivr.net/npm/simple-datatables@latest/dist/style.css" rel="stylesheet" type="text/css">
   <script src="https://cdn.jsdelivr.net/npm/simple-datatables@latest/dist/umd/simple-datatables.js"
     type="text/javascript"></script>
+  <style>
+    /* Custom Datatables Styling to match Bancalia */
+    .datatable-input,
+    .datatable-selector {
+      border-color: #cbd5e1 !important;
+      /* slate-300 */
+      border-radius: 0.5rem !important;
+      /* rounded-lg */
+      padding: 0.4rem 0.75rem !important;
+      font-size: 0.875rem !important;
+      /* text-sm */
+      background-color: white !important;
+    }
+
+    .datatable-input:focus,
+    .datatable-selector:focus {
+      outline: 2px solid transparent !important;
+      outline-offset: 2px !important;
+      --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color) !important;
+      --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) #94a3b8 !important;
+      /* focus:ring-slate-400 */
+      box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000) !important;
+      border-color: #94a3b8 !important;
+    }
+
+    .datatable-dropdown label {
+      font-size: 0.875rem !important;
+      color: #475569 !important;
+      /* slate-600 */
+    }
+
+    .datatable-info {
+      font-size: 0.875rem !important;
+      color: #475569 !important;
+    }
+
+    .datatable-pagination a {
+      border-radius: 0.375rem !important;
+      margin: 0 0.125rem !important;
+      padding: 0.4rem 0.75rem !important;
+      font-size: 0.875rem !important;
+    }
+
+    .datatable-pagination .active a {
+      background-color: #0f172a !important;
+      /* slate-900 */
+      color: white !important;
+    }
+
+    /* Fix for the overlapping selector */
+    .datatable-dropdown {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+  </style>
 </head>
 
 <body class="bg-slate-50 text-slate-900">
