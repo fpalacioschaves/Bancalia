@@ -19,6 +19,10 @@ if (!defined('PUBLIC_URL'))
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Bancalia</title>
   <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
+  <!-- Simple-DataTables CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/simple-datatables@latest/dist/style.css" rel="stylesheet" type="text/css">
+  <script src="https://cdn.jsdelivr.net/npm/simple-datatables@latest/dist/umd/simple-datatables.js"
+    type="text/javascript"></script>
 </head>
 
 <body class="bg-slate-50 text-slate-900">

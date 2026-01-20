@@ -270,6 +270,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </td>
                 <td class="px-3 py-2">
                   <input name="asig_anio[]" type="text" value="<?= h($r['anio_academico']) ?>" placeholder="2025-2026"
+                    required
                     class="w-28 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm focus:ring-2 focus:ring-slate-400">
                 </td>
                 <td class="px-3 py-2">
@@ -307,71 +308,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </form>
 </div>
 
+<!-- Shared JS -->
+<script src="<?= h(PUBLIC_URL) ?>/assets/js/assignment-manager.js"></script>
 <script>
-  const familias = <?php echo json_encode($fams, JSON_UNESCAPED_UNICODE); ?>;
-  const cursosAll = <?php echo json_encode($cursos, JSON_UNESCAPED_UNICODE); ?>;
-  const asigsAll = <?php echo json_encode($asigs, JSON_UNESCAPED_UNICODE); ?>;
-
-  const cursosByFam = {};
-  cursosAll.forEach(c => { (cursosByFam[c.familia_id] ||= []).push({ id: c.id, nombre: c.nombre }); });
-  const asigByCurso = {};
-  asigsAll.forEach(a => { (asigByCurso[a.curso_id] ||= []).push({ id: a.id, nombre: a.nombre }); });
-
-  function opt(v, t) { const o = document.createElement('option'); o.value = v; o.textContent = t; return o; }
-
-  function renderCursos(sel, fid, selected = null) {
-    sel.innerHTML = ''; sel.appendChild(opt('', '— Curso —'));
-    (cursosByFam[fid] || []).forEach(c => { const o = opt(c.id, c.nombre); if (selected && String(selected) === String(c.id)) o.selected = true; sel.appendChild(o); });
-  }
-  function renderAsigs(sel, cid, selected = null) {
-    sel.innerHTML = ''; sel.appendChild(opt('', '— Asignatura —'));
-    (asigByCurso[cid] || []).forEach(a => { const o = opt(a.id, a.nombre); if (selected && String(selected) === String(a.id)) o.selected = true; sel.appendChild(o); });
-  }
-
-  // Inicializa filas existentes
-  const existing = <?php
-  $arr = [];
-  foreach ($asigRows as $r) {
-    $arr[] = ['familia_id' => (int) $r['familia_id'], 'curso_id' => (int) $r['curso_id'], 'asignatura_id' => (int) $r['asignatura_id']];
-  }
-  echo json_encode($arr, JSON_UNESCAPED_UNICODE);
-  ?>;
-
-  document.querySelectorAll('#rowsBody tr').forEach((tr, idx) => {
-    const selFam = tr.querySelector('.famSel'); const selCur = tr.querySelector('.cursoSel'); const selAs = tr.querySelector('.asigSel');
-    const preset = existing[idx] || {};
-    const fid = parseInt(selFam.value || preset.familia_id || '0', 10);
-    renderCursos(selCur, fid, preset.curso_id);
-    renderAsigs(selAs, preset.curso_id, preset.asignatura_id);
-
-    selFam.addEventListener('change', () => { const f = parseInt(selFam.value || '0', 10); renderCursos(selCur, f, null); renderAsigs(selAs, 0, null); }, { passive: true });
-    selCur.addEventListener('change', () => { const c = parseInt(selCur.value || '0', 10); renderAsigs(selAs, c, null); }, { passive: true });
-  });
-
-  // Añadir nuevas filas
-  const rowsBody = document.getElementById('rowsBody');
-  document.getElementById('btnAddRow').addEventListener('click', () => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td class="px-3 py-2">
-        <input type="hidden" name="pa_id[]" value="">
-        <select name="asig_familia_id[]" class="famSel w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm focus:ring-2 focus:ring-slate-400">
-          <option value="">— Familia/Grado —</option>
-          ${familias.map(f => `<option value="${f.id}">${f.nombre}</option>`).join('')}
-        </select>
-      </td>
-      <td class="px-3 py-2"><select name="asig_curso_id[]" class="cursoSel w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm"><option value="">— Curso —</option></select></td>
-      <td class="px-3 py-2"><select name="asig_asignatura_id[]" class="asigSel w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm"><option value="">— Asignatura —</option></select></td>
-      <td class="px-3 py-2"><input name="asig_anio[]" type="text" placeholder="2025-2026" class="w-28 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm"></td>
-      <td class="px-3 py-2"><input name="asig_horas[]" type="number" min="0" class="w-20 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm"></td>
-      <td class="px-3 py-2"><input name="asig_obs[]" type="text" class="w-48 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm" placeholder="Notas"></td>
-      <td class="px-3 py-2 text-right"><button type="button" class="btnDelNew inline-flex items-center rounded-lg bg-rose-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-rose-500">Quitar</button></td>
-    `;
-    const selFam = tr.querySelector('.famSel'); const selCur = tr.querySelector('.cursoSel'); const selAs = tr.querySelector('.asigSel');
-    selFam.addEventListener('change', () => { const f = parseInt(selFam.value || '0', 10); renderCursos(selCur, f, null); renderAsigs(selAs, 0, null); }, { passive: true });
-    selCur.addEventListener('change', () => { const c = parseInt(selCur.value || '0', 10); renderAsigs(selAs, c, null); }, { passive: true });
-    tr.querySelector('.btnDelNew').addEventListener('click', () => tr.remove());
-    rowsBody.appendChild(tr);
+  document.addEventListener('DOMContentLoaded', () => {
+    new AssignmentManager({
+      containerId: 'rowsBody',
+      btnAddId: 'btnAddRow',
+      familias: <?= json_encode($fams, JSON_UNESCAPED_UNICODE) ?>,
+      cursos: <?= json_encode($cursos, JSON_UNESCAPED_UNICODE) ?>,
+      asignaturas: <?= json_encode($asigs, JSON_UNESCAPED_UNICODE) ?>
+    });
   });
 </script>
 

@@ -7,24 +7,24 @@ require_login_or_redirect();
 $u = current_user();
 require_once __DIR__ . '/../../../partials/header.php';
 
-$role       = $u['role'] ?? '';
-$profesorId = (int)($u['profesor_id'] ?? 0);
-$centroId   = (int)($u['centro_id'] ?? 0);
+$role = $u['role'] ?? '';
+$profesorId = (int) ($u['profesor_id'] ?? 0);
+$centroId = (int) ($u['centro_id'] ?? 0);
 
 // Filtros básicos
-$q   = trim((string)($_GET['q'] ?? ''));
-$fam = (int)($_GET['familia_id'] ?? 0);
-$cur = (int)($_GET['curso_id'] ?? 0);
-$asi = (int)($_GET['asignatura_id'] ?? 0);
+$q = trim((string) ($_GET['q'] ?? ''));
+$fam = (int) ($_GET['familia_id'] ?? 0);
+$cur = (int) ($_GET['curso_id'] ?? 0);
+$asi = (int) ($_GET['asignatura_id'] ?? 0);
 
 // Filtros avanzados (tipo, dificultad, visibilidad, estado)
-$tipo        = (string)($_GET['tipo'] ?? '');
-$dificultad  = (string)($_GET['dificultad'] ?? '');
-$visibilidad = (string)($_GET['visibilidad'] ?? '');
-$estado      = (string)($_GET['estado'] ?? '');
+$tipo = (string) ($_GET['tipo'] ?? '');
+$dificultad = (string) ($_GET['dificultad'] ?? '');
+$visibilidad = (string) ($_GET['visibilidad'] ?? '');
+$estado = (string) ($_GET['estado'] ?? '');
 
 // Filtro de orden
-$orden = (string)($_GET['orden'] ?? 'fecha');
+$orden = (string) ($_GET['orden'] ?? 'fecha');
 $ordenesPermitidos = ['fecha', 'popularidad', 'dificultad'];
 if (!in_array($orden, $ordenesPermitidos, true)) {
   $orden = 'fecha';
@@ -41,39 +41,39 @@ $tipos = [
 ];
 
 $labelsTipos = [
-  'opcion_multiple'  => 'Opción múltiple',
-  'verdadero_falso'  => 'Verdadero / Falso',
-  'respuesta_corta'  => 'Respuesta corta',
-  'rellenar_huecos'  => 'Rellenar huecos',
-  'emparejar'        => 'Emparejar',
-  'tarea'            => 'Tarea / entrega larga',
+  'opcion_multiple' => 'Opción múltiple',
+  'verdadero_falso' => 'Verdadero / Falso',
+  'respuesta_corta' => 'Respuesta corta',
+  'rellenar_huecos' => 'Rellenar huecos',
+  'emparejar' => 'Emparejar',
+  'tarea' => 'Tarea / entrega larga',
 ];
 
 $dificultades = ['baja', 'media', 'alta'];
 $labelsDificultad = [
-  'baja'  => 'Baja',
+  'baja' => 'Baja',
   'media' => 'Media',
-  'alta'  => 'Alta',
+  'alta' => 'Alta',
 ];
 
 // AHORA: privada / centro / pública
 $visibilidades = ['privada', 'centro', 'publica'];
 $labelsVisibilidad = [
   'privada' => 'Privada',
-  'centro'  => 'Centro',
+  'centro' => 'Centro',
   'publica' => 'Pública',
 ];
 
 $estados = ['borrador', 'publicada'];
 $labelsEstado = [
-  'borrador'   => 'Borrador',
-  'publicada'  => 'Publicada',
+  'borrador' => 'Borrador',
+  'publicada' => 'Publicada',
 ];
 
 // Datos para selects de familia / curso / asignatura
-$familias  = pdo()->query("SELECT id, nombre FROM familias_profesionales WHERE is_active=1 ORDER BY nombre ASC")->fetchAll();
+$familias = pdo()->query("SELECT id, nombre FROM familias_profesionales WHERE is_active=1 ORDER BY nombre ASC")->fetchAll();
 $cursosAll = pdo()->query("SELECT id, nombre, familia_id FROM cursos WHERE is_active=1 ORDER BY familia_id ASC, orden ASC, nombre ASC")->fetchAll();
-$asigsAll  = pdo()->query("SELECT id, nombre, curso_id FROM asignaturas WHERE is_active=1 ORDER BY curso_id ASC, orden ASC, nombre ASC")->fetchAll();
+$asigsAll = pdo()->query("SELECT id, nombre, curso_id FROM asignaturas WHERE is_active=1 ORDER BY curso_id ASC, orden ASC, nombre ASC")->fetchAll();
 
 // Asignaturas del profesor (para limitar públicas a su ámbito)
 $misAsignaturas = [];
@@ -128,7 +128,7 @@ if ($role === 'admin') {
       OR (a.visibilidad = 'centro' AND a.centro_id = ?)
     )";
     $params[] = $profesorId;
-    $params   = array_merge($params, $misAsignaturas);
+    $params = array_merge($params, $misAsignaturas);
     $params[] = $centroId;
   } else {
     // Sin asignaturas vinculadas:
@@ -213,7 +213,7 @@ $rows = $stList->fetchAll();
   </div>
   <?php if (($u['role'] ?? '') === 'profesor'): ?>
     <a href="<?= PUBLIC_URL ?>/admin/actividades/create.php"
-       class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 active:scale-[0.99] transition">
+      class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 active:scale-[0.99] transition">
       + Nueva actividad
     </a>
   <?php endif; ?>
@@ -221,47 +221,32 @@ $rows = $stList->fetchAll();
 
 <!-- Barra de filtros -->
 <form method="get" action="" class="mb-4 flex flex-wrap items-center gap-3">
-  <input
-    name="q"
-    value="<?= h($q) ?>"
-    placeholder="Buscar por título / descripción"
-    class="w-64 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
-  >
+  <input name="q" value="<?= h($q) ?>" placeholder="Buscar por título / descripción"
+    class="w-64 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
 
-  <select
-    id="familia_id"
-    name="familia_id"
-    class="w-56 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus-border-slate-400"
-  >
+  <select id="familia_id" name="familia_id"
+    class="w-56 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus-border-slate-400">
     <option value="0">Todas las familias</option>
     <?php foreach ($familias as $f): ?>
-      <option value="<?= (int)$f['id'] ?>" <?= $fam === (int)$f['id'] ? 'selected' : '' ?>>
+      <option value="<?= (int) $f['id'] ?>" <?= $fam === (int) $f['id'] ? 'selected' : '' ?>>
         <?= h($f['nombre']) ?>
       </option>
     <?php endforeach; ?>
   </select>
 
-  <select
-    id="curso_id"
-    name="curso_id"
-    class="w-56 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus-border-slate-400"
-  >
+  <select id="curso_id" name="curso_id"
+    class="w-56 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus-border-slate-400">
     <option value="0">Todos los cursos</option>
   </select>
 
-  <select
-    id="asignatura_id"
-    name="asignatura_id"
-    class="w-56 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus-border-slate-400"
-  >
+  <select id="asignatura_id" name="asignatura_id"
+    class="w-56 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus-border-slate-400">
     <option value="0">Todas las asignaturas</option>
   </select>
 
   <!-- Filtros avanzados -->
-  <select
-    name="tipo"
-    class="w-56 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus-border-slate-400"
-  >
+  <select name="tipo"
+    class="w-56 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus-border-slate-400">
     <option value="">Todos los tipos</option>
     <?php foreach ($tipos as $t): ?>
       <option value="<?= h($t) ?>" <?= $tipo === $t ? 'selected' : '' ?>>
@@ -270,10 +255,8 @@ $rows = $stList->fetchAll();
     <?php endforeach; ?>
   </select>
 
-  <select
-    name="dificultad"
-    class="w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus-border-slate-400"
-  >
+  <select name="dificultad"
+    class="w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus-border-slate-400">
     <option value="">Todas las dificultades</option>
     <?php foreach ($dificultades as $d): ?>
       <option value="<?= h($d) ?>" <?= $dificultad === $d ? 'selected' : '' ?>>
@@ -282,10 +265,8 @@ $rows = $stList->fetchAll();
     <?php endforeach; ?>
   </select>
 
-  <select
-    name="visibilidad"
-    class="w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus-border-slate-400"
-  >
+  <select name="visibilidad"
+    class="w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus-border-slate-400">
     <option value="">Todas las visibilidades</option>
     <?php foreach ($visibilidades as $v): ?>
       <option value="<?= h($v) ?>" <?= $visibilidad === $v ? 'selected' : '' ?>>
@@ -294,10 +275,8 @@ $rows = $stList->fetchAll();
     <?php endforeach; ?>
   </select>
 
-  <select
-    name="estado"
-    class="w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus-border-slate-400"
-  >
+  <select name="estado"
+    class="w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus-border-slate-400">
     <option value="">Todos los estados</option>
     <?php foreach ($estados as $e): ?>
       <option value="<?= h($e) ?>" <?= $estado === $e ? 'selected' : '' ?>>
@@ -307,10 +286,8 @@ $rows = $stList->fetchAll();
   </select>
 
   <!-- Ordenar por -->
-  <select
-    name="orden"
-    class="w-52 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus-border-slate-400"
-  >
+  <select name="orden"
+    class="w-52 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus-border-slate-400">
     <option value="fecha" <?= $orden === 'fecha' ? 'selected' : '' ?>>Ordenar por fecha</option>
     <option value="popularidad" <?= $orden === 'popularidad' ? 'selected' : '' ?>>Ordenar por popularidad</option>
     <option value="dificultad" <?= $orden === 'dificultad' ? 'selected' : '' ?>>Ordenar por dificultad</option>
@@ -323,7 +300,7 @@ $rows = $stList->fetchAll();
 
 <!-- Tabla de actividades -->
 <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
-  <table class="min-w-full divide-y divide-slate-200">
+  <table id="actTable" class="min-w-full divide-y divide-slate-200">
     <thead class="bg-slate-50">
       <tr>
         <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Título</th>
@@ -336,18 +313,13 @@ $rows = $stList->fetchAll();
         <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Estado</th>
         <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
           Popularidad
-          <span
-            class="ml-1 text-[10px] text-slate-400 align-middle"
-            title="Número de profesores distintos que han incluido esta actividad en algún examen"
-          >
-          </span>
         </th>
         <th class="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-slate-600">Acciones</th>
       </tr>
     </thead>
     <tbody class="divide-y divide-slate-200 bg-white">
       <?php foreach ($rows as $r): ?>
-        <?php $esMia = ($role === 'profesor' && (int)$r['profesor_id'] === $profesorId); ?>
+        <?php $esMia = ($role === 'profesor' && (int) $r['profesor_id'] === $profesorId); ?>
         <tr>
           <td class="px-3 py-2 text-sm font-medium text-slate-800">
             <?= h($r['titulo']) ?>
@@ -371,15 +343,18 @@ $rows = $stList->fetchAll();
           <!-- VISIBILIDAD: privada / centro / pública -->
           <td class="px-3 py-2 text-sm">
             <?php if ($r['visibilidad'] === 'publica'): ?>
-              <span class="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+              <span
+                class="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
                 🌍 Pública
               </span>
             <?php elseif ($r['visibilidad'] === 'centro'): ?>
-              <span class="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
+              <span
+                class="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
                 🏫 Centro
               </span>
             <?php else: ?>
-              <span class="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
+              <span
+                class="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
                 🔒 Privada
               </span>
             <?php endif; ?>
@@ -392,7 +367,7 @@ $rows = $stList->fetchAll();
           <!-- POPULARIDAD CON TOOLTIP -->
           <td class="px-3 py-2 text-sm">
             <span title="Número de profesores distintos que han incluido esta actividad en algún examen">
-              <?= (int)$r['popularidad'] ?> prof.
+              <?= (int) $r['popularidad'] ?> prof.
             </span>
           </td>
 
@@ -401,56 +376,39 @@ $rows = $stList->fetchAll();
             <?php if ($role === 'profesor'): ?>
               <?php if ($esMia): ?>
                 <div class="inline-flex items-center gap-2">
-                  <a
-                    href="<?= PUBLIC_URL ?>/admin/actividades/edit.php?id=<?= (int)$r['id'] ?>"
-                    class="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
-                  >
+                  <a href="<?= PUBLIC_URL ?>/admin/actividades/edit.php?id=<?= (int) $r['id'] ?>"
+                    class="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100">
                     Editar
                   </a>
 
-                  <form
-                    method="post"
-                    action="<?= PUBLIC_URL ?>/admin/actividades/duplicate.php"
-                    class="inline"
-                    onsubmit="return confirm('¿Duplicar esta actividad?');"
-                  >
+                  <form method="post" action="<?= PUBLIC_URL ?>/admin/actividades/duplicate.php" class="inline"
+                    onsubmit="return confirm('¿Duplicar esta actividad?');">
                     <?= csrf_field() ?>
-                    <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
+                    <input type="hidden" name="id" value="<?= (int) $r['id'] ?>">
                     <button
-                      class="rounded-md border border-indigo-300 bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
-                    >
+                      class="rounded-md border border-indigo-300 bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100">
                       Duplicar
                     </button>
                   </form>
 
-                  <form
-                    method="post"
-                    action="<?= PUBLIC_URL ?>/admin/actividades/delete.php"
-                    onsubmit="return confirm('¿Eliminar actividad?')"
-                    class="inline"
-                  >
+                  <form method="post" action="<?= PUBLIC_URL ?>/admin/actividades/delete.php"
+                    onsubmit="return confirm('¿Eliminar actividad?')" class="inline">
                     <?= csrf_field() ?>
-                    <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
+                    <input type="hidden" name="id" value="<?= (int) $r['id'] ?>">
                     <button
-                      class="rounded-md border border-rose-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50"
-                    >
+                      class="rounded-md border border-rose-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50">
                       Eliminar
                     </button>
                   </form>
                 </div>
               <?php elseif ($r['visibilidad'] === 'publica' || $r['visibilidad'] === 'centro'): ?>
                 <!-- Actividad visible de otro profe: se puede duplicar -->
-                <form
-                  method="post"
-                  action="<?= PUBLIC_URL ?>/admin/actividades/duplicate.php"
-                  class="inline"
-                  onsubmit="return confirm('¿Duplicar esta actividad en tu banco privado?');"
-                >
+                <form method="post" action="<?= PUBLIC_URL ?>/admin/actividades/duplicate.php" class="inline"
+                  onsubmit="return confirm('¿Duplicar esta actividad en tu banco privado?');">
                   <?= csrf_field() ?>
-                  <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
+                  <input type="hidden" name="id" value="<?= (int) $r['id'] ?>">
                   <button
-                    class="rounded-md border border-indigo-300 bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
-                  >
+                    class="rounded-md border border-indigo-300 bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100">
                     Duplicar
                   </button>
                 </form>
@@ -463,30 +421,23 @@ $rows = $stList->fetchAll();
           </td>
         </tr>
       <?php endforeach; ?>
-
-      <?php if (!$rows): ?>
-        <tr>
-          <td colspan="10" class="px-3 py-6 text-center text-sm text-slate-500">
-            No hay actividades que cumplan los filtros.
-          </td>
-        </tr>
-      <?php endif; ?>
     </tbody>
   </table>
 </div>
 
+<script src="<?= h(PUBLIC_URL) ?>/assets/js/table-config.js"></script>
 <script>
   // Selects en cascada
   const cursosAll = <?= json_encode($cursosAll, JSON_UNESCAPED_UNICODE) ?>;
-  const asigsAll  = <?= json_encode($asigsAll,  JSON_UNESCAPED_UNICODE) ?>;
+  const asigsAll = <?= json_encode($asigsAll, JSON_UNESCAPED_UNICODE) ?>;
 
   const selFam = document.getElementById('familia_id');
   const selCur = document.getElementById('curso_id');
   const selAsi = document.getElementById('asignatura_id');
 
-  const currentFam = <?= (int)$fam ?>;
-  const currentCur = <?= (int)$cur ?>;
-  const currentAsi = <?= (int)$asi ?>;
+  const currentFam = <?= (int) $fam ?>;
+  const currentCur = <?= (int) $cur ?>;
+  const currentAsi = <?= (int) $asi ?>;
 
   function opt(v, t) {
     const o = document.createElement('option');
@@ -543,6 +494,15 @@ $rows = $stList->fetchAll();
       selAsi.appendChild(opt(0, 'Todas las asignaturas'));
     }
   }, { passive: true });
+
+  // Datatable init
+  document.addEventListener('DOMContentLoaded', () => {
+    TableManager.init('#actTable', {
+      columns: [
+        { select: 9, sortable: false }
+      ]
+    });
+  });
 </script>
 
 <?php require_once __DIR__ . '/../../../partials/footer.php'; ?>

@@ -8,8 +8,8 @@ $u = current_user();
 require_once __DIR__ . '/../../../partials/header.php';
 
 
-$q       = trim($_GET['q'] ?? '');
-$centro  = (int)($_GET['centro_id'] ?? 0);
+$q = trim($_GET['q'] ?? '');
+$centro = (int) ($_GET['centro_id'] ?? 0);
 $activos = ($_GET['activos'] ?? '1') === '0' ? 0 : 1;
 
 $centros = pdo()->query('SELECT id, nombre FROM centros WHERE is_active=1 ORDER BY nombre ASC')->fetchAll();
@@ -30,7 +30,8 @@ if ($centro > 0) {
 $w[] = "p.is_active = :a";
 $params[':a'] = $activos;
 
-if ($w) $sql .= ' WHERE '.implode(' AND ', $w);
+if ($w)
+  $sql .= ' WHERE ' . implode(' AND ', $w);
 $sql .= ' ORDER BY p.apellidos ASC, p.nombre ASC';
 
 $st = pdo()->prepare($sql);
@@ -41,34 +42,33 @@ $rows = $st->fetchAll();
 <h1 class="text-xl font-semibold tracking-tight mb-4">Profesores</h1>
 
 <form method="get" action="" class="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-[1fr,260px,160px,auto,auto] items-stretch">
-  <input
-    type="search" name="q" value="<?= htmlspecialchars($q) ?>"
+  <input type="search" name="q" value="<?= htmlspecialchars($q) ?>"
     placeholder="Buscar por nombre, apellidos, email o teléfono…"
     class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400" />
 
   <select name="centro_id"
-          class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
+    class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
     <option value="0">Todos los centros</option>
     <?php foreach ($centros as $c): ?>
-      <option value="<?= (int)$c['id'] ?>" <?= $centro===(int)$c['id']?'selected':'' ?>>
+      <option value="<?= (int) $c['id'] ?>" <?= $centro === (int) $c['id'] ? 'selected' : '' ?>>
         <?= htmlspecialchars($c['nombre']) ?>
       </option>
     <?php endforeach; ?>
   </select>
 
   <select name="activos"
-          class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
-    <option value="1" <?= $activos===1?'selected':'' ?>>Activos</option>
-    <option value="0" <?= $activos===0?'selected':'' ?>>Inactivos</option>
+    class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
+    <option value="1" <?= $activos === 1 ? 'selected' : '' ?>>Activos</option>
+    <option value="0" <?= $activos === 0 ? 'selected' : '' ?>>Inactivos</option>
   </select>
 
   <button type="submit"
-          class="inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 active:scale-[0.99] transition">
+    class="inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 active:scale-[0.99] transition">
     Buscar
   </button>
 
   <a href="<?= PUBLIC_URL ?>/admin/profesores/create.php"
-     class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 active:scale-[0.99] transition">
+    class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 active:scale-[0.99] transition">
     + Nuevo profesor
   </a>
 </form>
@@ -79,7 +79,7 @@ $rows = $st->fetchAll();
   </div>
 <?php else: ?>
   <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-    <table class="min-w-full divide-y divide-slate-200">
+    <table id="idxTable" class="min-w-full divide-y divide-slate-200">
       <thead class="bg-slate-50">
         <tr>
           <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Profesor</th>
@@ -94,28 +94,30 @@ $rows = $st->fetchAll();
         <?php foreach ($rows as $r): ?>
           <tr class="hover:bg-slate-50">
             <td class="px-4 py-3 text-sm text-slate-800 font-medium">
-              <?= htmlspecialchars($r['apellidos'].', '.$r['nombre']) ?>
+              <?= htmlspecialchars($r['apellidos'] . ', ' . $r['nombre']) ?>
             </td>
             <td class="px-4 py-3 text-sm text-slate-800"><?= htmlspecialchars($r['email']) ?></td>
-            <td class="px-4 py-3 text-sm text-slate-800"><?= htmlspecialchars((string)$r['telefono'] ?: '—') ?></td>
-            <td class="px-4 py-3 text-sm text-slate-800"><?= htmlspecialchars((string)$r['centro'] ?: '—') ?></td>
+            <td class="px-4 py-3 text-sm text-slate-800"><?= htmlspecialchars((string) $r['telefono'] ?: '—') ?></td>
+            <td class="px-4 py-3 text-sm text-slate-800"><?= htmlspecialchars((string) $r['centro'] ?: '—') ?></td>
             <td class="px-4 py-3 text-sm">
-              <?php if ((int)$r['is_active'] === 1): ?>
-                <span class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[12px] font-medium text-emerald-700 ring-1 ring-emerald-200">Sí</span>
+              <?php if ((int) $r['is_active'] === 1): ?>
+                <span
+                  class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[12px] font-medium text-emerald-700 ring-1 ring-emerald-200">Sí</span>
               <?php else: ?>
-                <span class="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[12px] font-medium text-rose-700 ring-1 ring-rose-200">No</span>
+                <span
+                  class="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[12px] font-medium text-rose-700 ring-1 ring-rose-200">No</span>
               <?php endif; ?>
             </td>
             <td class="px-4 py-3 text-sm">
               <div class="flex justify-end gap-2">
-                <a href="<?= PUBLIC_URL ?>/admin/profesores/edit.php?id=<?= (int)$r['id'] ?>"
-                   class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100">Editar</a>
+                <a href="<?= PUBLIC_URL ?>/admin/profesores/edit.php?id=<?= (int) $r['id'] ?>"
+                  class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100">Editar</a>
                 <form method="post" action="<?= PUBLIC_URL ?>/admin/profesores/delete.php"
-                      onsubmit="return confirm('¿Eliminar este profesor?');">
+                  onsubmit="return confirm('¿Eliminar este profesor?');">
                   <?= csrf_field() ?>
-                  <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
+                  <input type="hidden" name="id" value="<?= (int) $r['id'] ?>">
                   <button type="submit"
-                          class="inline-flex items-center rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-rose-500">Eliminar</button>
+                    class="inline-flex items-center rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-rose-500">Eliminar</button>
                 </form>
               </div>
             </td>
@@ -125,5 +127,13 @@ $rows = $st->fetchAll();
     </table>
   </div>
 <?php endif; ?>
+
+<!-- Datatables Config -->
+<script src="<?= h(PUBLIC_URL) ?>/assets/js/table-config.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    TableManager.init('#idxTable');
+  });
+</script>
 
 <?php require_once __DIR__ . '/../../../partials/footer.php'; ?>

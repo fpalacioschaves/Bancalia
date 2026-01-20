@@ -214,118 +214,21 @@ require_once __DIR__ . '/../../../partials/header.php';
   </form>
 </div>
 
+<!-- Shared JS -->
+<script src="<?= h(PUBLIC_URL) ?>/assets/js/assignment-manager.js"></script>
 <script>
-  // Datos en cliente (para selects dependientes)
-  const familias = <?php echo json_encode($fams, JSON_UNESCAPED_UNICODE); ?>;
-  const cursosAll = <?php echo json_encode($cursos, JSON_UNESCAPED_UNICODE); ?>;
-  const asigsAll = <?php echo json_encode($asigs, JSON_UNESCAPED_UNICODE); ?>;
+  document.addEventListener('DOMContentLoaded', () => {
+    const mgr = new AssignmentManager({
+      containerId: 'rowsBody',
+      btnAddId: 'btnAddRow',
+      familias: <?= json_encode($fams, JSON_UNESCAPED_UNICODE) ?>,
+      cursos: <?= json_encode($cursos, JSON_UNESCAPED_UNICODE) ?>,
+      asignaturas: <?= json_encode($asigs, JSON_UNESCAPED_UNICODE) ?>
+    });
 
-  // Mapas: familia -> cursos, curso -> asignaturas
-  const cursosByFam = {};
-  cursosAll.forEach(c => {
-    (cursosByFam[c.familia_id] ||= []).push({ id: c.id, nombre: c.nombre });
+    // Add one empty row by default
+    mgr.addRow();
   });
-
-  const asigByCurso = {};
-  asigsAll.forEach(a => {
-    (asigByCurso[a.curso_id] ||= []).push({ id: a.id, nombre: a.nombre });
-  });
-
-  const rowsBody = document.getElementById('rowsBody');
-  const btnAddRow = document.getElementById('btnAddRow');
-
-  function opt(val, label) { const o = document.createElement('option'); o.value = val; o.textContent = label; return o; }
-
-  function renderCursosSelect(sel, familiaId) {
-    sel.innerHTML = '';
-    sel.appendChild(opt('', '— Curso —'));
-    (cursosByFam[familiaId] || []).forEach(c => sel.appendChild(opt(c.id, c.nombre)));
-  }
-
-  function renderAsigSelect(sel, cursoId) {
-    sel.innerHTML = '';
-    sel.appendChild(opt('', '— Asignatura —'));
-    (asigByCurso[cursoId] || []).forEach(a => sel.appendChild(opt(a.id, a.nombre)));
-  }
-
-  function addRow(prefill = {}) {
-    const tr = document.createElement('tr');
-
-    tr.innerHTML = `
-      <td class="px-3 py-2">
-        <select name="asig_familia_id[]" class="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"></select>
-      </td>
-      <td class="px-3 py-2">
-        <select name="asig_curso_id[]" class="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"><option value="">— Curso —</option></select>
-      </td>
-      <td class="px-3 py-2">
-        <select name="asig_asignatura_id[]" class="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"><option value="">— Asignatura —</option></select>
-      </td>
-      <td class="px-3 py-2">
-        <input name="asig_anio[]" type="text" value="<?= (($m = (int) date('n')) >= 9 ? date('Y') . '-' . (date('Y') + 1) : (date('Y') - 1) . '-' . date('Y')) ?>"
-               placeholder="2025-2026" required
-               class="w-28 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400">
-      </td>
-      <td class="px-3 py-2">
-        <input name="asig_horas[]" type="number" min="0"
-               class="w-20 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400">
-      </td>
-      <td class="px-3 py-2">
-        <input name="asig_obs[]" type="text"
-               class="w-48 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400" placeholder="Notas">
-      </td>
-      <td class="px-3 py-2 text-right">
-        <button type="button" class="inline-flex items-center rounded-lg bg-rose-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-rose-500 btnDel">Quitar</button>
-      </td>
-    `;
-
-    const selFam = tr.querySelector('select[name="asig_familia_id[]"]');
-    const selCurso = tr.querySelector('select[name="asig_curso_id[]"]');
-    const selAsig = tr.querySelector('select[name="asig_asignatura_id[]"]');
-
-    // Rellenar familias
-    selFam.appendChild(opt('', '— Familia/Grado —'));
-    familias.forEach(f => selFam.appendChild(opt(f.id, f.nombre)));
-
-    // Prefills si vienen
-    if (prefill.familia_id) {
-      selFam.value = String(prefill.familia_id);
-      renderCursosSelect(selCurso, prefill.familia_id);
-    }
-    if (prefill.curso_id) {
-      if (!selCurso.options.length || !selCurso.value) renderCursosSelect(selCurso, prefill.familia_id);
-      selCurso.value = String(prefill.curso_id);
-      renderAsigSelect(selAsig, prefill.curso_id);
-    }
-    if (prefill.asignatura_id) {
-      if (!selAsig.options.length || !selAsig.value) renderAsigSelect(selAsig, prefill.curso_id);
-      selAsig.value = String(prefill.asignatura_id);
-    }
-    if (prefill.anio) tr.querySelector('input[name="asig_anio[]"]').value = prefill.anio;
-    if (prefill.horas) tr.querySelector('input[name="asig_horas[]"]').value = prefill.horas;
-    if (prefill.obs) tr.querySelector('input[name="asig_obs[]"]').value = prefill.obs;
-
-    // Eventos cascada
-    selFam.addEventListener('change', () => {
-      const fid = parseInt(selFam.value || '0', 10);
-      renderCursosSelect(selCurso, fid);
-      renderAsigSelect(selAsig, 0);
-    }, { passive: true });
-
-    selCurso.addEventListener('change', () => {
-      const cid = parseInt(selCurso.value || '0', 10);
-      renderAsigSelect(selAsig, cid);
-    }, { passive: true });
-
-    // Eliminar fila
-    tr.querySelector('.btnDel').addEventListener('click', () => tr.remove());
-
-    rowsBody.appendChild(tr);
-  }
-
-  btnAddRow.addEventListener('click', () => addRow());
-  // Empieza con una fila vacía
-  addRow();
 </script>
 
 <?php require_once __DIR__ . '/../../../partials/footer.php'; ?>
