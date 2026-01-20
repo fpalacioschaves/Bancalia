@@ -64,6 +64,9 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
   }
 }
 
+/* ===== SERVICES ===== */
+require_once __DIR__ . '/services/ProfesorService.php';
+
 /* ===== DB ===== */
 function pdo(): PDO
 {

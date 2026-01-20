@@ -1,0 +1,208 @@
+--- 2026-01-20 21:29:22 saveAssignments ---
+ProfesorID: 6, CentroID: 1
+Inputs: Array
+(
+    [familias] => Array
+        (
+            [0] => 2
+        )
+
+    [cursos] => Array
+        (
+            [0] => 3
+        )
+
+    [asignaturas] => Array
+        (
+            [0] => 1
+        )
+
+    [anios] => Array
+        (
+            [0] => 
+        )
+
+    [horas] => Array
+        (
+            [0] => 
+        )
+
+    [obs] => Array
+        (
+            [0] => 
+        )
+
+    [delete] => Array
+        (
+        )
+
+    [ids] => Array
+        (
+        )
+
+)
+
+ERROR loop 0: Faltan datos obligatorios en la asignación #1
+--- 2026-01-20 21:32:18 saveAssignments ---
+ProfesorID: 2, CentroID: 1
+Inputs: Array
+(
+    [familias] => Array
+        (
+            [0] => 2
+            [1] => 2
+            [2] => 2
+        )
+
+    [cursos] => Array
+        (
+            [0] => 3
+            [1] => 3
+            [2] => 3
+        )
+
+    [asignaturas] => Array
+        (
+            [0] => 1
+            [1] => 3
+            [2] => 2
+        )
+
+    [anios] => Array
+        (
+            [0] => 2025-2026
+            [1] => 2025-2026
+            [2] => 2025-2026
+        )
+
+    [horas] => Array
+        (
+            [0] => 
+            [1] => 
+            [2] => 
+        )
+
+    [obs] => Array
+        (
+            [0] => 
+            [1] => 
+            [2] => 
+        )
+
+    [ids] => Array
+        (
+            [0] => 3
+            [1] => 4
+            [2] => 6
+        )
+
+    [delete] => Array
+        (
+            [0] => 2
+        )
+
+)
+
+--- 2026-01-20 21:32:36 saveAssignments ---
+ProfesorID: 2, CentroID: 1
+Inputs: Array
+(
+    [familias] => Array
+        (
+            [0] => 2
+            [1] => 2
+            [2] => 2
+        )
+
+    [cursos] => Array
+        (
+            [0] => 3
+            [1] => 3
+            [2] => 3
+        )
+
+    [asignaturas] => Array
+        (
+            [0] => 1
+            [1] => 3
+            [2] => 2
+        )
+
+    [anios] => Array
+        (
+            [0] => 2025-2026
+            [1] => 2025-2026
+            [2] => 2025-2026
+        )
+
+    [horas] => Array
+        (
+            [0] => 
+            [1] => 
+            [2] => 
+        )
+
+    [obs] => Array
+        (
+            [0] => 
+            [1] => 
+            [2] => 
+        )
+
+    [ids] => Array
+        (
+            [0] => 3
+            [1] => 4
+            [2] => 
+        )
+
+    [delete] => Array
+        (
+        )
+
+)
+
+--- 2026-01-20 21:33:01 saveAssignments ---
+ProfesorID: 7, CentroID: 1
+Inputs: Array
+(
+    [familias] => Array
+        (
+            [0] => 2
+        )
+
+    [cursos] => Array
+        (
+            [0] => 3
+        )
+
+    [asignaturas] => Array
+        (
+            [0] => 1
+        )
+
+    [anios] => Array
+        (
+            [0] => 2025-2026
+        )
+
+    [horas] => Array
+        (
+            [0] => 
+        )
+
+    [obs] => Array
+        (
+            [0] => 
+        )
+
+    [delete] => Array
+        (
+        )
+
+    [ids] => Array
+        (
+        )
+
+)
+

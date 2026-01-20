@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 20-10-2025 a las 12:36:11
+-- Tiempo de generación: 20-01-2026 a las 21:22:38
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -38,20 +38,189 @@ CREATE TABLE `actividades` (
   `titulo` varchar(255) NOT NULL,
   `descripcion` text DEFAULT NULL,
   `dificultad` enum('baja','media','alta') NOT NULL DEFAULT 'media',
-  `visibilidad` enum('privada','publica') NOT NULL DEFAULT 'privada',
+  `visibilidad` enum('privada','centro','publica') NOT NULL DEFAULT 'privada',
   `estado` enum('borrador','publicada') NOT NULL DEFAULT 'borrador',
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
-  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `centro_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Volcado de datos para la tabla `actividades`
 --
 
-INSERT INTO `actividades` (`id`, `profesor_id`, `familia_id`, `curso_id`, `asignatura_id`, `tema_id`, `tipo`, `titulo`, `descripcion`, `dificultad`, `visibilidad`, `estado`, `created_at`, `updated_at`) VALUES
-(5, 2, 2, 3, 3, NULL, '', 'Actividad 2', 'Ejercicio de Lenguaje de Marcas', '', 'privada', 'borrador', '2025-10-19 18:24:32', '2025-10-19 18:44:15'),
-(6, 2, 2, 3, 1, 1, '', 'Título editado', 'asdfasdgsadfgsdfg', 'baja', 'privada', 'borrador', '2025-10-19 18:45:20', '2025-10-20 12:18:58'),
-(7, 2, 2, 3, 1, 1, '', 'Actividad Nueva de Lunes', 'dfgsdfgsdfgsdfg', 'baja', 'privada', 'borrador', '2025-10-20 12:26:53', '2025-10-20 12:27:25');
+INSERT INTO `actividades` (`id`, `profesor_id`, `familia_id`, `curso_id`, `asignatura_id`, `tema_id`, `tipo`, `titulo`, `descripcion`, `dificultad`, `visibilidad`, `estado`, `created_at`, `updated_at`, `centro_id`) VALUES
+(6, 2, 2, 3, 1, 1, 'verdadero_falso', 'Actividad de Verdadero / Falso', 'asdfasdgsadfgsdfg', 'baja', 'privada', 'borrador', '2025-10-19 18:45:20', '2025-11-23 12:51:56', 1),
+(8, 2, 2, 3, 1, 1, 'tarea', 'Primera Actividad de Entrega', 'Descripción de la Primera Actividad de Entrega', 'baja', 'privada', 'borrador', '2025-10-20 12:53:41', '2025-11-23 12:51:59', 1),
+(9, 2, 2, 3, 1, 1, 'respuesta_corta', 'Primera tarea Respuesta Corta', 'Eres tonto?', 'media', 'privada', 'borrador', '2025-10-20 13:38:39', '2025-11-23 12:52:12', 1),
+(17, 2, 2, 3, 1, 1, 'rellenar_huecos', 'Actividad Rellenado de Huecos', 'Esta es una actividad de rellenado de huecos sobre SQL', 'baja', 'privada', 'borrador', '2025-11-01 16:42:29', '2025-11-23 12:52:02', 1),
+(25, 2, 2, 3, 1, 1, 'emparejar', 'Actividad de Emparejar', 'Descripción de la tarea de emparejar', 'baja', 'privada', 'borrador', '2025-11-02 13:27:41', '2025-11-23 13:43:35', 1),
+(34, 2, 2, 3, 1, NULL, 'opcion_multiple', 'Actividad de Opción Múltiple', 'Descripción de la tarea de opción múltiple', 'baja', 'centro', 'publicada', '2025-11-02 15:55:47', '2025-11-23 12:51:54', 1),
+(35, 2, 2, 3, 1, NULL, 'opcion_multiple', 'Actividad de Opción Múltiple Duplicada', 'Descripción de la tarea de opción múltiple', 'baja', 'privada', 'borrador', '2025-11-23 11:20:58', '2025-11-23 12:52:07', 1),
+(36, 2, 2, 3, 1, 1, 'verdadero_falso', 'uithyuityui', 'yuityuityuityui', 'baja', 'centro', 'publicada', '2025-11-23 12:35:49', '2025-11-23 13:43:14', 1);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `actividades_emp`
+--
+
+CREATE TABLE `actividades_emp` (
+  `actividad_id` int(11) NOT NULL,
+  `barajar` tinyint(1) NOT NULL DEFAULT 0,
+  `instrucciones_html` mediumtext NOT NULL,
+  `puntuacion_max` int(11) DEFAULT NULL,
+  `modo_puntuacion` enum('por_par','todo_nada') NOT NULL DEFAULT 'por_par',
+  `barajar_izquierda` tinyint(1) NOT NULL DEFAULT 1,
+  `barajar_derecha` tinyint(1) NOT NULL DEFAULT 1,
+  `feedback_correcta` text DEFAULT NULL,
+  `feedback_incorrecta` text DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `actividades_emp_pares`
+--
+
+CREATE TABLE `actividades_emp_pares` (
+  `id` int(11) NOT NULL,
+  `actividad_id` int(11) NOT NULL,
+  `izquierda_html` text NOT NULL,
+  `derecha_html` text NOT NULL,
+  `alternativas_derecha_json` text DEFAULT NULL,
+  `grupo` varchar(64) DEFAULT NULL,
+  `orden_izq` int(11) NOT NULL DEFAULT 1,
+  `orden_der` int(11) NOT NULL DEFAULT 1,
+  `activo` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `actividades_emp_pares`
+--
+
+INSERT INTO `actividades_emp_pares` (`id`, `actividad_id`, `izquierda_html`, `derecha_html`, `alternativas_derecha_json`, `grupo`, `orden_izq`, `orden_der`, `activo`, `created_at`, `updated_at`) VALUES
+(28, 25, 'srgsfgsfg', 'sdfgsdfgsdfgsdfg', NULL, NULL, 1, 2, 1, '2025-11-23 13:43:35', '2025-11-23 13:43:35'),
+(29, 25, 'dfgsdfgsdf', 'gsdfgsdfgsdfg', NULL, NULL, 2, 3, 1, '2025-11-23 13:43:35', '2025-11-23 13:43:35'),
+(30, 25, 'dfgsdfgsdfgsdfg', 'sdfgsdfgsdfgsfdg', NULL, NULL, 3, 1, 1, '2025-11-23 13:43:35', '2025-11-23 13:43:35');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `actividades_om`
+--
+
+CREATE TABLE `actividades_om` (
+  `actividad_id` int(11) NOT NULL,
+  `barajar` tinyint(1) NOT NULL DEFAULT 0,
+  `enunciado_html` mediumtext NOT NULL,
+  `puntuacion_max` int(11) DEFAULT NULL,
+  `feedback_correcta` text DEFAULT NULL,
+  `feedback_incorrecta` text DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `actividades_om`
+--
+
+INSERT INTO `actividades_om` (`actividad_id`, `barajar`, `enunciado_html`, `puntuacion_max`, `feedback_correcta`, `feedback_incorrecta`, `created_at`, `updated_at`) VALUES
+(34, 0, 'dfgsdfgsdfg', NULL, 'sdfgsdfgsfg', 'sdfgsdfgsdfg', '2025-11-02 15:55:47', '2025-11-23 12:51:54'),
+(35, 0, 'dfgsdfgsdfg', NULL, 'sdfgsdfgsfg', 'sdfgsdfgsdfg', '2025-11-23 11:20:58', '2025-11-23 12:52:07');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `actividades_om_opciones`
+--
+
+CREATE TABLE `actividades_om_opciones` (
+  `id` int(11) NOT NULL,
+  `actividad_id` int(11) NOT NULL,
+  `opcion_html` text NOT NULL,
+  `es_correcta` tinyint(1) NOT NULL DEFAULT 0,
+  `orden` int(11) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ;
+
+--
+-- Volcado de datos para la tabla `actividades_om_opciones`
+--
+
+INSERT INTO `actividades_om_opciones` (`id`, `actividad_id`, `opcion_html`, `es_correcta`, `orden`, `created_at`, `updated_at`) VALUES
+(87, 34, 'ftyufyhurtyur', 1, 1, '2025-11-23 12:51:54', '2025-11-23 12:51:54'),
+(88, 34, 'rtyurtyurtyurtyutyurty', 0, 2, '2025-11-23 12:51:54', '2025-11-23 12:51:54'),
+(89, 34, 'rtyurtyurtyuurtyurtyu', 0, 3, '2025-11-23 12:51:54', '2025-11-23 12:51:54'),
+(90, 34, 'rtyurtyurtyurtyrtyurtyurtyurtyurtyu', 0, 4, '2025-11-23 12:51:54', '2025-11-23 12:51:54'),
+(91, 35, 'ftyufyhurtyur', 1, 1, '2025-11-23 12:52:07', '2025-11-23 12:52:07'),
+(92, 35, 'rtyurtyurtyurtyutyurty', 0, 2, '2025-11-23 12:52:07', '2025-11-23 12:52:07'),
+(93, 35, 'rtyurtyurtyuurtyurtyu', 0, 3, '2025-11-23 12:52:07', '2025-11-23 12:52:07'),
+(94, 35, 'rtyurtyurtyurtyrtyurtyurtyurtyurtyu', 0, 4, '2025-11-23 12:52:07', '2025-11-23 12:52:07');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `actividades_rc`
+--
+
+CREATE TABLE `actividades_rc` (
+  `id` int(11) NOT NULL,
+  `actividad_id` int(11) NOT NULL,
+  `modo` enum('palabras_clave','regex') NOT NULL,
+  `case_sensitive` tinyint(1) NOT NULL DEFAULT 0,
+  `normalizar_acentos` tinyint(1) NOT NULL DEFAULT 1,
+  `trim_espacios` tinyint(1) NOT NULL DEFAULT 1,
+  `palabras_clave_json` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
+  `coincidencia_minima` tinyint(3) UNSIGNED DEFAULT NULL,
+  `puntuacion_max` int(11) DEFAULT NULL,
+  `regex_pattern` text DEFAULT NULL,
+  `regex_flags` varchar(16) DEFAULT NULL,
+  `respuesta_muestra` text DEFAULT NULL,
+  `feedback_correcta` text DEFAULT NULL,
+  `feedback_incorrecta` text DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `actividades_rc`
+--
+
+INSERT INTO `actividades_rc` (`id`, `actividad_id`, `modo`, `case_sensitive`, `normalizar_acentos`, `trim_espacios`, `palabras_clave_json`, `coincidencia_minima`, `puntuacion_max`, `regex_pattern`, `regex_flags`, `respuesta_muestra`, `feedback_correcta`, `feedback_incorrecta`, `created_at`, `updated_at`) VALUES
+(1, 9, 'palabras_clave', 0, 0, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2025-11-01 14:16:03', '2025-11-23 12:52:12');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `actividades_rh`
+--
+
+CREATE TABLE `actividades_rh` (
+  `actividad_id` int(11) NOT NULL,
+  `enunciado_html` mediumtext NOT NULL,
+  `huecos_json` longtext DEFAULT NULL,
+  `case_sensitive` tinyint(1) NOT NULL DEFAULT 0,
+  `normalizar_acentos` tinyint(1) NOT NULL DEFAULT 1,
+  `trim_espacios` tinyint(1) NOT NULL DEFAULT 1,
+  `puntuacion_max` int(11) DEFAULT NULL,
+  `feedback_correcta` text DEFAULT NULL,
+  `feedback_incorrecta` text DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `actividades_rh`
+--
+
+INSERT INTO `actividades_rh` (`actividad_id`, `enunciado_html`, `huecos_json`, `case_sensitive`, `normalizar_acentos`, `trim_espacios`, `puntuacion_max`, `feedback_correcta`, `feedback_incorrecta`, `created_at`, `updated_at`) VALUES
+(17, 'El lenguaje {{1}} es para bases de datos {{2}}', '[\"SQL\",\"relacionales\"]', 0, 0, 1, NULL, NULL, NULL, '2025-11-01 19:54:44', '2025-11-23 12:52:02');
 
 -- --------------------------------------------------------
 
@@ -74,6 +243,62 @@ CREATE TABLE `actividades_tarea` (
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `actividades_tarea`
+--
+
+INSERT INTO `actividades_tarea` (`id`, `actividad_id`, `instrucciones`, `perm_texto`, `perm_archivo`, `perm_enlace`, `max_archivos`, `max_peso_mb`, `evaluacion_modo`, `puntuacion_max`, `rubrica_json`, `created_at`, `updated_at`) VALUES
+(2, 8, 'Instrucciones para el alumno para Primera Actividad de Entrega', 1, 1, 1, 10, 100, 'puntos', 10, NULL, '2025-10-20 12:53:41', '2025-11-23 12:51:59');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `actividades_valoraciones`
+--
+
+CREATE TABLE `actividades_valoraciones` (
+  `id` int(11) NOT NULL,
+  `actividad_id` int(11) NOT NULL,
+  `profesor_id` int(11) NOT NULL,
+  `valoracion` tinyint(1) NOT NULL COMMENT '1–5 estrellas',
+  `comentario` text DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `actividades_valoraciones`
+--
+
+INSERT INTO `actividades_valoraciones` (`id`, `actividad_id`, `profesor_id`, `valoracion`, `comentario`, `created_at`, `updated_at`) VALUES
+(1, 36, 2, 5, NULL, '2025-11-23 13:43:14', '2025-11-23 13:43:14'),
+(2, 25, 2, 5, NULL, '2025-11-23 13:43:35', '2025-11-23 13:43:35');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `actividades_vf`
+--
+
+CREATE TABLE `actividades_vf` (
+  `id` int(11) NOT NULL,
+  `actividad_id` int(11) NOT NULL,
+  `respuesta_correcta` enum('verdadero','falso') NOT NULL,
+  `feedback_correcta` text DEFAULT NULL,
+  `feedback_incorrecta` text DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `actividades_vf`
+--
+
+INSERT INTO `actividades_vf` (`id`, `actividad_id`, `respuesta_correcta`, `feedback_correcta`, `feedback_incorrecta`, `created_at`, `updated_at`) VALUES
+(1, 9, 'verdadero', 'Po claro que eres tonto', 'Mal. Eres tonto', '2025-10-20 13:38:39', '2025-10-20 13:38:39'),
+(2, 6, 'verdadero', NULL, NULL, '2025-11-01 14:16:38', '2025-11-23 12:51:56'),
+(3, 36, 'verdadero', 'yuityuityui', 'yuiyuityuityu', '2025-11-23 12:35:49', '2025-11-23 13:43:14');
 
 -- --------------------------------------------------------
 
@@ -240,6 +465,122 @@ INSERT INTO `cursos_old` (`id`, `grado_id`, `nombre`, `orden`) VALUES
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `examenes`
+--
+
+CREATE TABLE `examenes` (
+  `id` int(11) NOT NULL,
+  `profesor_id` int(11) NOT NULL,
+  `familia_id` int(11) NOT NULL,
+  `curso_id` int(11) NOT NULL,
+  `asignatura_id` int(11) NOT NULL,
+  `titulo` varchar(255) NOT NULL,
+  `descripcion` text DEFAULT NULL,
+  `estado` enum('borrador','publicado') NOT NULL DEFAULT 'borrador',
+  `tipo` enum('examen','practica') NOT NULL DEFAULT 'examen',
+  `fecha` date DEFAULT NULL,
+  `hora` time DEFAULT NULL,
+  `duracion_minutos` int(11) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `examenes`
+--
+
+INSERT INTO `examenes` (`id`, `profesor_id`, `familia_id`, `curso_id`, `asignatura_id`, `titulo`, `descripcion`, `estado`, `tipo`, `fecha`, `hora`, `duracion_minutos`, `created_at`, `updated_at`) VALUES
+(1, 2, 2, 3, 1, 'Primer Parcial de Bases de Datos', 'Primer parcial de Bases de Datos', 'publicado', 'examen', '2025-11-16', '18:36:00', 180, '2025-11-15 12:36:26', '2025-11-16 18:47:57');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `examenes_actividades`
+--
+
+CREATE TABLE `examenes_actividades` (
+  `id` int(11) NOT NULL,
+  `examen_id` int(11) NOT NULL,
+  `actividad_id` int(11) NOT NULL,
+  `orden` int(11) NOT NULL DEFAULT 1,
+  `puntuacion` decimal(5,2) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `examenes_actividades`
+--
+
+INSERT INTO `examenes_actividades` (`id`, `examen_id`, `actividad_id`, `orden`, `puntuacion`, `created_at`, `updated_at`) VALUES
+(4, 1, 34, 1, NULL, '2025-11-15 13:54:02', '2025-11-15 13:54:02'),
+(5, 1, 25, 2, NULL, '2025-11-15 13:54:02', '2025-11-15 13:54:02'),
+(6, 1, 17, 3, NULL, '2025-11-15 13:54:02', '2025-11-15 13:54:02');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `examen_intentos`
+--
+
+CREATE TABLE `examen_intentos` (
+  `id` int(11) NOT NULL,
+  `examen_id` int(11) NOT NULL,
+  `nombre_alumno` varchar(150) DEFAULT NULL,
+  `email_alumno` varchar(190) DEFAULT NULL,
+  `token` varchar(64) NOT NULL,
+  `nota` decimal(5,2) DEFAULT NULL,
+  `corregido` tinyint(1) NOT NULL DEFAULT 0,
+  `alumno_id` int(11) DEFAULT NULL,
+  `inicio_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `fin_at` datetime DEFAULT NULL,
+  `ip` varchar(45) DEFAULT NULL,
+  `nota_total` decimal(5,2) DEFAULT NULL,
+  `estado` enum('en_progreso','enviado','corregido') NOT NULL DEFAULT 'en_progreso',
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `examen_intentos`
+--
+
+INSERT INTO `examen_intentos` (`id`, `examen_id`, `nombre_alumno`, `email_alumno`, `token`, `nota`, `corregido`, `alumno_id`, `inicio_at`, `fin_at`, `ip`, `nota_total`, `estado`, `created_at`, `updated_at`) VALUES
+(1, 1, 'Alumno de Prueba', 'alumno@alumno.com', 'b003054a8f9175e60fc51ce6ae158832', 9.00, 1, NULL, '2025-11-15 20:26:50', NULL, NULL, NULL, 'en_progreso', '2025-11-15 20:26:50', '2025-11-16 17:03:41'),
+(2, 1, 'Otro alumno', 'alumno2@alumno.com', '0a2f9712cb35edd49ce63d56228f844e', 4.00, 1, NULL, '2025-11-16 18:48:19', NULL, NULL, NULL, 'en_progreso', '2025-11-16 18:48:19', '2025-11-16 19:09:00');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `examen_respuestas`
+--
+
+CREATE TABLE `examen_respuestas` (
+  `id` int(11) NOT NULL,
+  `intento_id` int(11) NOT NULL,
+  `actividad_id` int(11) NOT NULL,
+  `respuesta_json` longtext DEFAULT NULL,
+  `puntuacion` decimal(5,2) DEFAULT NULL,
+  `corregida` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `examen_respuestas`
+--
+
+INSERT INTO `examen_respuestas` (`id`, `intento_id`, `actividad_id`, `respuesta_json`, `puntuacion`, `corregida`, `created_at`, `updated_at`) VALUES
+(1, 1, 34, '{\"resp_34\":\"48\"}', 3.00, 1, '2025-11-15 20:35:34', '2025-11-16 17:03:41'),
+(2, 1, 25, '{\"resp_25_13\":\"sdfgsdfgsdfgsdfg\",\"resp_25_14\":\"gsdfgsdfgsdfg\",\"resp_25_15\":\"gsdfgsdfgsdfg\"}', 3.00, 1, '2025-11-15 20:35:34', '2025-11-16 17:03:41'),
+(3, 1, 17, '{\"resp_17_1\":\"SQL\",\"resp_17_2\":\"relacionales\"}', 3.00, 1, '2025-11-15 20:35:34', '2025-11-16 17:03:41'),
+(4, 2, 34, '{\"resp_34\":\"48\"}', 3.00, 1, '2025-11-16 18:48:28', '2025-11-16 19:09:00'),
+(5, 2, 25, '{\"resp_25_13\":\"sdfgsdfgsdfgsdfg\",\"resp_25_14\":\"sdfgsdfgsdfgsdfg\",\"resp_25_15\":\"gsdfgsdfgsdfg\"}', 1.00, 1, '2025-11-16 18:48:28', '2025-11-16 18:48:59'),
+(6, 2, 17, '{\"resp_17_1\":\"sfsdgfsdfg\",\"resp_17_2\":\"sdfgsdfgsdf\"}', 0.00, 1, '2025-11-16 18:48:28', '2025-11-16 18:48:59');
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `familias_profesionales`
 --
 
@@ -369,8 +710,9 @@ CREATE TABLE `profesores` (
 --
 
 INSERT INTO `profesores` (`id`, `centro_id`, `nombre`, `apellidos`, `email`, `telefono`, `notas`, `is_active`, `created_at`, `updated_at`) VALUES
-(2, 1, 'Francisco', 'Palacios Chaves', 'fpalacioschaves@gmail.com', '655925498', NULL, 1, '2025-10-18 21:45:18', '2025-10-19 12:50:57'),
-(3, 1, 'Alberto', 'Ruiz Rodriguez', 'albertoruizprofesor@gmail.com', '666666666', NULL, 1, '2025-10-19 19:14:36', '2025-10-19 19:58:01');
+(2, 1, 'Francisco', 'Palacios Chaves', 'fpalacioschaves@gmail.com', '655925498', 'Usuario Profesor para Bancalia', 1, '2025-10-18 21:45:18', '2026-01-20 21:14:10'),
+(3, 1, 'Alberto', 'Ruiz Rodriguez', 'albertoruizprofesor@gmail.com', '666666666', NULL, 1, '2025-10-19 19:14:36', '2025-10-19 19:58:01'),
+(5, 1, 'cvghgvjvghjfghj', 'ghjfghjfghjfgh', 'joseluis@dadisa.net', '+34952360412', 'ghjfghjfghjfghj', 1, '2026-01-20 21:20:06', '2026-01-20 21:20:06');
 
 -- --------------------------------------------------------
 
@@ -398,9 +740,10 @@ CREATE TABLE `profesor_asignacion` (
 --
 
 INSERT INTO `profesor_asignacion` (`id`, `profesor_id`, `centro_id`, `familia_id`, `curso_id`, `asignatura_id`, `anio_academico`, `horas`, `observaciones`, `is_active`, `created_at`, `updated_at`) VALUES
-(3, 2, 1, 2, 3, 1, '2025-2026', NULL, NULL, 1, '2025-10-18 21:48:28', '2025-10-19 12:50:57'),
-(4, 2, 1, 2, 3, 3, '2025-2026', NULL, NULL, 1, '2025-10-18 21:48:28', '2025-10-19 12:50:57'),
-(5, 3, 1, 2, 3, 2, '2025-2026', NULL, NULL, 1, '2025-10-19 19:15:09', '2025-10-19 19:58:01');
+(3, 2, 1, 2, 3, 1, '2025-2026', NULL, NULL, 1, '2025-10-18 21:48:28', '2026-01-20 21:14:10'),
+(4, 2, 1, 2, 3, 3, '2025-2026', NULL, NULL, 1, '2025-10-18 21:48:28', '2026-01-20 21:14:10'),
+(5, 3, 1, 2, 3, 2, '2025-2026', NULL, NULL, 1, '2025-10-19 19:15:09', '2025-10-19 19:58:01'),
+(6, 2, 1, 2, 3, 2, '2025-2026', NULL, NULL, 1, '2025-11-23 10:41:53', '2026-01-20 21:14:10');
 
 -- --------------------------------------------------------
 
@@ -552,7 +895,50 @@ ALTER TABLE `actividades`
   ADD KEY `tema_id` (`tema_id`),
   ADD KEY `tipo` (`tipo`),
   ADD KEY `visibilidad` (`visibilidad`),
-  ADD KEY `estado` (`estado`);
+  ADD KEY `estado` (`estado`),
+  ADD KEY `fk_actividades_centro` (`centro_id`);
+
+--
+-- Indices de la tabla `actividades_emp`
+--
+ALTER TABLE `actividades_emp`
+  ADD PRIMARY KEY (`actividad_id`),
+  ADD KEY `idx_emp_modo` (`modo_puntuacion`);
+
+--
+-- Indices de la tabla `actividades_emp_pares`
+--
+ALTER TABLE `actividades_emp_pares`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_emp_pares_act` (`actividad_id`),
+  ADD KEY `idx_emp_pares_orden` (`actividad_id`,`orden_izq`,`orden_der`),
+  ADD KEY `idx_emp_pares_activo` (`actividad_id`,`activo`);
+
+--
+-- Indices de la tabla `actividades_om`
+--
+ALTER TABLE `actividades_om`
+  ADD PRIMARY KEY (`actividad_id`);
+
+--
+-- Indices de la tabla `actividades_om_opciones`
+--
+ALTER TABLE `actividades_om_opciones`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_om_opciones_actividad` (`actividad_id`);
+
+--
+-- Indices de la tabla `actividades_rc`
+--
+ALTER TABLE `actividades_rc`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_actividades_rc_actividad` (`actividad_id`);
+
+--
+-- Indices de la tabla `actividades_rh`
+--
+ALTER TABLE `actividades_rh`
+  ADD PRIMARY KEY (`actividad_id`);
 
 --
 -- Indices de la tabla `actividades_tarea`
@@ -560,6 +946,21 @@ ALTER TABLE `actividades`
 ALTER TABLE `actividades_tarea`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `actividad_id` (`actividad_id`);
+
+--
+-- Indices de la tabla `actividades_valoraciones`
+--
+ALTER TABLE `actividades_valoraciones`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_actividad_profesor` (`actividad_id`,`profesor_id`),
+  ADD KEY `idx_av_profesor` (`profesor_id`);
+
+--
+-- Indices de la tabla `actividades_vf`
+--
+ALTER TABLE `actividades_vf`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_actividades_vf_actividad` (`actividad_id`);
 
 --
 -- Indices de la tabla `asignaturas`
@@ -604,6 +1005,43 @@ ALTER TABLE `cursos`
 --
 ALTER TABLE `cursos_old`
   ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `examenes`
+--
+ALTER TABLE `examenes`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_ex_profesor` (`profesor_id`),
+  ADD KEY `idx_ex_familia` (`familia_id`),
+  ADD KEY `idx_ex_curso` (`curso_id`),
+  ADD KEY `idx_ex_asignatura` (`asignatura_id`),
+  ADD KEY `idx_ex_estado_fecha` (`estado`,`fecha`);
+
+--
+-- Indices de la tabla `examenes_actividades`
+--
+ALTER TABLE `examenes_actividades`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_examen_actividad` (`examen_id`,`actividad_id`),
+  ADD KEY `idx_ea_examen` (`examen_id`,`orden`),
+  ADD KEY `idx_ea_actividad` (`actividad_id`);
+
+--
+-- Indices de la tabla `examen_intentos`
+--
+ALTER TABLE `examen_intentos`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_ei_examen` (`examen_id`),
+  ADD KEY `idx_ei_alumno` (`alumno_id`);
+
+--
+-- Indices de la tabla `examen_respuestas`
+--
+ALTER TABLE `examen_respuestas`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_intento_actividad` (`intento_id`,`actividad_id`),
+  ADD KEY `idx_er_intento` (`intento_id`),
+  ADD KEY `idx_er_actividad` (`actividad_id`);
 
 --
 -- Indices de la tabla `familias_profesionales`
@@ -706,13 +1144,43 @@ ALTER TABLE `usuarios_old`
 -- AUTO_INCREMENT de la tabla `actividades`
 --
 ALTER TABLE `actividades`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
+
+--
+-- AUTO_INCREMENT de la tabla `actividades_emp_pares`
+--
+ALTER TABLE `actividades_emp_pares`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
+
+--
+-- AUTO_INCREMENT de la tabla `actividades_om_opciones`
+--
+ALTER TABLE `actividades_om_opciones`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `actividades_rc`
+--
+ALTER TABLE `actividades_rc`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT de la tabla `actividades_tarea`
 --
 ALTER TABLE `actividades_tarea`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT de la tabla `actividades_valoraciones`
+--
+ALTER TABLE `actividades_valoraciones`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT de la tabla `actividades_vf`
+--
+ALTER TABLE `actividades_vf`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT de la tabla `asignaturas`
@@ -736,7 +1204,7 @@ ALTER TABLE `centros`
 -- AUTO_INCREMENT de la tabla `cursos`
 --
 ALTER TABLE `cursos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT de la tabla `cursos_old`
@@ -745,10 +1213,34 @@ ALTER TABLE `cursos_old`
   MODIFY `id` smallint(5) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
+-- AUTO_INCREMENT de la tabla `examenes`
+--
+ALTER TABLE `examenes`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT de la tabla `examenes_actividades`
+--
+ALTER TABLE `examenes_actividades`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT de la tabla `examen_intentos`
+--
+ALTER TABLE `examen_intentos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT de la tabla `examen_respuestas`
+--
+ALTER TABLE `examen_respuestas`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
 -- AUTO_INCREMENT de la tabla `familias_profesionales`
 --
 ALTER TABLE `familias_profesionales`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT de la tabla `grados`
@@ -766,13 +1258,13 @@ ALTER TABLE `planes`
 -- AUTO_INCREMENT de la tabla `profesores`
 --
 ALTER TABLE `profesores`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT de la tabla `profesor_asignacion`
 --
 ALTER TABLE `profesor_asignacion`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT de la tabla `roles`
@@ -809,10 +1301,65 @@ ALTER TABLE `usuarios_old`
 --
 
 --
+-- Filtros para la tabla `actividades`
+--
+ALTER TABLE `actividades`
+  ADD CONSTRAINT `fk_actividades_centro` FOREIGN KEY (`centro_id`) REFERENCES `centros` (`id`) ON DELETE SET NULL;
+
+--
+-- Filtros para la tabla `actividades_emp`
+--
+ALTER TABLE `actividades_emp`
+  ADD CONSTRAINT `fk_emp_actividad` FOREIGN KEY (`actividad_id`) REFERENCES `actividades` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `actividades_emp_pares`
+--
+ALTER TABLE `actividades_emp_pares`
+  ADD CONSTRAINT `fk_emp_pares_act` FOREIGN KEY (`actividad_id`) REFERENCES `actividades` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `actividades_om`
+--
+ALTER TABLE `actividades_om`
+  ADD CONSTRAINT `fk_om_actividad` FOREIGN KEY (`actividad_id`) REFERENCES `actividades` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Filtros para la tabla `actividades_om_opciones`
+--
+ALTER TABLE `actividades_om_opciones`
+  ADD CONSTRAINT `fk_om_opciones_actividad` FOREIGN KEY (`actividad_id`) REFERENCES `actividades` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Filtros para la tabla `actividades_rc`
+--
+ALTER TABLE `actividades_rc`
+  ADD CONSTRAINT `fk_actividades_rc_actividad` FOREIGN KEY (`actividad_id`) REFERENCES `actividades` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `actividades_rh`
+--
+ALTER TABLE `actividades_rh`
+  ADD CONSTRAINT `fk_actividades_rh_actividad` FOREIGN KEY (`actividad_id`) REFERENCES `actividades` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
 -- Filtros para la tabla `actividades_tarea`
 --
 ALTER TABLE `actividades_tarea`
   ADD CONSTRAINT `fk_act_tarea` FOREIGN KEY (`actividad_id`) REFERENCES `actividades` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `actividades_valoraciones`
+--
+ALTER TABLE `actividades_valoraciones`
+  ADD CONSTRAINT `fk_av_actividad` FOREIGN KEY (`actividad_id`) REFERENCES `actividades` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_av_profesor` FOREIGN KEY (`profesor_id`) REFERENCES `profesores` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Filtros para la tabla `actividades_vf`
+--
+ALTER TABLE `actividades_vf`
+  ADD CONSTRAINT `fk_actividades_vf_actividad` FOREIGN KEY (`actividad_id`) REFERENCES `actividades` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Filtros para la tabla `asignaturas`
@@ -820,12 +1367,6 @@ ALTER TABLE `actividades_tarea`
 ALTER TABLE `asignaturas`
   ADD CONSTRAINT `fk_asig_curso` FOREIGN KEY (`curso_id`) REFERENCES `cursos` (`id`) ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_asig_familia` FOREIGN KEY (`familia_id`) REFERENCES `familias_profesionales` (`id`) ON UPDATE CASCADE;
-
---
--- Filtros para la tabla `asignaturas_old`
---
-ALTER TABLE `asignaturas_old`
-  ADD CONSTRAINT `fk_asig_grados` FOREIGN KEY (`grado_id`) REFERENCES `grados` (`id`);
 
 --
 -- Filtros para la tabla `asignatura_curso`
@@ -841,10 +1382,33 @@ ALTER TABLE `cursos`
   ADD CONSTRAINT `fk_cursos_familia` FOREIGN KEY (`familia_id`) REFERENCES `familias_profesionales` (`id`) ON UPDATE CASCADE;
 
 --
--- Filtros para la tabla `cursos_old`
+-- Filtros para la tabla `examenes`
 --
-ALTER TABLE `cursos_old`
-  ADD CONSTRAINT `fk_cursos_grados` FOREIGN KEY (`grado_id`) REFERENCES `grados` (`id`);
+ALTER TABLE `examenes`
+  ADD CONSTRAINT `fk_ex_asignatura` FOREIGN KEY (`asignatura_id`) REFERENCES `asignaturas` (`id`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_ex_curso` FOREIGN KEY (`curso_id`) REFERENCES `cursos` (`id`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_ex_familia` FOREIGN KEY (`familia_id`) REFERENCES `familias_profesionales` (`id`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_ex_profesor` FOREIGN KEY (`profesor_id`) REFERENCES `profesores` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Filtros para la tabla `examenes_actividades`
+--
+ALTER TABLE `examenes_actividades`
+  ADD CONSTRAINT `fk_ea_actividad` FOREIGN KEY (`actividad_id`) REFERENCES `actividades` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_ea_examen` FOREIGN KEY (`examen_id`) REFERENCES `examenes` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Filtros para la tabla `examen_intentos`
+--
+ALTER TABLE `examen_intentos`
+  ADD CONSTRAINT `fk_ei_examen` FOREIGN KEY (`examen_id`) REFERENCES `examenes` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `examen_respuestas`
+--
+ALTER TABLE `examen_respuestas`
+  ADD CONSTRAINT `fk_er_actividad` FOREIGN KEY (`actividad_id`) REFERENCES `actividades` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_er_intento` FOREIGN KEY (`intento_id`) REFERENCES `examen_intentos` (`id`) ON DELETE CASCADE;
 
 --
 -- Filtros para la tabla `perfiles_alumno`
