@@ -65,6 +65,8 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 /* ===== SERVICES ===== */
+// Services
+require_once __DIR__ . '/services/Validator.php';
 require_once __DIR__ . '/services/ProfesorService.php';
 
 /* ===== DB ===== */

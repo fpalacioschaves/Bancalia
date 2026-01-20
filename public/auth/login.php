@@ -18,23 +18,43 @@ $errors = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   try {
     csrf_check($_POST['csrf'] ?? '');
-    $email = (string) ($_POST['email'] ?? '');
-    $pass = (string) ($_POST['password'] ?? '');
-    login_user($email, $pass);
+    $email = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
 
-    // Decide destino por rol
-    $u = current_user() ?? [];
-    $dest = ($u['role'] ?? '') === 'admin'
-      ? PUBLIC_URL . '/dashboard.php'
-      : PUBLIC_URL . '/mi-perfil.php';
+    // Validación
+    $v = new Validator($_POST);
+    $v->required('email', 'Email')->email('email', 'Email');
+    $v->required('password', 'Contraseña');
 
-    // Asegura que la cookie se escriba antes del redirect
-    session_write_close();
+    if ($v->fails()) {
+      $errors[] = $v->getFirstError();
+    } else {
+      // Auth logic
+      $st = pdo()->prepare('SELECT * FROM users WHERE email = :e LIMIT 1');
+      $st->execute([':e' => $email]);
+      $user = $st->fetch();
 
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https://' : 'http://';
-    header('Location: ' . $scheme . $host . $dest);
-    exit;
+      if ($user && password_verify($password, $user['password_hash'])) {
+        // Login correcto
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['user'] = $user;
+
+        // Decide destino por rol
+        $dest = ($user['role'] ?? '') === 'admin'
+          ? PUBLIC_URL . '/dashboard.php'
+          : PUBLIC_URL . '/mi-perfil.php';
+
+        // Asegura que la cookie se escriba antes del redirect
+        session_write_close();
+
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https://' : 'http://';
+        header('Location: ' . $scheme . $host . $dest);
+        exit;
+      } else {
+        $errors[] = 'Credenciales incorrectas.';
+      }
+    }
   } catch (Throwable $e) {
     $errors[] = $e->getMessage();
     flash('error', $e->getMessage());

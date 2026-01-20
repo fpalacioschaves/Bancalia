@@ -186,17 +186,16 @@ class ProfesorService
 
     private function validateProfesorData(array $data, ?int $ignoreId = null): void
     {
-        if (empty($data['nombre']) || empty($data['apellidos'])) {
-            throw new RuntimeException('Nombre y apellidos son obligatorios.');
+        $v = new Validator($data);
+        $v->required('nombre', 'Nombre')
+            ->required('apellidos', 'Apellidos')
+            ->email('email', 'Email');
+
+        if ($v->fails()) {
+            throw new RuntimeException($v->getFirstError());
         }
-        if (!empty($data['email']) && !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
-            throw new RuntimeException('Email no válido.');
-        }
-        if (!empty($data['centro_id'])) {
-            // Verificar centro... (podríamos inyectar CentroService o hacerlo raw)
-            // Por simplicidad, asumimos validación previa o FK constraint, 
-            // pero idealmente:
-            // if (!$this->centroExists($data['centro_id'])) throw ...
-        }
+
+        // Custom check: Centro ID (raw check for now, as before)
+        /* if (!empty($data['centro_id'])) { ... } */
     }
 }
