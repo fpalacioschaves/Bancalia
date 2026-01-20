@@ -2,9 +2,33 @@
 // /config.php
 declare(strict_types=1);
 
+/* ===== .ENV LOADER ===== */
+if (file_exists(__DIR__ . '/.env')) {
+  $lines = file(__DIR__ . '/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+  foreach ($lines as $line) {
+    $line = trim($line);
+    if ($line === '' || strpos($line, '#') === 0)
+      continue;
+
+    $parts = explode('=', $line, 2);
+    if (count($parts) === 2) {
+      $name = trim($parts[0]);
+      $value = trim($parts[1]);
+      // Eliminar comillas si existen
+      $value = trim($value, '"\'');
+
+      $_ENV[$name] = $value;
+      // Opcional: poner en putenv/$_SERVER si librerías externas lo requieren
+      // putenv("$name=$value");
+    }
+  }
+}
+
 /* ===== URLs base ===== */
-if (!defined('BASE_URL'))
-  define('BASE_URL', '/bancalia');
+if (!defined('BASE_URL')) {
+  // Usar valor de .env o fallback vacío
+  define('BASE_URL', $_ENV['BASE_URL'] ?? '');
+}
 if (!defined('PUBLIC_URL'))
   define('PUBLIC_URL', BASE_URL . '/public');
 
@@ -46,16 +70,20 @@ function pdo(): PDO
   static $pdo;
   if ($pdo instanceof PDO)
     return $pdo;
-  $pdo = new PDO(
-    'mysql:host=127.0.0.1;dbname=bancalia;charset=utf8mb4',
-    'root',
-    '',
-    [
-      PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-      PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-      PDO::ATTR_EMULATE_PREPARES => false,
-    ]
-  );
+
+  $host = $_ENV['DB_HOST'] ?? '127.0.0.1';
+  $port = $_ENV['DB_PORT'] ?? '3306';
+  $db = $_ENV['DB_NAME'] ?? 'bancalia';
+  $user = $_ENV['DB_USER'] ?? 'root';
+  $pass = $_ENV['DB_PASS'] ?? '';
+
+  $dsn = "mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4";
+
+  $pdo = new PDO($dsn, $user, $pass, [
+    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_EMULATE_PREPARES => false,
+  ]);
   return $pdo;
 }
 
