@@ -212,23 +212,6 @@ require_once __DIR__ . '/../../../partials/header.php';
       </div>
     </div>
 
-    <div class="grid gap-4 sm:grid-cols-2">
-      <div>
-        <label for="fecha" class="mb-1 block text-sm font-medium text-slate-700">
-          Fecha del examen / práctica
-        </label>
-        <input id="fecha" name="fecha" type="date"
-          class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
-      </div>
-
-      <div>
-        <label for="hora" class="mb-1 block text-sm font-medium text-slate-700">
-          Hora
-        </label>
-        <input id="hora" name="hora" type="time"
-          class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
-      </div>
-    </div>
 
     <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
       <a href="<?= PUBLIC_URL ?>/admin/examenes/index.php"

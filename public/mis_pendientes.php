@@ -77,7 +77,6 @@ $tareasPendientes = $examenService->getPendingTasks((int) $profesorId);
           <thead class="bg-slate-50">
             <tr>
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Examen</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Fecha</th>
               <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-600">Intentos
                 totales</th>
               <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-600">Corregidos
@@ -93,8 +92,6 @@ $tareasPendientes = $examenService->getPendingTasks((int) $profesorId);
               $tot = (int) ($ex['intentos_totales'] ?? 0);
               $corr = (int) ($ex['intentos_corregidos'] ?? 0);
               $pend = (int) ($ex['intentos_pendientes'] ?? 0);
-              $fecha = $ex['fecha'] ? h((string) $ex['fecha']) : '—';
-              $hora = $ex['hora'] ? h(substr((string) $ex['hora'], 0, 5)) : '';
               $badgeClass = $pend > 0
                 ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
                 : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200';
@@ -104,9 +101,6 @@ $tareasPendientes = $examenService->getPendingTasks((int) $profesorId);
                   <div class="text-sm font-medium text-slate-900">
                     <?= h($ex['titulo'] ?? '') ?>
                   </div>
-                </td>
-                <td class="px-4 py-3 text-sm text-slate-700">
-                  <?= $fecha ?>     <?= $hora ? ' · ' . $hora : '' ?>
                 </td>
                 <td class="px-4 py-3 text-center text-sm text-slate-700">
                   <?= $tot ?>

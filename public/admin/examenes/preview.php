@@ -97,15 +97,6 @@ require_once __DIR__ . '/../../../partials/header.php';
         </dd>
       </div>
 
-      <div class="flex justify-between gap-3">
-        <dt class="text-slate-500">Fecha</dt>
-        <dd><?= !empty($examen['fecha']) ? h($examen['fecha']) : '—' ?></dd>
-      </div>
-
-      <div class="flex justify-between gap-3">
-        <dt class="text-slate-500">Hora</dt>
-        <dd><?= !empty($examen['hora']) ? h(substr($examen['hora'], 0, 5)) : '—' ?></dd>
-      </div>
 
       <div class="flex justify-between gap-3">
         <dt class="text-slate-500">Duración</dt>

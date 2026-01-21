@@ -72,8 +72,6 @@ focus:ring-2 focus:ring-slate-400 focus:border-slate-400" aria-label="Filtrar po
           <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Título</th>
           <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Tipo</th>
           <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Estado</th>
-          <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Fecha</th>
-          <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Hora</th>
           <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-600 no-sort">Acciones
           </th>
         </tr>
@@ -112,12 +110,6 @@ focus:ring-2 focus:ring-slate-400 focus:border-slate-400" aria-label="Filtrar po
                   Borrador
                 </span>
               <?php endif; ?>
-            </td>
-            <td class="px-4 py-3 text-sm text-slate-800">
-              <?= $r['fecha'] !== null ? h($r['fecha']) : '—' ?>
-            </td>
-            <td class="px-4 py-3 text-sm text-slate-800">
-              <?= $r['hora'] !== null ? h(substr($r['hora'], 0, 5)) : '—' ?>
             </td>
             <td class="px-4 py-3 text-sm">
               <div class="flex justify-end gap-2 flex-wrap">
@@ -175,7 +167,7 @@ focus:ring-2 focus:ring-slate-400 focus:border-slate-400" aria-label="Filtrar po
   document.addEventListener('DOMContentLoaded', () => {
     TableManager.init('#exTable', {
       columns: [
-        { select: 6, sortable: false }
+        { select: 4, sortable: false }
       ]
     });
   });

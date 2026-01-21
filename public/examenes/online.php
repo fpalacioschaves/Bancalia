@@ -27,31 +27,11 @@ $isPractica = ($tipoRaw === 'practica');
 $labelTitulo = $isPractica ? 'Hoja de actividades' : 'Examen';
 $labelCorto = $isPractica ? 'práctica' : 'examen'; // para textos cortos
 
-// Validación básica de disponibilidad
-$hoy = date('Y-m-d');
-$ahora = date('H:i:s');
 
+// Validación de publicación
 if ($examen['estado'] !== 'publicado') {
     echo "<h1>$labelTitulo no disponible</h1><p>Este $labelCorto no está publicado.</p>";
     exit;
-}
-
-if ($examen['fecha'] !== null) {
-    if ($examen['fecha'] > $hoy) {
-        echo "<h1>Aún no disponible</h1><p>Este $labelCorto todavía no ha comenzado.</p>";
-        exit;
-    }
-    if ($examen['fecha'] < $hoy) {
-        echo "<h1>$labelTitulo cerrado</h1><p>La fecha de este $labelCorto ya ha pasado.</p>";
-        exit;
-    }
-}
-
-if ($examen['hora'] !== null && $examen['fecha'] === $hoy) {
-    if ($examen['hora'] > $ahora) {
-        echo "<h1>Aún no disponible</h1><p>Este $labelCorto comenzará a las {$examen['hora']}.</p>";
-        exit;
-    }
 }
 
 /********************************************************************

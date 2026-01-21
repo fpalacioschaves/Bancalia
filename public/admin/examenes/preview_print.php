@@ -91,7 +91,7 @@ require_once __DIR__ . '/../../../partials/header.php';
       </div>
       <div class="flex-1 min-w-[120px]">
         <span class="font-semibold">Fecha:</span>
-        <span><?= !empty($examen['fecha']) ? h($examen['fecha']) : '____ / ____ / ______' ?></span>
+        <span>____ / ____ / ______</span>
       </div>
       <div class="flex-1 min-w-[100px]">
         <span class="font-semibold">Duración:</span>

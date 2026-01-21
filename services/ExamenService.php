@@ -75,7 +75,7 @@ class ExamenService
             $sql .= " WHERE " . implode(" AND ", $where);
         }
 
-        $sql .= " ORDER BY e.fecha IS NULL ASC, e.fecha ASC, e.hora ASC, e.id DESC";
+        $sql .= " ORDER BY e.id DESC";
 
         $st = $this->pdo->prepare($sql);
         $st->execute($params);
@@ -89,11 +89,11 @@ class ExamenService
         $sql = "INSERT INTO examenes (
                     profesor_id, familia_id, curso_id, asignatura_id,
                     titulo, descripcion, estado, tipo,
-                    fecha, hora, duracion_minutos, created_at, updated_at
+                    duracion_minutos, created_at, updated_at
                 ) VALUES (
                     :profesor_id, :familia_id, :curso_id, :asignatura_id,
                     :titulo, :descripcion, :estado, :tipo,
-                    :fecha, :hora, :duracion_minutos, NOW(), NOW()
+                    :duracion_minutos, NOW(), NOW()
                 )";
 
         $st = $this->pdo->prepare($sql);
@@ -106,8 +106,6 @@ class ExamenService
             ':descripcion' => !empty($data['descripcion']) ? $data['descripcion'] : null,
             ':estado' => $data['estado'] ?? 'borrador',
             ':tipo' => $data['tipo'] ?? 'examen',
-            ':fecha' => !empty($data['fecha']) ? $data['fecha'] : null,
-            ':hora' => !empty($data['hora']) ? $data['hora'] : null,
             ':duracion_minutos' => !empty($data['duracion_minutos']) ? (int) $data['duracion_minutos'] : null,
         ]);
 
@@ -127,8 +125,6 @@ class ExamenService
                     descripcion = :descripcion,
                     estado = :estado,
                     tipo = :tipo,
-                    fecha = :fecha,
-                    hora = :hora,
                     duracion_minutos = :duracion_minutos,
                     updated_at = NOW()
                 WHERE id = :id";
@@ -143,8 +139,6 @@ class ExamenService
             ':descripcion' => !empty($data['descripcion']) ? $data['descripcion'] : null,
             ':estado' => $data['estado'] ?? 'borrador',
             ':tipo' => $data['tipo'] ?? 'examen',
-            ':fecha' => !empty($data['fecha']) ? $data['fecha'] : null,
-            ':hora' => !empty($data['hora']) ? $data['hora'] : null,
             ':duracion_minutos' => !empty($data['duracion_minutos']) ? (int) $data['duracion_minutos'] : null,
             ':id' => $id,
         ]);
@@ -352,16 +346,15 @@ class ExamenService
             SELECT
                 e.id,
                 e.titulo,
-                e.fecha,
-                e.hora,
+                e.id,
                 COUNT(ei.id) AS intentos_totales,
                 SUM(CASE WHEN ei.corregido = 1 THEN 1 ELSE 0 END) AS intentos_corregidos,
                 SUM(CASE WHEN ei.corregido IS NULL OR ei.corregido = 0 THEN 1 ELSE 0 END) AS intentos_pendientes
             FROM examenes e
             LEFT JOIN examen_intentos ei ON ei.examen_id = e.id
             WHERE e.profesor_id = :p
-            GROUP BY e.id, e.titulo, e.fecha, e.hora
-            ORDER BY e.fecha IS NULL ASC, e.fecha DESC, e.hora DESC, e.id DESC
+            GROUP BY e.id, e.titulo
+            ORDER BY e.id DESC
         ');
         $st->execute([':p' => $profesorId]);
         return $st->fetchAll(PDO::FETCH_ASSOC);

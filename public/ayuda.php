@@ -260,7 +260,6 @@ require_once __DIR__ . '/../partials/header.php';
           <li>Configura los <strong>parámetros técnicos</strong>:
             <ul class="list-disc pl-5 mt-2 space-y-1">
               <li><em>Borrador / Publicado</em>: solo los publicados son visibles para el alumno.</li>
-              <li><em>Fecha y Hora</em>: definen cuándo se abre la prueba.</li>
               <li><em>Duración</em>: tiempo máximo que tendrá el alumno una vez iniciado.</li>
             </ul>
           </li>
