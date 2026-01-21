@@ -1,11 +1,6 @@
 <?php
 declare(strict_types=1);
 
-namespace Services;
-
-use PDO;
-use RuntimeException;
-
 class ExamenService
 {
     private PDO $pdo;

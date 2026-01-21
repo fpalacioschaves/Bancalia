@@ -18,7 +18,7 @@ try {
         throw new RuntimeException('ID de examen inválido.');
     }
 
-    $examenService = new \Services\ExamenService(pdo());
+    $examenService = new ExamenService(pdo());
     $examenService->delete($id);
 
     flash('success', 'Examen eliminado correctamente.');

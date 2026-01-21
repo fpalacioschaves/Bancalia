@@ -51,7 +51,7 @@ $asigs = pdo()->query('
   ORDER BY f.nombre ASC, c.nombre ASC, a.nombre ASC
 ')->fetchAll();
 
-$examenService = new \Services\ExamenService(pdo());
+$examenService = new ExamenService(pdo());
 
 // Cargar examen actual
 $examen = $examenService->find($id);

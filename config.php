@@ -101,6 +101,7 @@ require_once __DIR__ . '/services/Validator.php';
 require_once __DIR__ . '/services/ProfesorService.php';
 require_once __DIR__ . '/services/CentroService.php';
 require_once __DIR__ . '/services/ActividadService.php';
+require_once __DIR__ . '/services/ExamenService.php';
 
 /* ===== DB ===== */
 function pdo(): PDO

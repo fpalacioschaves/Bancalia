@@ -16,7 +16,7 @@ $allowedEstados = ['borrador', 'publicado'];
 // Tipos válidos según la BD
 $allowedTipos = ['examen', 'practica'];
 
-$examenService = new \Services\ExamenService(pdo());
+$examenService = new ExamenService(pdo());
 
 $filters = [
   'q' => $q,

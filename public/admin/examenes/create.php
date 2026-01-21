@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   try {
     csrf_check($_POST['csrf'] ?? null);
 
-    $examenService = new \Services\ExamenService(pdo());
+    $examenService = new ExamenService(pdo());
     $examenId = $examenService->create($_POST);
 
     flash('success', 'Examen creado correctamente.');

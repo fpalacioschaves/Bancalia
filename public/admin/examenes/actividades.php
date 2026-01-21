@@ -13,7 +13,7 @@ if ($examenId <= 0) {
   exit('ID de examen inválido.');
 }
 
-$examenService = new \Services\ExamenService(pdo());
+$examenService = new ExamenService(pdo());
 
 // Cargar examen con contexto
 $examen = $examenService->findFull($examenId);
