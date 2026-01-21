@@ -27,13 +27,16 @@ if (file_exists(__DIR__ . '/.env')) {
 /* ===== URLs base ===== */
 if (!defined('BASE_URL')) {
   $envBase = $_ENV['BASE_URL'] ?? null;
-  if ($envBase !== null) {
+  // Solo usamos el valor de .env si no es el valor por defecto local "/bancalia" 
+  // O si el usuario lo ha configurado explícitamente a algo distinto.
+  // Pero para ser más robustos, preferimos auto-detectar si .env parece ser el local.
+  if ($envBase !== null && $envBase !== '/bancalia' && $envBase !== '') {
     define('BASE_URL', rtrim($envBase, '/'));
   } else {
     // Auto-detección: Calcula la ruta relativa desde DOCUMENT_ROOT a este archivo
-    $docRoot = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT'] ?? '');
-    $dir = str_replace('\\', '/', __DIR__);
-    // En Windows el casing de la unidad puede variar (C: vs c:), normalizamos para comparar
+    $docRoot = str_replace('\\', '/', realpath($_SERVER['DOCUMENT_ROOT'] ?? ''));
+    $dir = str_replace('\\', '/', realpath(__DIR__));
+
     $docRootLower = strtolower($docRoot);
     $dirLower = strtolower($dir);
 
@@ -42,10 +45,18 @@ if (!defined('BASE_URL')) {
       $detected = str_replace('\\', '/', $detected);
       if ($detected !== '' && $detected[0] !== '/')
         $detected = '/' . $detected;
+
+      // Si el .env decía /bancalia pero estamos en la raíz (detected = ""), ignoramos el .env
       define('BASE_URL', rtrim($detected, '/'));
     } else {
-      // Fallback si no se puede detectar
-      define('BASE_URL', '');
+      // Fallback: si no se puede detectar por paths físicos, probamos por SCRIPT_NAME
+      $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+      // Si estamos en /public/... o /index.php, el base es lo que hay antes de /public
+      if (strpos($scriptName, '/public/') !== false) {
+        define('BASE_URL', rtrim(explode('/public/', $scriptName)[0], '/'));
+      } else {
+        define('BASE_URL', '');
+      }
     }
   }
 }
@@ -96,11 +107,17 @@ function pdo(): PDO
   if ($pdo instanceof PDO)
     return $pdo;
 
-  $host = $_ENV['DB_HOST'] ?? '127.0.0.1';
-  $port = $_ENV['DB_PORT'] ?? '3306';
-  $db = $_ENV['DB_NAME'] ?? 'bancalia';
-  $user = $_ENV['DB_USER'] ?? 'root';
-  $pass = $_ENV['DB_PASS'] ?? '';
+  // Detectar entorno: si es localhost o IP local
+  $hostHeader = $_SERVER['HTTP_HOST'] ?? '';
+  $isLocal = in_array($hostHeader, ['localhost', '127.0.0.1', '[::1]']);
+  $prefix = $isLocal ? 'LOCAL_' : 'PROD_';
+
+  // Intentar cargar variables con prefijo, si no existen, usar las estándar
+  $host = $_ENV[$prefix . 'DB_HOST'] ?? $_ENV['DB_HOST'] ?? '127.0.0.1';
+  $port = $_ENV[$prefix . 'DB_PORT'] ?? $_ENV['DB_PORT'] ?? '3306';
+  $db = $_ENV[$prefix . 'DB_NAME'] ?? $_ENV['DB_NAME'] ?? 'bancalia';
+  $user = $_ENV[$prefix . 'DB_USER'] ?? $_ENV['DB_USER'] ?? 'root';
+  $pass = $_ENV[$prefix . 'DB_PASS'] ?? $_ENV['DB_PASS'] ?? '';
 
   $dsn = "mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4";
 

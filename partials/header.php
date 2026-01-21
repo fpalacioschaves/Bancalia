@@ -3,11 +3,11 @@ declare(strict_types=1);
 require_once __DIR__ . '/../config.php';
 $u = current_user();
 
-// URLs base por si no están definidas (auth.php ya las define por defecto)
-if (!defined('BASE_URL'))
-  define('BASE_URL', '/Bancalia');
-if (!defined('PUBLIC_URL'))
-  define('PUBLIC_URL', BASE_URL . '/public');
+// URLs base se definen centralizadamente en config.php
+if (!defined('PUBLIC_URL')) {
+  // Fallback de emergencia, aunque require_once config.php ya lo hace arriba
+  define('PUBLIC_URL', '/public');
+}
 
 
 ?>
