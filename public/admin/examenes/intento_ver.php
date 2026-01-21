@@ -15,19 +15,10 @@ if ($intento_id <= 0) {
   exit;
 }
 
+$examenService = new ExamenService(pdo());
+
 // 1) Cargar intento + examen asociado
-$st = $pdo->prepare("
-    SELECT 
-        ei.*,
-        e.id        AS examen_id,
-        e.titulo    AS examen_titulo,
-        e.descripcion AS examen_descripcion
-    FROM examen_intentos ei
-    JOIN examenes e ON e.id = ei.examen_id
-    WHERE ei.id = ?
-");
-$st->execute([$intento_id]);
-$intento = $st->fetch(PDO::FETCH_ASSOC);
+$intento = $examenService->getAttempt($intento_id);
 
 if (!$intento) {
   http_response_code(404);
@@ -39,99 +30,19 @@ $mensaje = null;
 
 // 2) Si se envían notas por actividad, guardarlas y recalcular nota total
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['guardar_calificacion'])) {
-
   $notasActividad = $_POST['nota_actividad'] ?? [];
+  $total = $examenService->updateAnswerGrades($intento_id, $notasActividad);
 
-  foreach ($notasActividad as $actIdStr => $notaStr) {
-    $actividadId = (int) $actIdStr;
-    $notaStr = trim((string) $notaStr);
-
-    if ($actividadId <= 0) {
-      continue;
-    }
-
-    if ($notaStr === '') {
-      // Si el campo se deja vacío, consideramos puntuación null y sin corregir
-      $puntuacion = null;
-      $corregida = 0;
-    } else {
-      $puntuacion = str_replace(',', '.', $notaStr);
-      $puntuacion = (float) $puntuacion;
-      $puntuacion = round($puntuacion, 2);
-      $corregida = 1;
-    }
-
-    $stUp = $pdo->prepare("
-            UPDATE examen_respuestas
-            SET puntuacion = :puntuacion,
-                corregida  = :corregida
-            WHERE intento_id = :intento_id
-              AND actividad_id = :actividad_id
-        ");
-    $stUp->execute([
-      ':puntuacion' => $puntuacion,
-      ':corregida' => $corregida,
-      ':intento_id' => $intento_id,
-      ':actividad_id' => $actividadId,
-    ]);
-  }
-
-  // Recalcular nota total del examen como suma de las puntuaciones
-  $stSum = $pdo->prepare("
-        SELECT SUM(COALESCE(puntuacion,0)) AS total
-        FROM examen_respuestas
-        WHERE intento_id = ?
-    ");
-  $stSum->execute([$intento_id]);
-  $total = (float) ($stSum->fetchColumn() ?? 0);
-
-  $stUpInt = $pdo->prepare("
-        UPDATE examen_intentos
-        SET nota = :nota,
-            corregido = 1
-        WHERE id = :id
-    ");
-  $stUpInt->execute([
-    ':nota' => $total,
-    ':id' => $intento_id,
-  ]);
-
-  $intento['nota'] = $total;
-  $intento['corregido'] = 1;
-
+  // Recargar datos actualizados
+  $intento = $examenService->getAttempt($intento_id);
   $mensaje = "Calificaciones guardadas. Nota total del examen: " . number_format($total, 2, ',', '.');
 }
 
-// 3) Cargar actividades del examen
-$st2 = $pdo->prepare("
-    SELECT 
-        ea.actividad_id,
-        ea.orden,
-        a.tipo,
-        a.titulo,
-        a.descripcion
-    FROM examenes_actividades ea
-    JOIN actividades a ON a.id = ea.actividad_id
-    WHERE ea.examen_id = ?
-    ORDER BY ea.orden ASC
-");
-$st2->execute([(int) $intento['examen_id']]);
-$actividades = $st2->fetchAll(PDO::FETCH_ASSOC);
+// 3) Cargar actividades del examen (con detalles completos)
+$actividades = $examenService->getActivitiesFull((int) $intento['examen_id']);
 
-// Índice por actividad_id para acceso rápido (por si lo necesitas más adelante)
-$actividadesPorId = [];
-foreach ($actividades as $act) {
-  $actividadesPorId[$act['actividad_id']] = $act;
-}
-
-// 4) Cargar respuestas del intento (incluyendo puntuación y corregida)
-$st3 = $pdo->prepare("
-    SELECT actividad_id, respuesta_json, puntuacion, corregida
-    FROM examen_respuestas
-    WHERE intento_id = ?
-");
-$st3->execute([$intento_id]);
-$respuestasBrutas = $st3->fetchAll(PDO::FETCH_ASSOC);
+// 4) Cargar respuestas del intento
+$respuestasBrutas = $examenService->getAnswers($intento_id);
 
 $respuestasPorActividad = [];
 $puntuacionesPorActividad = [];
@@ -146,140 +57,6 @@ foreach ($respuestasBrutas as $r) {
   $respuestasPorActividad[$actividadId] = $arr;
   $puntuacionesPorActividad[$actividadId] = $r['puntuacion'];
   $corregidasPorActividad[$actividadId] = $r['corregida'];
-}
-
-// 5) Cargar datos auxiliares según tipo (para mostrar soluciones correctas)
-$paresPorActividad = [];
-$opcionesPorId = [];
-$opcionesPorActividad = [];
-$vfPorActividad = [];
-$rhPorActividad = [];
-$rcPorActividad = [];
-
-$hayEmparejar = false;
-$hayOM = false;
-$hayVF = false;
-$hayRH = false;
-$hayRC = false;
-
-$idsActividadOM = [];
-$idsActividadVF = [];
-$idsActividadRH = [];
-$idsActividadRC = [];
-
-foreach ($actividades as $a) {
-  $aid = (int) $a['actividad_id'];
-  $tipo = $a['tipo'];
-
-  if ($tipo === 'emparejar') {
-    $hayEmparejar = true;
-  }
-  if ($tipo === 'opcion_multiple') {
-    $hayOM = true;
-    $idsActividadOM[] = $aid;
-  }
-  if ($tipo === 'verdadero_falso') {
-    $hayVF = true;
-    $idsActividadVF[] = $aid;
-  }
-  if ($tipo === 'rellenar_huecos') {
-    $hayRH = true;
-    $idsActividadRH[] = $aid;
-  }
-  if ($tipo === 'respuesta_corta') {
-    $hayRC = true;
-    $idsActividadRC[] = $aid;
-  }
-}
-
-// Emparejar → pares izquierda/derecha
-if ($hayEmparejar) {
-  $st4 = $pdo->prepare("
-        SELECT actividad_id, id, izquierda_html, derecha_html
-        FROM actividades_emp_pares
-        WHERE actividad_id = ?
-        ORDER BY orden_izq ASC, id ASC
-    ");
-  foreach ($actividades as $a) {
-    if ($a['tipo'] !== 'emparejar')
-      continue;
-    $aid = (int) $a['actividad_id'];
-    $st4->execute([$aid]);
-    $paresPorActividad[$aid] = $st4->fetchAll(PDO::FETCH_ASSOC);
-  }
-}
-
-// Opción múltiple → opciones + cuáles son correctas
-if ($hayOM && $idsActividadOM) {
-  $in = implode(',', array_fill(0, count($idsActividadOM), '?'));
-  $sqlOM = "
-        SELECT id, actividad_id, opcion_html, es_correcta
-        FROM actividades_om_opciones
-        WHERE actividad_id IN ($in)
-    ";
-  $st5 = $pdo->prepare($sqlOM);
-  $st5->execute($idsActividadOM);
-  $rowsOM = $st5->fetchAll(PDO::FETCH_ASSOC);
-
-  foreach ($rowsOM as $row) {
-    $opcionesPorId[(int) $row['id']] = $row;
-    $aid = (int) $row['actividad_id'];
-    if (!isset($opcionesPorActividad[$aid])) {
-      $opcionesPorActividad[$aid] = [];
-    }
-    $opcionesPorActividad[$aid][] = $row;
-  }
-}
-
-// Verdadero/Falso → respuesta_correcta
-if ($hayVF && $idsActividadVF) {
-  $in = implode(',', array_fill(0, count($idsActividadVF), '?'));
-  $sqlV = "
-        SELECT actividad_id, respuesta_correcta
-        FROM actividades_vf
-        WHERE actividad_id IN ($in)
-    ";
-  $stV = $pdo->prepare($sqlV);
-  $stV->execute($idsActividadVF);
-  $rowsVF = $stV->fetchAll(PDO::FETCH_ASSOC);
-
-  foreach ($rowsVF as $row) {
-    $vfPorActividad[(int) $row['actividad_id']] = $row;
-  }
-}
-
-// Rellenar huecos → soluciones en huecos_json
-if ($hayRH && $idsActividadRH) {
-  $in = implode(',', array_fill(0, count($idsActividadRH), '?'));
-  $sqlH = "
-        SELECT actividad_id, huecos_json
-        FROM actividades_rh
-        WHERE actividad_id IN ($in)
-    ";
-  $stH = $pdo->prepare($sqlH);
-  $stH->execute($idsActividadRH);
-  $rowsRH = $stH->fetchAll(PDO::FETCH_ASSOC);
-
-  foreach ($rowsRH as $row) {
-    $rhPorActividad[(int) $row['actividad_id']] = $row;
-  }
-}
-
-// Respuesta corta → criterios de corrección (palabras clave / regex)
-if ($hayRC && $idsActividadRC) {
-  $in = implode(',', array_fill(0, count($idsActividadRC), '?'));
-  $sqlR = "
-        SELECT actividad_id, modo, palabras_clave_json, coincidencia_minima
-        FROM actividades_rc
-        WHERE actividad_id IN ($in)
-    ";
-  $stR = $pdo->prepare($sqlR);
-  $stR->execute($idsActividadRC);
-  $rowsRC = $stR->fetchAll(PDO::FETCH_ASSOC);
-
-  foreach ($rowsRC as $row) {
-    $rcPorActividad[(int) $row['actividad_id']] = $row;
-  }
 }
 
 require_once __DIR__ . '/../../../partials/header.php';
@@ -352,7 +129,7 @@ require_once __DIR__ . '/../../../partials/header.php';
 
       <?php foreach ($actividades as $idx => $a): ?>
         <?php
-        $actividadId = (int) $a['actividad_id'];
+        $actividadId = (int) $a['id'];
         $tipo = $a['tipo'];
         $titulo = $a['titulo'] ?? '';
         $descripcion = $a['descripcion'] ?? '';
@@ -417,7 +194,6 @@ require_once __DIR__ . '/../../../partials/header.php';
               <?php if ($tipo === 'verdadero_falso'): ?>
 
                 <?php
-                // Esperamos algo como ['resp_<id>' => 'verdadero'/'falso']
                 $valor = reset($res);
                 $texto = ($valor === 'verdadero') ? 'Verdadero' : (($valor === 'falso') ? 'Falso' : $valor);
                 ?>
@@ -428,11 +204,16 @@ require_once __DIR__ . '/../../../partials/header.php';
               <?php elseif ($tipo === 'opcion_multiple'): ?>
 
                 <?php
-                $valor = reset($res); // debería ser el id de la opción
+                $valor = reset($res); // id de la opción
                 $opcionId = (int) $valor;
                 $textoOpcion = null;
-                if ($opcionId && isset($opcionesPorId[$opcionId])) {
-                  $textoOpcion = $opcionesPorId[$opcionId]['opcion_html'];
+                if ($opcionId && isset($a['om_options'])) {
+                  foreach($a['om_options'] as $op) {
+                    if ((int)$op['id'] === $opcionId) {
+                       $textoOpcion = $op['opcion_html'];
+                       break;
+                    }
+                  }
                 }
                 ?>
                 <?php if ($textoOpcion !== null): ?>
@@ -457,7 +238,6 @@ require_once __DIR__ . '/../../../partials/header.php';
               <?php elseif ($tipo === 'rellenar_huecos'): ?>
 
                 <?php
-                // Esperamos claves tipo resp_<id>_1, resp_<id>_2, ...
                 $huecos = [];
                 foreach ($res as $k => $v) {
                   if (preg_match('/^resp_' . $actividadId . '_(\d+)$/', (string) $k, $m)) {
@@ -484,25 +264,23 @@ require_once __DIR__ . '/../../../partials/header.php';
               <?php elseif ($tipo === 'emparejar'): ?>
 
                 <?php
-                // Claves esperadas: resp_<actividadId>_<parId> => derecha elegida
-                $paresActividad = $paresPorActividad[$actividadId] ?? [];
+                $paresActividad = json_decode($a['pares_json'] ?? '[]', true);
                 if (!$paresActividad) {
                   echo '<p class="text-sm text-slate-500"><em>No hay pares configurados en BD.</em></p>';
                 } else {
                   echo '<div class="space-y-1 text-sm text-slate-800">';
-                  foreach ($paresActividad as $p) {
-                    $parId = (int) $p['id'];
-                    $kResp = "resp_{$actividadId}_{$parId}";
+                  foreach ($paresActividad as $idxP => $p) {
+                    $kResp = "resp_{$actividadId}_{$idxP}";
                     $derechaElegida = $res[$kResp] ?? '';
                     ?>
                     <div class="flex flex-wrap items-start gap-2">
-                      <div class="font-medium">
-                        <?= $p['izquierda_html'] ?>
-                      </div>
-                      <div>→</div>
-                      <div class="text-slate-800">
+                       <div class="font-medium">
+                        <?= $p[0] ?>
+                       </div>
+                       <div>→</div>
+                       <div class="text-slate-800">
                         <?= $derechaElegida !== '' ? h((string) $derechaElegida) : '<span class="text-slate-400"><em>Sin respuesta</em></span>' ?>
-                      </div>
+                       </div>
                     </div>
                     <?php
                   }
@@ -513,7 +291,6 @@ require_once __DIR__ . '/../../../partials/header.php';
               <?php elseif ($tipo === 'tarea'): ?>
 
                 <?php
-                // En online.php guardamos algo como ['texto' => ..., 'enlace' => ...]
                 $texto = $res['texto'] ?? null;
                 $enlace = $res['enlace'] ?? null;
                 ?>
@@ -548,9 +325,9 @@ require_once __DIR__ . '/../../../partials/header.php';
                   <em>Tipo de actividad no contemplado para mostrar las respuestas (<?= h($tipo) ?>).</em>
                 </p>
 
-              <?php endif; // switch tipo ?>
+              <?php endif; ?>
 
-            <?php endif; // si/no respuesta ?>
+            <?php endif; ?>
 
           </div>
 
@@ -561,29 +338,23 @@ require_once __DIR__ . '/../../../partials/header.php';
             </h3>
 
             <?php if ($tipo === 'verdadero_falso'): ?>
-
-              <?php if (isset($vfPorActividad[$actividadId])): ?>
-                <?php
-                $corr = $vfPorActividad[$actividadId]['respuesta_correcta'] ?? null;
-                $textoCorr = ($corr === 'verdadero') ? 'Verdadero' : (($corr === 'falso') ? 'Falso' : null);
-                ?>
-                <?php if ($textoCorr !== null): ?>
-                  <p class="text-sm text-slate-800">
-                    Respuesta correcta: <span class="font-semibold"><?= h($textoCorr) ?></span>
-                  </p>
-                <?php else: ?>
-                  <p class="text-sm text-slate-500"><em>No hay respuesta correcta definida en la BD.</em></p>
-                <?php endif; ?>
+              <?php
+              $corr = $a['respuesta_correcta'] ?? null;
+              $textoCorr = ($corr === 'verdadero') ? 'Verdadero' : (($corr === 'falso') ? 'Falso' : null);
+              ?>
+              <?php if ($textoCorr !== null): ?>
+                <p class="text-sm text-slate-800">
+                  Respuesta correcta: <span class="font-semibold"><?= h($textoCorr) ?></span>
+                </p>
               <?php else: ?>
                 <p class="text-sm text-slate-500"><em>No hay respuesta correcta definida en la BD.</em></p>
               <?php endif; ?>
 
             <?php elseif ($tipo === 'opcion_multiple'): ?>
-
               <?php
               $corrs = [];
-              if (isset($opcionesPorActividad[$actividadId])) {
-                foreach ($opcionesPorActividad[$actividadId] as $op) {
+              if (isset($a['om_options'])) {
+                foreach ($a['om_options'] as $op) {
                   if (!empty($op['es_correcta'])) {
                     $corrs[] = $op['opcion_html'];
                   }
@@ -605,27 +376,19 @@ require_once __DIR__ . '/../../../partials/header.php';
               <?php endif; ?>
 
             <?php elseif ($tipo === 'rellenar_huecos'): ?>
-
-              <?php if (isset($rhPorActividad[$actividadId])): ?>
-                <?php
-                $hjson = $rhPorActividad[$actividadId]['huecos_json'] ?? '[]';
-                $sol = json_decode($hjson, true);
-                if (!is_array($sol)) {
-                  $sol = [];
-                }
-                ?>
-                <?php if ($sol): ?>
-                  <ul class="text-sm text-slate-800 space-y-1">
-                    <?php foreach ($sol as $n => $textoSol): ?>
-                      <li>
-                        <span class="font-medium">Hueco <?= (int) ($n + 1) ?>:</span>
-                        <?= h((string) $textoSol) ?>
-                      </li>
-                    <?php endforeach; ?>
-                  </ul>
-                <?php else: ?>
-                  <p class="text-sm text-slate-500"><em>No hay soluciones de huecos definidas en la BD.</em></p>
-                <?php endif; ?>
+              <?php
+              $sol = json_decode($a['huecos_json'] ?? '[]', true);
+              if (!is_array($sol)) $sol = [];
+              ?>
+              <?php if ($sol): ?>
+                <ul class="text-sm text-slate-800 space-y-1">
+                  <?php foreach ($sol as $n => $textoSol): ?>
+                    <li>
+                      <span class="font-medium">Hueco <?= (int) ($n + 1) ?>:</span>
+                      <?= h((string) $textoSol) ?>
+                    </li>
+                  <?php endforeach; ?>
+                </ul>
               <?php else: ?>
                 <p class="text-sm text-slate-500"><em>No hay soluciones de huecos definidas en la BD.</em></p>
               <?php endif; ?>
@@ -633,20 +396,20 @@ require_once __DIR__ . '/../../../partials/header.php';
             <?php elseif ($tipo === 'emparejar'): ?>
 
               <?php
-              $paresActividad = $paresPorActividad[$actividadId] ?? [];
+              $paresActividad = json_decode($a['pares_json'] ?? '[]', true);
               ?>
               <?php if ($paresActividad): ?>
                 <div class="space-y-1 text-sm text-slate-800">
                   <div class="font-semibold mb-1">Pares correctos:</div>
                   <?php foreach ($paresActividad as $p): ?>
                     <div class="flex flex-wrap items-start gap-2">
-                      <div class="font-medium">
-                        <?= $p['izquierda_html'] ?>
-                      </div>
-                      <div>→</div>
-                      <div class="text-slate-800">
-                        <?= $p['derecha_html'] ?>
-                      </div>
+                       <div class="font-medium">
+                        <?= $p[0] ?>
+                       </div>
+                       <div>→</div>
+                       <div class="text-slate-800">
+                        <?= $p[1] ?>
+                       </div>
                     </div>
                   <?php endforeach; ?>
                 </div>
@@ -655,17 +418,11 @@ require_once __DIR__ . '/../../../partials/header.php';
               <?php endif; ?>
 
             <?php elseif ($tipo === 'respuesta_corta'): ?>
-
-              <?php if (isset($rcPorActividad[$actividadId])): ?>
                 <?php
-                $cfg = $rcPorActividad[$actividadId];
-                $modo = $cfg['modo'] ?? 'palabras_clave';
-                $pcRaw = $cfg['palabras_clave_json'] ?? '[]';
-                $claves = json_decode($pcRaw, true);
-                if (!is_array($claves)) {
-                  $claves = [];
-                }
-                $minCoin = $cfg['coincidencia_minima'] ?? null;
+                $modo = $a['modo'] ?? 'palabras_clave';
+                $claves = json_decode($a['palabras_clave_json'] ?? '[]', true);
+                if (!is_array($claves)) $claves = [];
+                $minCoin = $a['coincidencia_minima'] ?? null;
                 ?>
                 <div class="text-sm text-slate-800 space-y-1">
                   <div>
@@ -688,22 +445,16 @@ require_once __DIR__ . '/../../../partials/header.php';
                     </div>
                   <?php endif; ?>
                 </div>
-              <?php else: ?>
-                <p class="text-sm text-slate-500"><em>No hay criterios de corrección configurados en BD.</em></p>
-              <?php endif; ?>
 
             <?php elseif ($tipo === 'tarea'): ?>
-
               <p class="text-sm text-slate-500">
                 <em>Esta tarea no tiene una respuesta única correcta. Se corrige según el criterio del profesor.</em>
               </p>
 
             <?php else: ?>
-
               <p class="text-sm text-slate-500">
                 <em>No hay solución configurada para este tipo de actividad (<?= h($tipo) ?>).</em>
               </p>
-
             <?php endif; ?>
           </div>
 

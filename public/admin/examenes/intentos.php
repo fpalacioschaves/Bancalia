@@ -15,10 +15,10 @@ if ($examen_id <= 0) {
   exit;
 }
 
+$examenService = new ExamenService(pdo());
+
 // Cargar datos del examen
-$st = $pdo->prepare("SELECT * FROM examenes WHERE id = ?");
-$st->execute([$examen_id]);
-$examen = $st->fetch(PDO::FETCH_ASSOC);
+$examen = $examenService->find($examen_id);
 
 if (!$examen) {
   http_response_code(404);
@@ -27,14 +27,7 @@ if (!$examen) {
 }
 
 // Cargar intentos del examen
-$st2 = $pdo->prepare("
-    SELECT *
-    FROM examen_intentos
-    WHERE examen_id = ?
-    ORDER BY id DESC
-");
-$st2->execute([$examen_id]);
-$intentos = $st2->fetchAll(PDO::FETCH_ASSOC);
+$intentos = $examenService->getAttempts($examen_id);
 
 require_once __DIR__ . '/../../../partials/header.php';
 ?>

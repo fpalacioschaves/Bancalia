@@ -15,26 +15,12 @@ if ($examenId <= 0) {
   exit('ID de examen inválido.');
 }
 
+$examenService = new ExamenService(pdo());
+
 // =======================
 //   CARGAR EXAMEN
 // =======================
-$stEx = pdo()->prepare('
-    SELECT e.*,
-           p.nombre     AS profesor_nombre,
-           p.apellidos  AS profesor_apellidos,
-           a.nombre     AS asignatura_nombre,
-           c.nombre     AS curso_nombre,
-           f.nombre     AS familia_nombre
-    FROM examenes e
-    LEFT JOIN profesores p              ON p.id = e.profesor_id
-    LEFT JOIN asignaturas a            ON a.id = e.asignatura_id
-    LEFT JOIN cursos c                 ON c.id = e.curso_id
-    LEFT JOIN familias_profesionales f ON f.id = e.familia_id
-    WHERE e.id = :id
-    LIMIT 1
-');
-$stEx->execute([':id' => $examenId]);
-$examen = $stEx->fetch(PDO::FETCH_ASSOC);
+$examen = $examenService->findFull($examenId);
 
 if (!$examen) {
   http_response_code(404);
@@ -44,66 +30,7 @@ if (!$examen) {
 // =======================
 //   CARGAR ACTIVIDADES
 // =======================
-$stActs = pdo()->prepare('
-    SELECT
-        ea.orden,
-        ea.puntuacion,
-        a.id,
-        a.titulo,
-        a.tipo,
-        a.descripcion,
-        a.dificultad,
-        a.estado
-    FROM examenes_actividades ea
-    JOIN actividades a ON a.id = ea.actividad_id
-    WHERE ea.examen_id = :id
-    ORDER BY ea.orden ASC, a.id ASC
-');
-$stActs->execute([':id' => $examenId]);
-$actividades = $stActs->fetchAll(PDO::FETCH_ASSOC);
-
-// =======================
-//   STATEMENTS AUXILIARES
-// =======================
-
-// Opción múltiple: opciones
-$stmOMOpciones = pdo()->prepare('
-    SELECT opcion_html, es_correcta, orden
-    FROM actividades_om_opciones
-    WHERE actividad_id = :id
-    ORDER BY orden ASC, id ASC
-');
-
-// Rellenar huecos: enunciado con {{huecos}}
-$stmRH = pdo()->prepare('
-    SELECT enunciado_html
-    FROM actividades_rh
-    WHERE actividad_id = :id
-    LIMIT 1
-');
-
-// Emparejar: instrucciones + pares
-$stmEMP = pdo()->prepare('
-    SELECT instrucciones_html
-    FROM actividades_emp
-    WHERE actividad_id = :id
-    LIMIT 1
-');
-
-$stmEMPPares = pdo()->prepare('
-    SELECT izquierda_html, derecha_html
-    FROM actividades_emp_pares
-    WHERE actividad_id = :id AND activo = 1
-    ORDER BY orden_izq ASC, id ASC
-');
-
-// Tarea: instrucciones largas
-$stmTarea = pdo()->prepare('
-    SELECT instrucciones
-    FROM actividades_tarea
-    WHERE actividad_id = :id
-    LIMIT 1
-');
+$actividades = $examenService->getActivitiesFull($examenId);
 
 require_once __DIR__ . '/../../../partials/header.php';
 ?>
@@ -226,8 +153,8 @@ require_once __DIR__ . '/../../../partials/header.php';
       <?php foreach ($actividades as $a): ?>
         <?php
         $tipo = $a['tipo'];
-        $orden = (int) $a['orden'];
-        $puntos = $a['puntuacion'] ?? null;
+        $orden = (int) $a['rel_orden'];
+        $puntos = $a['rel_puntuacion'] ?? null;
         ?>
         <li class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
           <div class="flex items-start justify-between gap-3">
@@ -263,10 +190,7 @@ require_once __DIR__ . '/../../../partials/header.php';
 
           <div class="mt-3 text-sm text-slate-800 space-y-2">
             <?php if ($tipo === 'opcion_multiple'): ?>
-              <?php
-              $stmOMOpciones->execute([':id' => $a['id']]);
-              $ops = $stmOMOpciones->fetchAll(PDO::FETCH_ASSOC);
-              ?>
+              <?php $ops = $a['om_options'] ?? []; ?>
               <?php if ($ops): ?>
                 <ul class="mt-1 space-y-1">
                   <?php foreach ($ops as $op): ?>
@@ -301,28 +225,14 @@ require_once __DIR__ . '/../../../partials/header.php';
               </div>
 
             <?php elseif ($tipo === 'rellenar_huecos'): ?>
-              <?php
-              $stmRH->execute([':id' => $a['id']]);
-              $rh = $stmRH->fetchColumn();
-              ?>
               <div class="mt-2 text-sm text-slate-800">
-                <?= $rh ?: '<span class="text-xs text-amber-700">(Enunciado no configurado)</span>' ?>
+                <?= $a['enunciado_html'] ?: '<span class="text-xs text-amber-700">(Enunciado no configurado)</span>' ?>
               </div>
 
             <?php elseif ($tipo === 'emparejar'): ?>
               <?php
-              $stmEMP->execute([':id' => $a['id']]);
-              $enunEmp = $stmEMP->fetchColumn();
-
-              $stmEMPPares->execute([':id' => $a['id']]);
-              $pares = $stmEMPPares->fetchAll(PDO::FETCH_ASSOC);
+              $pares = json_decode($a['pares_json'] ?? '[]', true);
               ?>
-              <?php if ($enunEmp): ?>
-                <div class="mb-2 text-sm text-slate-800">
-                  <?= $enunEmp ?>
-                </div>
-              <?php endif; ?>
-
               <?php if ($pares): ?>
                 <div class="grid grid-cols-2 gap-6">
                   <div>
@@ -330,7 +240,7 @@ require_once __DIR__ . '/../../../partials/header.php';
                     <ul class="space-y-1">
                       <?php foreach ($pares as $p): ?>
                         <li class="rounded border border-slate-300 bg-white px-2 py-1">
-                          <?= $p['izquierda_html'] ?>
+                          <?= $p[0] ?>
                         </li>
                       <?php endforeach; ?>
                     </ul>
@@ -340,7 +250,7 @@ require_once __DIR__ . '/../../../partials/header.php';
                     <ul class="space-y-1">
                       <?php foreach ($pares as $p): ?>
                         <li class="rounded border border-slate-300 bg-white px-2 py-1">
-                          <?= $p['derecha_html'] ?>
+                          <?= $p[1] ?>
                         </li>
                       <?php endforeach; ?>
                     </ul>
@@ -353,12 +263,8 @@ require_once __DIR__ . '/../../../partials/header.php';
               <?php endif; ?>
 
             <?php elseif ($tipo === 'tarea'): ?>
-              <?php
-              $stmTarea->execute([':id' => $a['id']]);
-              $txTarea = $stmTarea->fetchColumn();
-              ?>
               <div class="mt-2 text-sm text-slate-800 whitespace-pre-line">
-                <?= $txTarea ? h($txTarea) : '(Instrucciones de la tarea no configuradas.)' ?>
+                <?= !empty($a['instrucciones']) ? h($a['instrucciones']) : '(Instrucciones de la tarea no configuradas.)' ?>
               </div>
 
             <?php endif; ?>

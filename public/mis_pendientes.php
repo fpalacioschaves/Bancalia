@@ -33,48 +33,13 @@ if (!$profesorId) {
   exit;
 }
 
-// ==================== 1) LISTA DE EXÁMENES DEL PROFESOR ====================
+$examenService = new ExamenService(pdo());
 
-$st = pdo()->prepare('
-  SELECT
-    e.id,
-    e.titulo,
-    e.fecha,
-    e.hora,
-    COUNT(ei.id) AS intentos_totales,
-    SUM(CASE WHEN ei.corregido = 1 THEN 1 ELSE 0 END) AS intentos_corregidos,
-    SUM(CASE WHEN ei.corregido IS NULL OR ei.corregido = 0 THEN 1 ELSE 0 END) AS intentos_pendientes
-  FROM examenes e
-  LEFT JOIN examen_intentos ei ON ei.examen_id = e.id
-  WHERE e.profesor_id = :p
-  GROUP BY e.id, e.titulo, e.fecha, e.hora
-  ORDER BY e.fecha IS NULL ASC, e.fecha DESC, e.hora DESC, e.id DESC
-');
-$st->execute([':p' => $profesorId]);
-$examenes = $st->fetchAll();
+// ==================== 1) LISTA DE EXÁMENES DEL PROFESOR ====================
+$examenes = $examenService->getPendingSummary((int) $profesorId);
 
 // ==================== 2) LISTA DE TAREAS CON RESPUESTAS SIN PUNTUACIÓN ====================
-
-$st2 = pdo()->prepare('
-  SELECT
-    a.id          AS actividad_id,
-    a.titulo      AS actividad_titulo,
-    e.id          AS examen_id,
-    e.titulo      AS examen_titulo,
-    COUNT(er.id)  AS pendientes
-  FROM examenes e
-  JOIN examenes_actividades ea ON ea.examen_id = e.id
-  JOIN actividades a            ON a.id = ea.actividad_id AND a.tipo = "tarea"
-  JOIN examen_intentos ei       ON ei.examen_id = e.id
-  JOIN examen_respuestas er     ON er.intento_id = ei.id AND er.actividad_id = a.id
-  WHERE e.profesor_id = :p
-    AND er.puntuacion IS NULL
-  GROUP BY a.id, a.titulo, e.id, e.titulo
-  HAVING pendientes > 0
-  ORDER BY pendientes DESC, e.titulo ASC, a.titulo ASC
-');
-$st2->execute([':p' => $profesorId]);
-$tareasPendientes = $st2->fetchAll();
+$tareasPendientes = $examenService->getPendingTasks((int) $profesorId);
 ?>
 
 <div class="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -141,7 +106,7 @@ $tareasPendientes = $st2->fetchAll();
                   </div>
                 </td>
                 <td class="px-4 py-3 text-sm text-slate-700">
-                  <?= $fecha ?>    <?= $hora ? ' · ' . $hora : '' ?>
+                  <?= $fecha ?>     <?= $hora ? ' · ' . $hora : '' ?>
                 </td>
                 <td class="px-4 py-3 text-center text-sm text-slate-700">
                   <?= $tot ?>

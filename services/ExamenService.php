@@ -172,6 +172,27 @@ class ExamenService
         return $st->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    /**
+     * Obtiene las actividades del examen con todos sus datos específicos.
+     */
+    public function getActivitiesFull(int $examenId): array
+    {
+        $rows = $this->getActivities($examenId);
+        $actService = new ActividadService($this->pdo);
+
+        $full = [];
+        foreach ($rows as $r) {
+            $f = $actService->findFull((int) $r['actividad_id']);
+            if ($f) {
+                // Mezclar datos de la relación (orden, puntuación) con los de la actividad
+                $f['rel_orden'] = $r['orden'];
+                $f['rel_puntuacion'] = $r['puntuacion'];
+                $full[] = $f;
+            }
+        }
+        return $full;
+    }
+
     public function syncActivities(int $examenId, array $postedActivities): void
     {
         $this->pdo->beginTransaction();
@@ -194,6 +215,180 @@ class ExamenService
             $this->pdo->rollBack();
             throw $e;
         }
+    }
+
+    public function createAttempt(int $examenId, string $nombre, string $email): int
+    {
+        $token = bin2hex(random_bytes(16));
+
+        $st = $this->pdo->prepare("
+            INSERT INTO examen_intentos (examen_id, nombre_alumno, email_alumno, token, created_at)
+            VALUES (?, ?, ?, ?, NOW())
+        ");
+        $st->execute([$examenId, $nombre, $email, $token]);
+
+        return (int) $this->pdo->lastInsertId();
+    }
+
+    public function saveAnswers(int $intentoId, array $respuestas): void
+    {
+        $st = $this->pdo->prepare("
+            INSERT INTO examen_respuestas (intento_id, actividad_id, respuesta_json)
+            VALUES (?, ?, ?)
+        ");
+
+        foreach ($respuestas as $actividadId => $resp) {
+            $json = json_encode($resp, JSON_UNESCAPED_UNICODE);
+            $st->execute([$intentoId, $actividadId, $json]);
+        }
+    }
+
+    public function getAttempt(int $intentoId): ?array
+    {
+        $st = $this->pdo->prepare("
+            SELECT 
+                ei.*,
+                e.id        AS examen_id,
+                e.titulo    AS examen_titulo,
+                e.descripcion AS examen_descripcion
+            FROM examen_intentos ei
+            JOIN examenes e ON e.id = ei.examen_id
+            WHERE ei.id = ?
+        ");
+        $st->execute([$intentoId]);
+        return $st->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
+    public function getAttempts(int $examenId): array
+    {
+        $st = $this->pdo->prepare("
+            SELECT *
+            FROM examen_intentos
+            WHERE examen_id = ?
+            ORDER BY id DESC
+        ");
+        $st->execute([$examenId]);
+        return $st->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getAnswers(int $intentoId): array
+    {
+        $st = $this->pdo->prepare("
+            SELECT actividad_id, respuesta_json, puntuacion, corregida
+            FROM examen_respuestas
+            WHERE intento_id = ?
+        ");
+        $st->execute([$intentoId]);
+        return $st->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function updateAnswerGrades(int $intentoId, array $notasActividad): float
+    {
+        $this->pdo->beginTransaction();
+        try {
+            foreach ($notasActividad as $actIdStr => $notaStr) {
+                $actividadId = (int) $actIdStr;
+                $notaStr = trim((string) $notaStr);
+
+                if ($actividadId <= 0)
+                    continue;
+
+                if ($notaStr === '') {
+                    $puntuacion = null;
+                    $corregida = 0;
+                } else {
+                    $puntuacion = str_replace(',', '.', $notaStr);
+                    $puntuacion = (float) $puntuacion;
+                    $puntuacion = round($puntuacion, 2);
+                    $corregida = 1;
+                }
+
+                $stUp = $this->pdo->prepare("
+                    UPDATE examen_respuestas
+                    SET puntuacion = :puntuacion,
+                        corregida  = :corregida
+                    WHERE intento_id = :intento_id
+                      AND actividad_id = :actividad_id
+                ");
+                $stUp->execute([
+                    ':puntuacion' => $puntuacion,
+                    ':corregida' => $corregida,
+                    ':intento_id' => $intentoId,
+                    ':actividad_id' => $actividadId,
+                ]);
+            }
+
+            // Recalcular nota total
+            $stSum = $this->pdo->prepare("
+                SELECT SUM(COALESCE(puntuacion,0)) AS total
+                FROM examen_respuestas
+                WHERE intento_id = ?
+            ");
+            $stSum->execute([$intentoId]);
+            $total = (float) ($stSum->fetchColumn() ?? 0);
+
+            $stUpInt = $this->pdo->prepare("
+                UPDATE examen_intentos
+                SET nota = :nota,
+                    corregido = 1
+                WHERE id = :id
+            ");
+            $stUpInt->execute([
+                ':nota' => $total,
+                ':id' => $intentoId,
+            ]);
+
+            $this->pdo->commit();
+            return $total;
+        } catch (\Throwable $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
+    }
+
+    public function getPendingSummary(int $profesorId): array
+    {
+        $st = $this->pdo->prepare('
+            SELECT
+                e.id,
+                e.titulo,
+                e.fecha,
+                e.hora,
+                COUNT(ei.id) AS intentos_totales,
+                SUM(CASE WHEN ei.corregido = 1 THEN 1 ELSE 0 END) AS intentos_corregidos,
+                SUM(CASE WHEN ei.corregido IS NULL OR ei.corregido = 0 THEN 1 ELSE 0 END) AS intentos_pendientes
+            FROM examenes e
+            LEFT JOIN examen_intentos ei ON ei.examen_id = e.id
+            WHERE e.profesor_id = :p
+            GROUP BY e.id, e.titulo, e.fecha, e.hora
+            ORDER BY e.fecha IS NULL ASC, e.fecha DESC, e.hora DESC, e.id DESC
+        ');
+        $st->execute([':p' => $profesorId]);
+        return $st->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getPendingTasks(int $profesorId): array
+    {
+        $st = $this->pdo->prepare('
+            SELECT
+                a.id          AS actividad_id,
+                a.titulo      AS actividad_titulo,
+                e.id          AS examen_id,
+                e.titulo      AS examen_titulo,
+                COUNT(er.id)  AS pendientes
+            FROM examenes e
+            JOIN examenes_actividades ea ON ea.examen_id = e.id
+            JOIN actividades a            ON a.id = ea.actividad_id AND a.tipo = "tarea"
+            JOIN examen_intentos ei       ON ei.examen_id = e.id
+            JOIN examen_respuestas er     ON er.intento_id = ei.id AND er.actividad_id = a.id
+            WHERE e.profesor_id = :p
+                AND er.puntuacion IS NULL
+            GROUP BY a.id, a.titulo, e.id, e.titulo
+            HAVING pendientes > 0
+            ORDER BY pendientes DESC, e.titulo ASC, a.titulo ASC
+        ');
+        $st->execute([':p' => $profesorId]);
+        return $st->fetchAll(PDO::FETCH_ASSOC);
     }
 
     private function validate(array $data): void

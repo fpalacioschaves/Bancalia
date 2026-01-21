@@ -3,159 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../config.php';
 
-/********************************************************************
- * FUNCIONES AUXILIARES
- ********************************************************************/
-
-function cargarExamen(PDO $pdo, int $examen_id): ?array
-{
-    $st = $pdo->prepare("
-        SELECT *
-        FROM examenes
-        WHERE id = ?
-    ");
-    $st->execute([$examen_id]);
-    $examen = $st->fetch(PDO::FETCH_ASSOC);
-    if (!$examen) {
-        return null;
-    }
-
-    $st2 = $pdo->prepare("
-        SELECT 
-            ea.actividad_id, 
-            ea.orden,
-            a.tipo,
-            a.titulo,
-            a.descripcion
-        FROM examenes_actividades ea
-        JOIN actividades a ON a.id = ea.actividad_id
-        WHERE ea.examen_id = ?
-        ORDER BY ea.orden ASC
-    ");
-    $st2->execute([$examen_id]);
-    $examen['actividades'] = $st2->fetchAll(PDO::FETCH_ASSOC);
-
-    return $examen;
-}
-
-function cargarActividad(PDO $pdo, int $actividad_id): ?array
-{
-    $st = $pdo->prepare("SELECT * FROM actividades WHERE id = ?");
-    $st->execute([$actividad_id]);
-    $base = $st->fetch(PDO::FETCH_ASSOC);
-    if (!$base) {
-        return null;
-    }
-
-    $tipo = $base['tipo'];
-
-    switch ($tipo) {
-        case 'verdadero_falso':
-            $st2 = $pdo->prepare("
-                SELECT *
-                FROM actividades_vf
-                WHERE actividad_id = ?
-            ");
-            $st2->execute([$actividad_id]);
-            $base['vf'] = $st2->fetch(PDO::FETCH_ASSOC);
-            break;
-
-        case 'opcion_multiple':
-            $st1 = $pdo->prepare("
-                SELECT *
-                FROM actividades_om
-                WHERE actividad_id = ?
-            ");
-            $st1->execute([$actividad_id]);
-            $base['om'] = $st1->fetch(PDO::FETCH_ASSOC);
-
-            $st2 = $pdo->prepare("
-                SELECT *
-                FROM actividades_om_opciones
-                WHERE actividad_id = ?
-                ORDER BY orden ASC, id ASC
-            ");
-            $st2->execute([$actividad_id]);
-            $base['opciones'] = $st2->fetchAll(PDO::FETCH_ASSOC);
-            break;
-
-        case 'respuesta_corta':
-            $st2 = $pdo->prepare("
-                SELECT *
-                FROM actividades_rc
-                WHERE actividad_id = ?
-            ");
-            $st2->execute([$actividad_id]);
-            $base['rc'] = $st2->fetch(PDO::FETCH_ASSOC);
-            break;
-
-        case 'rellenar_huecos':
-            $st2 = $pdo->prepare("
-                SELECT *
-                FROM actividades_rh
-                WHERE actividad_id = ?
-            ");
-            $st2->execute([$actividad_id]);
-            $base['rh'] = $st2->fetch(PDO::FETCH_ASSOC);
-            break;
-
-        case 'emparejar':
-            $st2 = $pdo->prepare("
-                SELECT *
-                FROM actividades_emp_pares
-                WHERE actividad_id = ?
-                ORDER BY orden_izq ASC, id ASC
-            ");
-            $st2->execute([$actividad_id]);
-            $base['pares'] = $st2->fetchAll(PDO::FETCH_ASSOC);
-            break;
-
-        case 'tarea':
-            $st2 = $pdo->prepare("
-                SELECT *
-                FROM actividades_tarea
-                WHERE actividad_id = ?
-            ");
-            $st2->execute([$actividad_id]);
-            $base['tarea'] = $st2->fetch(PDO::FETCH_ASSOC);
-            break;
-    }
-
-    return $base;
-}
-
-function crearIntento(PDO $pdo, int $examen_id, string $nombre, string $email): int
-{
-    // Tu tabla tiene: examen_id, nombre_alumno, email_alumno, token
-    $token = bin2hex(random_bytes(16));
-
-    $st = $pdo->prepare("
-        INSERT INTO examen_intentos (examen_id, nombre_alumno, email_alumno, token)
-        VALUES (?, ?, ?, ?)
-    ");
-    $st->execute([$examen_id, $nombre, $email, $token]);
-
-    return (int) $pdo->lastInsertId();
-}
-
-function guardarRespuestas(PDO $pdo, int $intento_id, array $respuestas): void
-{
-    $st = $pdo->prepare("
-        INSERT INTO examen_respuestas (intento_id, actividad_id, respuesta_json)
-        VALUES (?, ?, ?)
-    ");
-
-    foreach ($respuestas as $actividad_id => $resp) {
-        $json = json_encode($resp, JSON_UNESCAPED_UNICODE);
-        $st->execute([$intento_id, $actividad_id, $json]);
-    }
-}
-
-/********************************************************************
- * LÓGICA PRINCIPAL
- ********************************************************************/
-
-$pdo = pdo();
+$examenService = new ExamenService(pdo());
 
 $examen_id = intval($_GET['examen_id'] ?? 0);
 if ($examen_id <= 0) {
@@ -163,11 +11,15 @@ if ($examen_id <= 0) {
     exit;
 }
 
-$examen = cargarExamen($pdo, $examen_id);
+$examen = $examenService->findFull($examen_id);
 if (!$examen) {
     echo "<h1>Error</h1><p>Examen no encontrado.</p>";
     exit;
 }
+
+// Cargar actividades completas
+$actividadesFull = $examenService->getActivitiesFull($examen_id);
+$examen['actividades'] = $actividadesFull;
 
 // Tipo de contenedor: examen formal o práctica
 $tipoRaw = $examen['tipo'] ?? 'examen';
@@ -224,7 +76,7 @@ if (!isset($_SESSION['examen_intento'])) {
         if ($nombre === '' || $email === '') {
             $error = "Debes rellenar todos los campos.";
         } else {
-            $intento_id = crearIntento($pdo, $examen_id, $nombre, $email);
+            $intento_id = $examenService->createAttempt($examen_id, $nombre, $email);
             $_SESSION['examen_intento'] = $intento_id;
             header("Location: online.php?examen_id=" . $examen_id);
             exit;
@@ -312,7 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fin_examen'])) {
     $respuestas = [];
 
     foreach ($examen['actividades'] as $a) {
-        $actividad_id = $a['actividad_id'];
+        $actividad_id = $a['id']; // Cambio: ahora usamos 'id' del array de actividad full
 
         // Recogemos cualquier campo que empiece por "resp_{actividad_id}"
         $coincidentes = [];
@@ -325,7 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fin_examen'])) {
         $respuestas[$actividad_id] = $coincidentes ?: null;
     }
 
-    guardarRespuestas($pdo, $intento_id, $respuestas);
+    $examenService->saveAnswers($intento_id, $respuestas);
 
     unset($_SESSION['examen_intento']);
 
@@ -376,11 +228,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fin_examen'])) {
 
         <form method="post">
 
-            <?php foreach ($examen['actividades'] as $index => $a):
-                $actividad = cargarActividad($pdo, $a['actividad_id']);
-                if (!$actividad)
-                    continue;
-                ?>
+            <?php foreach ($examen['actividades'] as $index => $actividad): ?>
                 <div class="mb-10 pb-10 border-b">
 
                     <h2 class="text-xl font-semibold mb-2">Pregunta <?= $index + 1 ?></h2>
@@ -399,20 +247,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fin_examen'])) {
                     <?php if ($actividad['tipo'] === 'verdadero_falso'): ?>
 
                         <label class="block mb-3">
-                            <input type="radio" name="resp_<?= $a['actividad_id'] ?>" value="verdadero" class="mr-2">
+                            <input type="radio" name="resp_<?= $actividad['id'] ?>" value="verdadero" class="mr-2">
                             Verdadero
                         </label>
                         <label class="block mb-3">
-                            <input type="radio" name="resp_<?= $a['actividad_id'] ?>" value="falso" class="mr-2">
+                            <input type="radio" name="resp_<?= $actividad['id'] ?>" value="falso" class="mr-2">
                             Falso
                         </label>
 
                     <?php elseif ($actividad['tipo'] === 'opcion_multiple'): ?>
 
-                        <?php if (!empty($actividad['opciones'])): ?>
-                            <?php foreach ($actividad['opciones'] as $op): ?>
+                        <?php if (!empty($actividad['om_options'])): ?>
+                            <?php foreach ($actividad['om_options'] as $op): ?>
                                 <label class="block mb-3">
-                                    <input type="radio" name="resp_<?= $a['actividad_id'] ?>" value="<?= (int) $op['id'] ?>"
+                                    <input type="radio" name="resp_<?= $actividad['id'] ?>" value="<?= (int) $op['id'] ?>"
                                         class="mr-2">
                                     <!-- usamos opcion_html, que es el campo real -->
                                     <?= $op['opcion_html'] ?>
@@ -424,18 +272,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fin_examen'])) {
 
                     <?php elseif ($actividad['tipo'] === 'respuesta_corta'): ?>
 
-                        <textarea name="resp_<?= $a['actividad_id'] ?>" class="w-full border p-3 rounded" rows="4"></textarea>
+                        <textarea name="resp_<?= $actividad['id'] ?>" class="w-full border p-3 rounded" rows="4"></textarea>
 
                     <?php elseif ($actividad['tipo'] === 'rellenar_huecos'): ?>
 
                         <?php
-                        $texto = $actividad['rh']['enunciado_html'] ?? '';
-                        $huecos = json_decode($actividad['rh']['huecos_json'] ?? '[]', true);
+                        $texto = $actividad['enunciado_html'] ?? '';
+                        $huecos = json_decode($actividad['huecos_json'] ?? '[]', true);
                         $num = is_array($huecos) ? count($huecos) : 0;
 
                         for ($i = 1; $i <= $num; $i++) {
                             $input = "<input class='border p-2 rounded w-40 inline-block mx-1' " .
-                                "name='resp_{$a['actividad_id']}_{$i}'>";
+                                "name='resp_{$actividad['id']}_{$i}'>";
                             $texto = str_replace('{{' . $i . '}}', $input, $texto);
                         }
                         ?>
@@ -446,20 +294,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fin_examen'])) {
 
                     <?php elseif ($actividad['tipo'] === 'emparejar'): ?>
 
-                        <?php if (!empty($actividad['pares'])): ?>
+                        <?php
+                        $pares = json_decode($actividad['pares_json'] ?? '[]', true);
+                        if (!empty($pares)): ?>
                             <?php
                             // Creamos un array de "derechas" para los selects
                             $derechas = [];
-                            foreach ($actividad['pares'] as $p) {
-                                $derechas[] = $p['derecha_html'];
+                            foreach ($pares as $p) {
+                                $derechas[] = $p[1];
                             }
                             $derechas = array_unique($derechas);
+                            shuffle($derechas); // Aleatorizar para el alumno
                             ?>
-                            <?php foreach ($actividad['pares'] as $p): ?>
+                            <?php foreach ($pares as $idx => $p): ?>
                                 <div class="flex items-center gap-4 mb-3">
-                                    <span class="font-semibold"><?= $p['izquierda_html'] ?></span>
+                                    <span class="font-semibold"><?= $p[0] ?></span>
                                     →
-                                    <select name="resp_<?= $a['actividad_id'] ?>_<?= $p['id'] ?>" class="border p-2 rounded">
+                                    <select name="resp_<?= $actividad['id'] ?>_<?= $idx ?>" class="border p-2 rounded">
                                         <option value="">—</option>
                                         <?php foreach ($derechas as $der): ?>
                                             <option value="<?= h($der) ?>">
@@ -475,28 +326,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fin_examen'])) {
 
                     <?php elseif ($actividad['tipo'] === 'tarea'): ?>
 
-                        <?php if (!empty($actividad['tarea']['instrucciones'])): ?>
+                        <?php if (!empty($actividad['instrucciones'])): ?>
                             <div class="mb-3 text-gray-700">
-                                <?= nl2br(h($actividad['tarea']['instrucciones'])) ?>
+                                <?= nl2br(h($actividad['instrucciones'])) ?>
                             </div>
                         <?php endif; ?>
 
-                        <?php if (!empty($actividad['tarea']['perm_texto'])): ?>
+                        <?php if (!empty($actividad['perm_texto'])): ?>
                             <label class="block mb-3">
                                 Redacción:
                                 <textarea class="w-full border rounded p-3 mt-2" rows="6"
-                                    name="resp_<?= $a['actividad_id'] ?>_texto"></textarea>
+                                    name="resp_<?= $actividad['id'] ?>_texto"></textarea>
                             </label>
                         <?php endif; ?>
 
-                        <?php if (!empty($actividad['tarea']['perm_enlace'])): ?>
+                        <?php if (!empty($actividad['perm_enlace'])): ?>
                             <label class="block mb-3">
                                 Enlace:
-                                <input class="w-full border p-2 rounded mt-2" name="resp_<?= $a['actividad_id'] ?>_enlace">
+                                <input class="w-full border p-2 rounded mt-2" name="resp_<?= $actividad['id'] ?>_enlace">
                             </label>
                         <?php endif; ?>
 
-                        <?php if (empty($actividad['tarea']['perm_texto']) && empty($actividad['tarea']['perm_enlace'])): ?>
+                        <?php if (empty($actividad['perm_texto']) && empty($actividad['perm_enlace'])): ?>
                             <p class="text-sm text-gray-500">
                                 <em>Esta tarea no tiene campos habilitados (texto/enlace).</em>
                             </p>
