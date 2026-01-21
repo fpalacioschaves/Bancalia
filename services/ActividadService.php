@@ -442,7 +442,7 @@ class ActividadService
         $this->pdo->prepare('DELETE FROM actividades_rh WHERE actividad_id=?')->execute([$id]);
         $this->pdo->prepare('DELETE FROM actividades_om WHERE actividad_id=?')->execute([$id]);
         $this->pdo->prepare('DELETE FROM actividades_emp_pares WHERE actividad_id=?')->execute([$id]);
-        $this->pdo->prepare('DELETE FROM actividad_items WHERE actividad_id=?')->execute([$id]);
+        $this->pdo->prepare('DELETE FROM actividades_om_opciones WHERE actividad_id=?')->execute([$id]);
 
         switch ($data['tipo']) {
             case 'tarea':
@@ -496,7 +496,7 @@ class ActividadService
         $this->pdo->prepare('DELETE FROM actividades_rh WHERE actividad_id=?')->execute([$id]);
         $this->pdo->prepare('DELETE FROM actividades_om WHERE actividad_id=?')->execute([$id]);
         $this->pdo->prepare('DELETE FROM actividades_emp_pares WHERE actividad_id=?')->execute([$id]);
-        $this->pdo->prepare('DELETE FROM actividad_items WHERE actividad_id=?')->execute([$id]);
+        $this->pdo->prepare('DELETE FROM actividades_om_opciones WHERE actividad_id=?')->execute([$id]);
 
         $st = $this->pdo->prepare('DELETE FROM actividades WHERE id=:id LIMIT 1');
         $st->execute([':id' => $id]);
@@ -507,7 +507,7 @@ class ActividadService
      */
     public function getItems(int $actividadId): array
     {
-        $st = $this->pdo->prepare('SELECT * FROM actividad_items WHERE actividad_id=:aid ORDER BY orden ASC, id ASC');
+        $st = $this->pdo->prepare('SELECT * FROM actividades_om_opciones WHERE actividad_id=:aid ORDER BY orden ASC, id ASC');
         $st->execute([':aid' => $actividadId]);
         return $st->fetchAll();
     }
@@ -517,18 +517,15 @@ class ActividadService
      */
     public function addItem(int $actividadId, array $data): int
     {
-        $sql = 'INSERT INTO actividad_items (actividad_id, pregunta_id, orden, contenido, opcion_html, es_correcta, feedback) 
-                VALUES (:aid, :pid, :ord, :cont, :html, :corr, :feed)';
+        $sql = 'INSERT INTO actividades_om_opciones (actividad_id, orden, opcion_html, es_correcta) 
+                VALUES (:aid, :ord, :html, :corr)';
 
         $st = $this->pdo->prepare($sql);
         $st->execute([
             ':aid' => $actividadId,
-            ':pid' => $data['pregunta_id'] ?? null,
             ':ord' => $data['orden'] ?? 0,
-            ':cont' => $data['contenido'] ?? null,
-            ':html' => $data['opcion_html'] ?? null,
+            ':html' => $data['opcion_html'] ?? '',
             ':corr' => $data['es_correcta'] ?? 0,
-            ':feed' => $data['feedback'] ?? null,
         ]);
 
         return (int) $this->pdo->lastInsertId();

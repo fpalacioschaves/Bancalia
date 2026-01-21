@@ -61,6 +61,7 @@ if ($examen['hora'] !== null && $examen['fecha'] === $hoy) {
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+$isEmbed = isset($_GET['embed']) && $_GET['embed'] === '1';
 
 if (!isset($_SESSION['examen_intento'])) {
 
@@ -78,7 +79,7 @@ if (!isset($_SESSION['examen_intento'])) {
         } else {
             $intento_id = $examenService->createAttempt($examen_id, $nombre, $email);
             $_SESSION['examen_intento'] = $intento_id;
-            header("Location: online.php?examen_id=" . $examen_id);
+            header("Location: online.php?examen_id=" . $examen_id . ($isEmbed ? '&embed=1' : ''));
             exit;
         }
     }
@@ -93,11 +94,11 @@ if (!isset($_SESSION['examen_intento'])) {
         <script src="https://cdn.tailwindcss.com"></script>
     </head>
 
-    <body class="bg-gray-100">
+    <body class="bg-gray-100 <?= $isEmbed ? 'p-2' : '' ?>">
 
-        <div class="min-h-screen flex items-center justify-center px-4">
+        <div class="<?= $isEmbed ? 'w-full' : 'min-h-screen flex items-center justify-center px-4 mt-10' ?>">
 
-            <div class="w-full max-w-md bg-white shadow-xl rounded-2xl p-8">
+            <div class="w-full <?= $isEmbed ? '' : 'max-w-md shadow-xl' ?> bg-white rounded-2xl p-8">
 
                 <h1 class="text-3xl font-bold text-gray-900 mb-2 text-center">
                     Acceso a la <?= h($labelTitulo) ?>
@@ -112,7 +113,8 @@ if (!isset($_SESSION['examen_intento'])) {
                     </div>
                 <?php endif; ?>
 
-                <form method="post" class="space-y-6">
+                <form method="post" action="online.php?examen_id=<?= $examen_id ?><?= $isEmbed ? '&embed=1' : '' ?>"
+                    class="space-y-6">
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -191,8 +193,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fin_examen'])) {
         <script src="https://cdn.tailwindcss.com"></script>
     </head>
 
-    <body class="bg-gray-100">
-        <div class="max-w-xl mx-auto mt-20 bg-white p-8 shadow-lg rounded-lg text-center">
+    <body class="bg-gray-100 <?= $isEmbed ? 'p-2' : '' ?>">
+        <div class="<?= $isEmbed ? 'w-full' : 'max-w-xl mx-auto mt-20 shadow-lg' ?> bg-white p-8 rounded-lg text-center">
             <h1 class="text-2xl font-bold mb-6"><?= h($labelTitulo) ?> enviada correctamente</h1>
             <p class="text-gray-700">Gracias por completar esta <?= h($labelCorto) ?>.</p>
         </div>
@@ -203,6 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fin_examen'])) {
     exit;
 }
 
+$isEmbed = isset($_GET['embed']) && $_GET['embed'] === '1';
 ?>
 <!DOCTYPE html>
 <html>
@@ -213,20 +216,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fin_examen'])) {
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body class="bg-gray-100">
+<body class="bg-gray-100 <?= $isEmbed ? 'p-0' : '' ?>">
 
-    <div class="max-w-3xl mx-auto mt-10 bg-white p-10 shadow-lg rounded-lg">
+    <div class="<?= $isEmbed ? 'max-w-full' : 'max-w-3xl mx-auto mt-10' ?> bg-white p-10 shadow-lg rounded-lg">
 
-        <div class="mb-4 flex items-center justify-between gap-3">
-            <div>
-                <h1 class="text-3xl font-bold mb-1"><?= h($examen['titulo']) ?></h1>
-                <p class="text-sm text-gray-500">
-                    <?= h($labelTitulo) ?>
-                </p>
+        <?php if (!$isEmbed): ?>
+            <div class="mb-4 flex items-center justify-between gap-3">
+                <div>
+                    <h1 class="text-3xl font-bold mb-1"><?= h($examen['titulo']) ?></h1>
+                    <p class="text-sm text-gray-500">
+                        <?= h($labelTitulo) ?>
+                    </p>
+                </div>
             </div>
-        </div>
+        <?php endif; ?>
 
-        <form method="post">
+        <form method="post" action="online.php?examen_id=<?= $examen_id ?><?= $isEmbed ? '&embed=1' : '' ?>">
 
             <?php foreach ($examen['actividades'] as $index => $actividad): ?>
                 <div class="mb-10 pb-10 border-b">
@@ -260,8 +265,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fin_examen'])) {
                         <?php if (!empty($actividad['om_options'])): ?>
                             <?php foreach ($actividad['om_options'] as $op): ?>
                                 <label class="block mb-3">
-                                    <input type="radio" name="resp_<?= $actividad['id'] ?>" value="<?= (int) $op['id'] ?>"
-                                        class="mr-2">
+                                    <input type="radio" name="resp_<?= $actividad['id'] ?>" value="<?= (int) $op['id'] ?>" class="mr-2">
                                     <!-- usamos opcion_html, que es el campo real -->
                                     <?= $op['opcion_html'] ?>
                                 </label>

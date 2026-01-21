@@ -146,6 +146,13 @@ focus:ring-2 focus:ring-slate-400 focus:border-slate-400" aria-label="Filtrar po
                   URL Online
                 </button>
 
+                <!-- Código IFRAME -->
+                <button type="button"
+                  onclick="const url='<?= PUBLIC_URL ?>/examenes/online.php?examen_id=<?= (int) $r['id'] ?>'; prompt('Código Iframe para insertar en Moodle/Web (Copia y pega):', '<iframe src=\''+url+'\' width=\'100%\' height=\'800px\' frameborder=\'0\'></iframe>');"
+                  class="inline-flex items-center rounded-lg border border-teal-300 bg-teal-50 px-3 py-1.5 text-xs font-medium text-teal-700 hover:bg-teal-100">
+                  Código Iframe
+                </button>
+
                 <form method="post" action="<?= PUBLIC_URL ?>/admin/examenes/delete.php"
                   onsubmit="return confirm('¿Eliminar este examen/práctica?');">
                   <?= csrf_field() ?>

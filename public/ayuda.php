@@ -30,6 +30,9 @@ require_once __DIR__ . '/../partials/header.php';
           <a class="block hover:underline" href="#act-tipos">3.2 Otros tipos (Huecos, Pares)</a>
         </div>
         <a class="block hover:underline" href="#examenes">4. Gestión de Exámenes</a>
+        <div class="ml-3 space-y-1">
+          <a class="block hover:underline" href="#iframe">4.3 Integración (Iframe)</a>
+        </div>
         <a class="block hover:underline" href="#evaluacion">5. Evaluación y Notas</a>
         <a class="block hover:underline" href="#faq">6. Preguntas frecuentes</a>
       </nav>
@@ -262,6 +265,27 @@ require_once __DIR__ . '/../partials/header.php';
             </ul>
           </li>
         </ol>
+      </div>
+
+      <div id="iframe" class="mt-8 scroll-mt-24 border-t border-slate-100 pt-5">
+        <h3 class="text-base font-semibold text-slate-800">4.3 Integración externa (Iframe)</h3>
+        <p class="mt-3 text-sm text-slate-700">
+          Si usas una plataforma externa como <strong>Moodle, Canvas o WordPress</strong>, puedes incrustar directamente
+          el examen sin que tus alumnos tengan que salir de tu entorno.
+        </p>
+        <div class="mt-4 rounded-lg border border-teal-200 bg-teal-50 p-4">
+          <h4 class="text-sm font-semibold text-teal-800">Cómo obtener el código:</h4>
+          <ol class="mt-2 list-decimal pl-5 text-sm text-teal-700 space-y-1">
+            <li>Ve a <em>Admin &rarr; Exámenes</em>.</li>
+            <li>En la fila del examen deseado, haz clic en el botón <strong>"Código Iframe"</strong>.</li>
+            <li>Copia el fragmento de código HTML que aparece y pégalo en el editor de tu plataforma (en modo HTML).
+            </li>
+          </ol>
+        </div>
+        <p class="mt-3 text-xs text-slate-500">
+          <em>Nota:</em> Este modo oculta automáticamente las cabeceras de Bancalia para que el examen se integre de
+          forma natural en el diseño de tu sitio.
+        </p>
       </div>
     </section>
 
