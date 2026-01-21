@@ -9,12 +9,15 @@ $u = current_user();
 
 $id = (int) ($_GET['id'] ?? 0);
 
-$fams = pdo()->query('SELECT id, nombre FROM familias_profesionales WHERE is_active=1 ORDER BY nombre ASC')->fetchAll();
-$cursos = pdo()->query('SELECT id, nombre, familia_id FROM cursos WHERE is_active=1 ORDER BY familia_id ASC, orden ASC, nombre ASC')->fetchAll();
+$familiaService = new FamiliaService(pdo());
+$fams = $familiaService->findAll(['onlyActive' => true]);
 
-$st = pdo()->prepare('SELECT * FROM asignaturas WHERE id=:id LIMIT 1');
-$st->execute([':id' => $id]);
-$row = $st->fetch();
+$cursoService = new CursoService(pdo());
+$cursos = $cursoService->findAll(['onlyActive' => true]);
+
+$asignaturaService = new AsignaturaService(pdo());
+$row = $asignaturaService->find($id);
+
 if (!$row) {
   flash('error', 'Asignatura no encontrada.');
   header('Location: ' . PUBLIC_URL . '/admin/asignaturas/index.php');
@@ -24,70 +27,7 @@ if (!$row) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   try {
     csrf_check($_POST['csrf'] ?? null);
-
-    $familia_id = (int) ($_POST['familia_id'] ?? 0);
-    $curso_id = (int) ($_POST['curso_id'] ?? 0);
-    $nombre = trim($_POST['nombre'] ?? '');
-    $slug = trim($_POST['slug'] ?? '');
-    $codigo = trim($_POST['codigo'] ?? '');
-    $horas = $_POST['horas'] !== '' ? (int) $_POST['horas'] : null;
-    $descripcion = trim($_POST['descripcion'] ?? '');
-    $orden = (int) ($_POST['orden'] ?? 1);
-    $activa = isset($_POST['is_active']) ? 1 : 0;
-
-    if ($familia_id <= 0)
-      throw new RuntimeException('Selecciona una familia.');
-    if ($curso_id <= 0)
-      throw new RuntimeException('Selecciona un curso.');
-    if ($nombre === '')
-      throw new RuntimeException('El nombre es obligatorio.');
-    if ($slug === '')
-      $slug = str_slug($nombre);
-    if ($orden <= 0)
-      $orden = 1;
-
-    // Validar consistencia curso-familia
-    $stc = pdo()->prepare('SELECT familia_id FROM cursos WHERE id=:id LIMIT 1');
-    $stc->execute([':id' => $curso_id]);
-    $c = $stc->fetch();
-    if (!$c)
-      throw new RuntimeException('El curso seleccionado no existe.');
-    if ((int) $c['familia_id'] !== $familia_id) {
-      throw new RuntimeException('El curso no pertenece a la familia seleccionada.');
-    }
-
-    // Unicidad slug por curso excluyendo el propio
-    $chk = pdo()->prepare('SELECT 1 FROM asignaturas WHERE curso_id=:curso AND slug=:slug AND id<>:id LIMIT 1');
-    $chk->execute([':curso' => $curso_id, ':slug' => $slug, ':id' => $id]);
-    if ($chk->fetch())
-      throw new RuntimeException('Ya existe una asignatura con ese slug en el curso seleccionado.');
-
-    // Unicidad código (si se indica) excluyendo el propio
-    if ($codigo !== '') {
-      $chk2 = pdo()->prepare('SELECT 1 FROM asignaturas WHERE curso_id=:curso AND codigo=:cod AND id<>:id LIMIT 1');
-      $chk2->execute([':curso' => $curso_id, ':cod' => $codigo, ':id' => $id]);
-      if ($chk2->fetch())
-        throw new RuntimeException('Ya existe una asignatura con ese código en el curso seleccionado.');
-    }
-
-    $up = pdo()->prepare('
-      UPDATE asignaturas
-      SET familia_id=:f, curso_id=:c, nombre=:n, slug=:s, codigo=:g, horas=:h,
-          descripcion=:d, orden=:o, is_active=:a
-      WHERE id=:id
-    ');
-    $up->execute([
-      ':f' => $familia_id,
-      ':c' => $curso_id,
-      ':n' => $nombre,
-      ':s' => $slug,
-      ':g' => ($codigo !== '' ? $codigo : null),
-      ':h' => $horas,
-      ':d' => ($descripcion !== '' ? $descripcion : null),
-      ':o' => $orden,
-      ':a' => $activa,
-      ':id' => $id
-    ]);
+    $asignaturaService->update($id, $_POST);
 
     flash('success', 'Asignatura actualizada correctamente.');
     header('Location: ' . PUBLIC_URL . '/admin/asignaturas/index.php');

@@ -9,17 +9,8 @@ require_once __DIR__ . '/../../../partials/header.php';
 
 
 $q = trim($_GET['q'] ?? '');
-$sql = 'SELECT id, nombre, slug, is_active, updated_at FROM familias_profesionales';
-$params = [];
-if ($q !== '') {
-  $sql .= ' WHERE nombre LIKE :q OR slug LIKE :q';
-  $params[':q'] = "%{$q}%";
-}
-$sql .= ' ORDER BY nombre ASC';
-
-$st = pdo()->prepare($sql);
-$st->execute($params);
-$rows = $st->fetchAll();
+$familiaService = new FamiliaService(pdo());
+$rows = $familiaService->findAll(['q' => $q]);
 ?>
 
 <h1 class="text-xl font-semibold tracking-tight mb-4">Familias Profesionales</h1>

@@ -15,22 +15,19 @@ $u = current_user();
 try {
   if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     flash('error', 'Método no permitido.');
-    header('Location: ' . PUBLIC_URL . '/admin/temas/index.php'); exit;
+    header('Location: ' . PUBLIC_URL . '/admin/temas/index.php');
+    exit;
   }
 
   csrf_check($_POST['csrf'] ?? null);
 
-  $id = (int)($_POST['id'] ?? 0);
-  if ($id <= 0) throw new RuntimeException('ID inválido.');
+  $id = (int) ($_POST['id'] ?? 0);
+  if ($id <= 0)
+    throw new RuntimeException('ID inválido.');
 
-  $st = pdo()->prepare('DELETE FROM temas WHERE id = :id LIMIT 1');
-  $st->execute([':id' => $id]);
-
-  if ($st->rowCount() > 0) {
-    flash('success', 'Tema eliminado correctamente.');
-  } else {
-    flash('error', 'No se encontró el tema.');
-  }
+  $temaService = new TemaService(pdo());
+  $temaService->delete($id);
+  flash('success', 'Tema eliminado correctamente.');
 
 } catch (PDOException $e) {
   if ($e->getCode() === '23000') {

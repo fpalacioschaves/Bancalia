@@ -9,34 +9,19 @@ require_once __DIR__ . '/../../../partials/header.php';
 
 
 $q = trim($_GET['q'] ?? '');
-$fam = (int) ($_GET['familia_id'] ?? 0);
+$famId = (int) ($_GET['familia_id'] ?? 0);
 
-// Familias para el filtro
-$fams = pdo()->query('SELECT id, nombre FROM familias_profesionales WHERE is_active=1 ORDER BY nombre ASC')->fetchAll();
+$familiaService = new FamiliaService(pdo());
+$fams = $familiaService->findAll(['onlyActive' => true]);
 
-$sql = "SELECT c.id, c.nombre, c.slug, c.orden, c.is_active, c.updated_at,
-               f.nombre AS familia
-        FROM cursos c
-        JOIN familias_profesionales f ON f.id = c.familia_id";
-$params = [];
+$cursoService = new CursoService(pdo());
+$rows = $cursoService->findAll(['q' => $q, 'familia_id' => $famId]);
 
-$w = [];
-if ($q !== '') {
-  $w[] = '(c.nombre LIKE :q OR c.slug LIKE :q OR f.nombre LIKE :q)';
-  $params[':q'] = "%{$q}%";
+// El template usa 'familia' en vez de 'familia_nombre', lo ajustamos o mapeamos
+foreach ($rows as &$r) {
+  $r['familia'] = $r['familia_nombre'];
 }
-if ($fam > 0) {
-  $w[] = 'c.familia_id = :fam';
-  $params[':fam'] = $fam;
-}
-if ($w) {
-  $sql .= ' WHERE ' . implode(' AND ', $w);
-}
-$sql .= ' ORDER BY f.nombre ASC, c.orden ASC, c.nombre ASC';
-
-$st = pdo()->prepare($sql);
-$st->execute($params);
-$rows = $st->fetchAll();
+unset($r);
 ?>
 
 <h1 class="text-xl font-semibold tracking-tight mb-4">Cursos</h1>
@@ -51,7 +36,7 @@ $rows = $st->fetchAll();
     aria-label="Filtrar por familia">
     <option value="0">Todas las familias</option>
     <?php foreach ($fams as $f): ?>
-      <option value="<?= (int) $f['id'] ?>" <?= $fam === (int) $f['id'] ? 'selected' : '' ?>>
+      <option value="<?= (int) $f['id'] ?>" <?= $famId === (int) $f['id'] ? 'selected' : '' ?>>
         <?= h($f['nombre']) ?>
       </option>
     <?php endforeach; ?>

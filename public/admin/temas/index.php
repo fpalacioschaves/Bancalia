@@ -13,51 +13,28 @@ $famId = (int) ($_GET['familia_id'] ?? 0);
 $cursoId = (int) ($_GET['curso_id'] ?? 0);
 $asigId = (int) ($_GET['asignatura_id'] ?? 0);
 
-// Cargar datos para filtros
-$fams = pdo()->query('SELECT id, nombre FROM familias_profesionales WHERE is_active=1 ORDER BY nombre ASC')->fetchAll();
-$cursos = pdo()->query('SELECT c.id, c.nombre, c.familia_id, f.nombre AS familia
-                        FROM cursos c JOIN familias_profesionales f ON f.id=c.familia_id
-                        WHERE c.is_active=1
-                        ORDER BY f.nombre ASC, c.orden ASC, c.nombre ASC')->fetchAll();
-$asigs = pdo()->query('SELECT a.id, a.nombre, a.curso_id, a.familia_id, c.nombre AS curso, f.nombre AS familia
-                       FROM asignaturas a
-                       JOIN cursos c ON c.id=a.curso_id
-                       JOIN familias_profesionales f ON f.id=a.familia_id
-                       WHERE a.is_active=1
-                       ORDER BY f.nombre ASC, c.orden ASC, a.orden ASC, a.nombre ASC')->fetchAll();
+$familiaService = new FamiliaService(pdo());
+$fams = $familiaService->findAll(['onlyActive' => true]);
 
-$sql = "SELECT t.id, t.nombre, t.slug, t.numero, t.is_active, t.updated_at,
-               a.nombre AS asignatura, c.nombre AS curso, f.nombre AS familia
-        FROM temas t
-        JOIN asignaturas a ON a.id=t.asignatura_id
-        JOIN cursos c ON c.id=a.curso_id
-        JOIN familias_profesionales f ON f.id=a.familia_id";
-$params = [];
-$w = [];
+$cursoService = new CursoService(pdo());
+$cursos = $cursoService->findAll(['onlyActive' => true]);
 
-if ($q !== '') {
-  $w[] = '(t.nombre LIKE :q OR t.slug LIKE :q OR a.nombre LIKE :q OR c.nombre LIKE :q OR f.nombre LIKE :q)';
-  $params[':q'] = "%{$q}%";
-}
-if ($famId > 0) {
-  $w[] = 'a.familia_id = :fam';
-  $params[':fam'] = $famId;
-}
-if ($cursoId > 0) {
-  $w[] = 'a.curso_id = :curso';
-  $params[':curso'] = $cursoId;
-}
-if ($asigId > 0) {
-  $w[] = 't.asignatura_id = :asig';
-  $params[':asig'] = $asigId;
-}
-if ($w)
-  $sql .= ' WHERE ' . implode(' AND ', $w);
-$sql .= ' ORDER BY f.nombre ASC, c.orden ASC, a.orden ASC, t.numero ASC, t.nombre ASC';
+$asignaturaService = new AsignaturaService(pdo());
+$asigs = $asignaturaService->findAll(['onlyActive' => true]);
 
-$st = pdo()->prepare($sql);
-$st->execute($params);
-$rows = $st->fetchAll();
+$temaService = new TemaService(pdo());
+$rows = $temaService->findAll([
+  'q' => $q,
+  'asignatura_id' => $asigId
+]);
+
+// Mapeo para el template
+foreach ($rows as &$r) {
+  $r['familia'] = $r['familia_nombre'];
+  $r['curso'] = $r['curso_nombre'];
+  $r['asignatura'] = $r['asignatura_nombre'];
+}
+unset($r);
 ?>
 <h1 class="text-xl font-semibold tracking-tight mb-4">Temas</h1>
 
@@ -80,9 +57,8 @@ $rows = $st->fetchAll();
     class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
     <option value="0">Todos los cursos</option>
     <?php foreach ($cursos as $c): ?>
-      <option value="<?= (int) $c['id'] ?>" data-familia="<?= (int) $c['familia_id'] ?>"
-        <?= $cursoId === (int) $c['id'] ? 'selected' : '' ?>>
-        <?= h($c['familia'] . ' — ' . $c['nombre']) ?>
+      <option value="<?= (int) $c['id'] ?>" data-familia="<?= (int) $c['familia_id'] ?>" <?= $cursoId === (int) $c['id'] ? 'selected' : '' ?>>
+        <?= h($c['familia_nombre'] . ' — ' . $c['nombre']) ?>
       </option>
     <?php endforeach; ?>
   </select>
@@ -93,7 +69,7 @@ $rows = $st->fetchAll();
     <?php foreach ($asigs as $a): ?>
       <option value="<?= (int) $a['id'] ?>" data-familia="<?= (int) $a['familia_id'] ?>"
         data-curso="<?= (int) $a['curso_id'] ?>" <?= $asigId === (int) $a['id'] ? 'selected' : '' ?>>
-        <?= h($a['familia'] . ' → ' . $a['curso'] . ' → ' . $a['nombre']) ?>
+        <?= h($a['familia_nombre'] . ' → ' . $a['curso_nombre'] . ' → ' . $a['nombre']) ?>
       </option>
     <?php endforeach; ?>
   </select>

@@ -102,6 +102,10 @@ require_once __DIR__ . '/services/ProfesorService.php';
 require_once __DIR__ . '/services/CentroService.php';
 require_once __DIR__ . '/services/ActividadService.php';
 require_once __DIR__ . '/services/ExamenService.php';
+require_once __DIR__ . '/services/FamiliaService.php';
+require_once __DIR__ . '/services/CursoService.php';
+require_once __DIR__ . '/services/AsignaturaService.php';
+require_once __DIR__ . '/services/TemaService.php';
 
 /* ===== DB ===== */
 function pdo(): PDO

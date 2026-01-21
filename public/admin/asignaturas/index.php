@@ -12,38 +12,25 @@ $q = trim($_GET['q'] ?? '');
 $famId = (int) ($_GET['familia_id'] ?? 0);
 $cursoId = (int) ($_GET['curso_id'] ?? 0);
 
-$fams = pdo()->query('SELECT id, nombre FROM familias_profesionales WHERE is_active=1 ORDER BY nombre ASC')->fetchAll();
-$cursos = pdo()->query('SELECT c.id, c.nombre, c.familia_id, f.nombre AS familia
-                        FROM cursos c JOIN familias_profesionales f ON f.id=c.familia_id
-                        WHERE c.is_active=1 ORDER BY f.nombre ASC, c.orden ASC, c.nombre ASC')->fetchAll();
+$familiaService = new FamiliaService(pdo());
+$fams = $familiaService->findAll(['onlyActive' => true]);
 
-$sql = "SELECT a.id, a.nombre, a.slug, a.codigo, a.horas, a.orden, a.is_active,
-               f.nombre AS familia, c.nombre AS curso
-        FROM asignaturas a
-        JOIN familias_profesionales f ON f.id=a.familia_id
-        JOIN cursos c ON c.id=a.curso_id";
-$params = [];
-$w = [];
+$cursoService = new CursoService(pdo());
+$cursos = $cursoService->findAll(['onlyActive' => true]);
 
-if ($q !== '') {
-  $w[] = '(a.nombre LIKE :q OR a.slug LIKE :q OR a.codigo LIKE :q OR f.nombre LIKE :q OR c.nombre LIKE :q)';
-  $params[':q'] = "%{$q}%";
-}
-if ($famId > 0) {
-  $w[] = 'a.familia_id = :fam';
-  $params[':fam'] = $famId;
-}
-if ($cursoId > 0) {
-  $w[] = 'a.curso_id = :curso';
-  $params[':curso'] = $cursoId;
-}
-if ($w)
-  $sql .= ' WHERE ' . implode(' AND ', $w);
-$sql .= ' ORDER BY f.nombre ASC, c.orden ASC, a.orden ASC, a.nombre ASC';
+$asignaturaService = new AsignaturaService(pdo());
+$rows = $asignaturaService->findAll([
+  'q' => $q,
+  'familia_id' => $famId,
+  'curso_id' => $cursoId
+]);
 
-$st = pdo()->prepare($sql);
-$st->execute($params);
-$rows = $st->fetchAll();
+// Mapeo para el template
+foreach ($rows as &$r) {
+  $r['familia'] = $r['familia_nombre'];
+  $r['curso'] = $r['curso_nombre'];
+}
+unset($r);
 ?>
 <h1 class="text-xl font-semibold tracking-tight mb-4">Asignaturas</h1>
 
@@ -65,9 +52,8 @@ $rows = $st->fetchAll();
     class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
     <option value="0">Todos los cursos</option>
     <?php foreach ($cursos as $c): ?>
-      <option value="<?= (int) $c['id'] ?>" data-familia="<?= (int) $c['familia_id'] ?>"
-        <?= $cursoId === (int) $c['id'] ? 'selected' : '' ?>>
-        <?= h($c['familia'] . ' — ' . $c['nombre']) ?>
+      <option value="<?= (int) $c['id'] ?>" data-familia="<?= (int) $c['familia_id'] ?>" <?= $cursoId === (int) $c['id'] ? 'selected' : '' ?>>
+        <?= h($c['familia_nombre'] . ' — ' . $c['nombre']) ?>
       </option>
     <?php endforeach; ?>
   </select>

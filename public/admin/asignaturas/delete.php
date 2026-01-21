@@ -21,19 +21,13 @@ try {
 
   csrf_check($_POST['csrf'] ?? null);
 
-  $id = (int)($_POST['id'] ?? 0);
-  if ($id <= 0) {
+  $id = (int) ($_POST['id'] ?? 0);
+  if ($id <= 0)
     throw new RuntimeException('ID inválido.');
-  }
 
-  $st = pdo()->prepare('DELETE FROM asignaturas WHERE id = :id LIMIT 1');
-  $st->execute([':id' => $id]);
-
-  if ($st->rowCount() > 0) {
-    flash('success', 'Asignatura eliminado correctamente.');
-  } else {
-    flash('error', 'No se encontró la asignatura.');
-  }
+  $asignaturaService = new AsignaturaService(pdo());
+  $asignaturaService->delete($id);
+  flash('success', 'Asignatura eliminada correctamente.');
 
 } catch (PDOException $e) {
   if ($e->getCode() === '23000') {

@@ -12,10 +12,14 @@ $u = current_user();
   exit;
 }*/
 
-// Datos para selects
-$fams = pdo()->query('SELECT id, nombre FROM familias_profesionales WHERE is_active=1 ORDER BY nombre ASC')->fetchAll();
-$cursos = pdo()->query('SELECT id, nombre, familia_id FROM cursos WHERE is_active=1 ORDER BY familia_id ASC, orden ASC, nombre ASC')->fetchAll();
-$asigs = pdo()->query('SELECT id, nombre, curso_id, familia_id FROM asignaturas WHERE is_active=1 ORDER BY familia_id ASC, curso_id ASC, orden ASC, nombre ASC')->fetchAll();
+$familiaService = new FamiliaService(pdo());
+$fams = $familiaService->findAll(['onlyActive' => true]);
+
+$cursoService = new CursoService(pdo());
+$cursos = $cursoService->findAll(['onlyActive' => true]);
+
+$asignaturaService = new AsignaturaService(pdo());
+$asigs = $asignaturaService->findAll(['onlyActive' => true]);
 
 // Para autocompletar "numero" (siguiente disponible por asignatura)
 $tmp = pdo()->query('SELECT asignatura_id, COALESCE(MAX(numero),0)+1 AS next_num FROM temas GROUP BY asignatura_id')->fetchAll();
@@ -27,52 +31,8 @@ foreach ($tmp as $t) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   try {
     csrf_check($_POST['csrf'] ?? null);
-
-    $asignatura_id = (int) ($_POST['asignatura_id'] ?? 0);
-    $nombre = trim($_POST['nombre'] ?? '');
-    $slug = trim($_POST['slug'] ?? '');
-    $numero = (int) ($_POST['numero'] ?? 1);
-    $descripcion = trim($_POST['descripcion'] ?? '');
-    $activa = isset($_POST['is_active']) ? 1 : 0;
-
-    if ($asignatura_id <= 0)
-      throw new RuntimeException('Selecciona una asignatura.');
-    if ($nombre === '')
-      throw new RuntimeException('El nombre es obligatorio.');
-    if ($slug === '')
-      $slug = str_slug($nombre);
-    if ($numero <= 0)
-      $numero = 1;
-
-    // Validación asignatura existente
-    $chkA = pdo()->prepare('SELECT 1 FROM asignaturas WHERE id=:id LIMIT 1');
-    $chkA->execute([':id' => $asignatura_id]);
-    if (!$chkA->fetch())
-      throw new RuntimeException('La asignatura seleccionada no existe.');
-
-    // Unicidades por asignatura
-    $chk1 = pdo()->prepare('SELECT 1 FROM temas WHERE asignatura_id=:a AND slug=:s LIMIT 1');
-    $chk1->execute([':a' => $asignatura_id, ':s' => $slug]);
-    if ($chk1->fetch())
-      throw new RuntimeException('Ya existe un tema con ese slug en la asignatura seleccionada.');
-
-    $chk2 = pdo()->prepare('SELECT 1 FROM temas WHERE asignatura_id=:a AND numero=:n LIMIT 1');
-    $chk2->execute([':a' => $asignatura_id, ':n' => $numero]);
-    if ($chk2->fetch())
-      throw new RuntimeException('Ya existe un tema con ese número en la asignatura seleccionada.');
-
-    $ins = pdo()->prepare('
-      INSERT INTO temas (asignatura_id, nombre, slug, numero, descripcion, is_active)
-      VALUES (:a, :n, :s, :num, :d, :act)
-    ');
-    $ins->execute([
-      ':a' => $asignatura_id,
-      ':n' => $nombre,
-      ':s' => $slug,
-      ':num' => $numero,
-      ':d' => ($descripcion !== '' ? $descripcion : null),
-      ':act' => $activa
-    ]);
+    $temaService = new TemaService(pdo());
+    $temaService->create($_POST);
 
     flash('success', 'Tema creado correctamente.');
     header('Location: ' . PUBLIC_URL . '/admin/temas/index.php');

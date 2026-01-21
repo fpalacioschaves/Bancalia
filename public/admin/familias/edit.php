@@ -8,10 +8,8 @@ $u = current_user();
 
 
 $id = (int) ($_GET['id'] ?? 0);
-
-$st = pdo()->prepare('SELECT * FROM familias_profesionales WHERE id=:id LIMIT 1');
-$st->execute([':id' => $id]);
-$row = $st->fetch();
+$familiaService = new FamiliaService(pdo());
+$row = $familiaService->find($id);
 
 if (!$row) {
   flash('error', 'Familia no encontrada.');
@@ -22,38 +20,7 @@ if (!$row) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   try {
     csrf_check($_POST['csrf'] ?? null);
-
-    $nombre = trim($_POST['nombre'] ?? '');
-    $slug = trim($_POST['slug'] ?? '');
-    $desc = trim($_POST['descripcion'] ?? '');
-    $activa = isset($_POST['is_active']) ? 1 : 0;
-
-    if ($nombre === '') {
-      throw new RuntimeException('El nombre es obligatorio.');
-    }
-    if ($slug === '') {
-      $slug = str_slug($nombre);
-    }
-
-    // unicidad excluyendo el actual
-    $chk = pdo()->prepare('SELECT 1 FROM familias_profesionales WHERE (nombre=:n OR slug=:s) AND id<>:id LIMIT 1');
-    $chk->execute([':n' => $nombre, ':s' => $slug, ':id' => $id]);
-    if ($chk->fetch()) {
-      throw new RuntimeException('Nombre o slug ya están en uso.');
-    }
-
-    $up = pdo()->prepare('
-      UPDATE familias_profesionales
-      SET nombre=:n, slug=:s, descripcion=:d, is_active=:a
-      WHERE id=:id
-    ');
-    $up->execute([
-      ':n' => $nombre,
-      ':s' => $slug,
-      ':d' => $desc !== '' ? $desc : null,
-      ':a' => $activa,
-      ':id' => $id
-    ]);
+    $familiaService->update($id, $_POST);
 
     flash('success', 'Familia actualizada correctamente.');
     header('Location: ' . PUBLIC_URL . '/admin/familias/index.php');

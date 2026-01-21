@@ -12,53 +12,14 @@ $u = current_user();
   exit;
 }*/
 
-// Familias para el select
-$fams = pdo()->query('SELECT id, nombre FROM familias_profesionales WHERE is_active=1 ORDER BY nombre ASC')->fetchAll();
+$familiaService = new FamiliaService(pdo());
+$fams = $familiaService->findAll(['onlyActive' => true]);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   try {
     csrf_check($_POST['csrf'] ?? null);
-
-    $familia_id = (int) ($_POST['familia_id'] ?? 0);
-    $nombre = trim($_POST['nombre'] ?? '');
-    $slug = trim($_POST['slug'] ?? '');
-    $desc = trim($_POST['descripcion'] ?? '');
-    $orden = (int) ($_POST['orden'] ?? 1);
-    $activa = isset($_POST['is_active']) ? 1 : 0;
-
-    if ($familia_id <= 0)
-      throw new RuntimeException('Selecciona una familia.');
-    if ($nombre === '')
-      throw new RuntimeException('El nombre es obligatorio.');
-    if ($slug === '')
-      $slug = str_slug($nombre);
-    if ($orden <= 0)
-      $orden = 1;
-
-    // Validar familia
-    $chkFam = pdo()->prepare('SELECT 1 FROM familias_profesionales WHERE id=:id LIMIT 1');
-    $chkFam->execute([':id' => $familia_id]);
-    if (!$chkFam->fetch())
-      throw new RuntimeException('La familia seleccionada no existe.');
-
-    // Unicidad por familia
-    $chk = pdo()->prepare('SELECT 1 FROM cursos WHERE familia_id=:f AND (slug=:s) LIMIT 1');
-    $chk->execute([':f' => $familia_id, ':s' => $slug]);
-    if ($chk->fetch())
-      throw new RuntimeException('Ya existe un curso con ese slug en la misma familia.');
-
-    $ins = pdo()->prepare('
-      INSERT INTO cursos (familia_id, nombre, slug, descripcion, orden, is_active)
-      VALUES (:f, :n, :s, :d, :o, :a)
-    ');
-    $ins->execute([
-      ':f' => $familia_id,
-      ':n' => $nombre,
-      ':s' => $slug,
-      ':d' => $desc !== '' ? $desc : null,
-      ':o' => $orden,
-      ':a' => $activa
-    ]);
+    $cursoService = new CursoService(pdo());
+    $cursoService->create($_POST);
 
     flash('success', 'Curso creado correctamente.');
     header('Location: ' . PUBLIC_URL . '/admin/cursos/index.php');
