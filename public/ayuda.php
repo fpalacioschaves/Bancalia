@@ -14,19 +14,24 @@ require_once __DIR__ . '/../partials/header.php';
   <!-- Índice -->
   <aside class="lg:col-span-1">
     <!-- sticky en pantallas grandes, con límite de altura y scroll interno -->
-    <div class="lg:sticky lg:top-24 lg:max-h-[calc(100vh-6rem)] overflow-auto rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div
+      class="lg:sticky lg:top-24 lg:max-h-[calc(100vh-6rem)] overflow-auto rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <h3 class="text-sm font-semibold text-slate-700 mb-2">Contenido</h3>
       <nav class="text-sm space-y-2">
         <a class="block hover:underline" href="#login">1. Acceso y Mi perfil</a>
-        <a class="block hover:underline" href="#centro">2. Crear y gestionar Centro</a>
+        <a class="block hover:underline" href="#organizacion">2. Organización del curso</a>
+        <div class="ml-3 space-y-1">
+          <a class="block hover:underline" href="#centro">2.1 Centros</a>
+          <a class="block hover:underline" href="#temas">2.2 Temas</a>
+        </div>
         <a class="block hover:underline" href="#actividades">3. Crear actividades</a>
         <div class="ml-3 space-y-1">
           <a class="block hover:underline" href="#campos-comunes">3.1 Campos comunes</a>
-          <a class="block hover:underline" href="#tarea">3.2 Tarea / Entrega</a>
-          <a class="block hover:underline" href="#vf">3.3 Verdadero / Falso</a>
-          <a class="block hover:underline" href="#rc">3.4 Respuesta corta</a>
+          <a class="block hover:underline" href="#act-tipos">3.2 Otros tipos (Huecos, Pares)</a>
         </div>
-        <a class="block hover:underline" href="#faq">4. Preguntas frecuentes</a>
+        <a class="block hover:underline" href="#examenes">4. Gestión de Exámenes</a>
+        <a class="block hover:underline" href="#evaluacion">5. Evaluación y Notas</a>
+        <a class="block hover:underline" href="#faq">6. Preguntas frecuentes</a>
       </nav>
     </div>
   </aside>
@@ -38,23 +43,47 @@ require_once __DIR__ . '/../partials/header.php';
     <section id="login" class="scroll-mt-24 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       <h2 class="text-lg font-semibold">1. Acceso y Mi perfil</h2>
       <div class="mt-3 space-y-3 text-sm text-slate-700 leading-6">
-        <p><strong>Acceso</strong>: entra con tu email y contraseña. Si no recuerdas la contraseña, usa “¿Olvidaste tu contraseña?” para solicitar un enlace de recuperación.</p>
-        <p><strong>Mi perfil</strong>: arriba a la derecha encontrarás el acceso a tu perfil. Comprueba que tu <em>email</em> y tu <em>Rol</em> son correctos. Como profesor, es importante que tu ficha tenga asociado un <em>Profesor ID</em>; si no aparece, contacta con el administrador del centro.</p>
-        <p><strong>Foto/Nombre</strong>: puedes actualizar tu nombre visible y otros datos básicos. Guarda los cambios antes de salir.</p>
+        <p><strong>Acceso</strong>: entra con tu email y contraseña. Si no recuerdas la contraseña, usa “¿Olvidaste tu
+          contraseña?” para solicitar un enlace de recuperación.</p>
+        <p><strong>Mi perfil</strong>: arriba a la derecha encontrarás el acceso a tu perfil. Comprueba que tu
+          <em>email</em> y tu <em>Rol</em> son correctos. Como profesor, es importante que tu ficha tenga asociado un
+          <em>Profesor ID</em>; si no aparece, contacta con el administrador del centro.
+        </p>
+        <p><strong>Foto/Nombre</strong>: puedes actualizar tu nombre visible y otros datos básicos. Guarda los cambios
+          antes de salir.</p>
       </div>
     </section>
 
-    <!-- Centro -->
-    <section id="centro" class="scroll-mt-24 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 class="text-lg font-semibold">2. Crear y gestionar Centro</h2>
-      <div class="mt-3 space-y-3 text-sm text-slate-700 leading-6">
-        <p>Si tu instalación usa la noción de <strong>Centro</strong> (institución/colegio), primero debe existir el centro para poder asociar familias, cursos, asignaturas y profesores.</p>
-        <ol class="list-decimal pl-5 space-y-2">
-          <li>Ve a <em>Administración &rarr; Centros</em> y pulsa <strong>Nuevo centro</strong>.</li>
-          <li>Completa <em>Nombre</em>, <em>Código</em> (si aplica), <em>Dirección</em> y <em>Contacto</em>. Marca <em>Activo</em>.</li>
-          <li>Guarda. Después podrás vincular <em>Familias profesionales</em>, <em>Cursos</em> y <em>Asignaturas</em> a tu centro.</li>
-        </ol>
-        <p class="text-xs text-slate-500">Nota: según tu despliegue, la creación/edición de centros puede estar restringida a usuarios con rol administrador.</p>
+    <!-- Organización -->
+    <section id="organizacion" class="scroll-mt-24 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 class="text-lg font-semibold">2. Organización del curso</h2>
+
+      <!-- Centro -->
+      <div id="centro" class="mt-4 scroll-mt-24">
+        <h3 class="text-base font-semibold text-slate-800">2.1 Centros</h3>
+        <div class="mt-2 space-y-3 text-sm text-slate-700 leading-6">
+          <p>Si tu instalación usa la noción de <strong>Centro</strong> (institución/colegio), primero debe existir el
+            centro para poder asociar familias, cursos, asignaturas y profesores.</p>
+          <ol class="list-decimal pl-5 space-y-2">
+            <li>Ve a <em>Administración &rarr; Centros</em> y pulsa <strong>Nuevo centro</strong>.</li>
+            <li>Guarda. Después podrás vincular <em>Familias profesionales</em>, <em>Cursos</em> y <em>Asignaturas</em>.
+            </li>
+          </ol>
+        </div>
+      </div>
+
+      <!-- Temas -->
+      <div id="temas" class="mt-8 scroll-mt-24">
+        <h3 class="text-base font-semibold text-slate-800">2.2 Temas</h3>
+        <div class="mt-2 text-sm text-slate-700 leading-6">
+          <p>Los <strong>Temas</strong> permiten agrupar las actividades de forma lógica dentro de una asignatura.</p>
+          <ul class="list-disc pl-5 mt-2 space-y-1">
+            <li>Asocia cada tema a una asignatura específica.</li>
+            <li>Usa el campo <em>Número</em> para definir el orden (T1, T2...).</li>
+            <li>Al crear una actividad, selecciona el tema correspondiente para que el alumno vea el material
+              organizado.</li>
+          </ul>
+        </div>
       </div>
     </section>
 
@@ -62,7 +91,8 @@ require_once __DIR__ . '/../partials/header.php';
     <section id="actividades" class="scroll-mt-24 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       <h2 class="text-lg font-semibold">3. Crear actividades</h2>
       <p class="mt-3 text-sm text-slate-700 leading-6">
-        Desde <strong>Admin &rarr; Actividades</strong> pulsa <em>Nueva actividad</em>. Rellena los campos comunes y, según el <em>Tipo</em>, aparecerán opciones específicas.
+        Desde <strong>Admin &rarr; Actividades</strong> pulsa <em>Nueva actividad</em>. Rellena los campos comunes y,
+        según el <em>Tipo</em>, aparecerán opciones específicas.
       </p>
 
       <!-- Campos comunes -->
@@ -95,7 +125,8 @@ require_once __DIR__ . '/../partials/header.php';
           </div>
           <div>
             <dt class="font-medium">Tipo *</dt>
-            <dd class="text-slate-700">Define el formato de la actividad: Opción múltiple, Verdadero/Falso, Respuesta corta, Rellenar huecos, Emparejar o Tarea.</dd>
+            <dd class="text-slate-700">Define el formato de la actividad: Opción múltiple, Verdadero/Falso, Respuesta
+              corta, Rellenar huecos, Emparejar o Tarea.</dd>
           </div>
           <div>
             <dt class="font-medium">Dificultad</dt>
@@ -103,7 +134,8 @@ require_once __DIR__ . '/../partials/header.php';
           </div>
           <div>
             <dt class="font-medium">Visibilidad</dt>
-            <dd class="text-slate-700"><em>Privada</em> (solo tú) o <em>Pública</em> (visible para el centro/a quien corresponda).</dd>
+            <dd class="text-slate-700"><em>Privada</em> (solo tú) o <em>Pública</em> (visible para el centro/a quien
+              corresponda).</dd>
           </div>
           <div>
             <dt class="font-medium">Estado</dt>
@@ -119,11 +151,13 @@ require_once __DIR__ . '/../partials/header.php';
           <li><strong>Instrucciones</strong>: qué debe entregar el alumno.</li>
           <li><strong>Permitir texto / archivos / enlaces</strong>: tipos de entrega aceptados.</li>
           <li><strong>Máx. archivos</strong> y <strong>Máx. tamaño (MB)</strong>: límites por alumno.</li>
-          <li><strong>Evaluación</strong>: sin evaluación, <em>Puntuación</em> (define <em>Puntuación máxima</em>) o <em>Rúbrica</em> (JSON).</li>
+          <li><strong>Evaluación</strong>: sin evaluación, <em>Puntuación</em> (define <em>Puntuación máxima</em>) o
+            <em>Rúbrica</em> (JSON).
+          </li>
         </ul>
         <div class="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs">
           <strong>Ejemplo</strong> (rúbrica JSON):
-<pre class="mt-2 overflow-x-auto text-[11px] leading-5">[
+          <pre class="mt-2 overflow-x-auto text-[11px] leading-5">[
   {"criterio":"Presentación","max":2},
   {"criterio":"Contenido","max":8}
 ]</pre>
@@ -138,7 +172,8 @@ require_once __DIR__ . '/../partials/header.php';
           <li><strong>Feedback</strong> (acierto / error): mensajes opcionales que verá el alumno tras responder.</li>
         </ul>
         <div class="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs">
-          <strong>Ejemplo</strong>: “La mitosis ocurre en células somáticas.” → <em>Respuesta correcta:</em> Verdadero.<br>
+          <strong>Ejemplo</strong>: “La mitosis ocurre en células somáticas.” → <em>Respuesta correcta:</em>
+          Verdadero.<br>
           <em>Feedback si acierta:</em> “Correcto: la mitosis se da en células somáticas.”<br>
           <em>Feedback si falla:</em> “Revisa: la meiosis es la división para células sexuales.”
         </div>
@@ -147,7 +182,9 @@ require_once __DIR__ . '/../partials/header.php';
       <!-- Respuesta corta -->
       <div id="rc" class="mt-8 scroll-mt-24">
         <h3 class="text-base font-semibold text-slate-800">3.4 Respuesta corta</h3>
-        <p class="mt-2 text-sm text-slate-700">El sistema puede autocorregir por <em>Palabras clave</em> o por <em>Regex</em>.</p>
+        <p class="mt-2 text-sm text-slate-700">El sistema puede autocorregir por <em>Palabras clave</em> o por
+          <em>Regex</em>.
+        </p>
 
         <div class="mt-3 grid gap-4 sm:grid-cols-2">
           <div class="rounded-lg border border-slate-200 bg-white p-4">
@@ -160,19 +197,21 @@ require_once __DIR__ . '/../partials/header.php';
             </ul>
             <div class="mt-3 rounded border border-slate-200 bg-slate-50 p-3 text-xs">
               <strong>Ejemplo de JSON</strong>:
-<pre class="mt-2 overflow-x-auto text-[11px] leading-5">[
+              <pre class="mt-2 overflow-x-auto text-[11px] leading-5">[
   {"palabra":"ósmosis","peso":1},
   {"palabra":"membrana","peso":1},
   {"palabra":"gradiente","peso":1}
 ]</pre>
-              <div class="mt-2">Umbral: 60%. Puntuación máx.: 10. Acierto si aparece al menos el 60% del peso total.</div>
+              <div class="mt-2">Umbral: 60%. Puntuación máx.: 10. Acierto si aparece al menos el 60% del peso total.
+              </div>
             </div>
           </div>
 
           <div class="rounded-lg border border-slate-200 bg-white p-4">
             <h4 class="text-sm font-semibold">Modo: Regex</h4>
             <ul class="mt-2 list-disc pl-6 text-sm text-slate-700 space-y-1">
-              <li><strong>Patrón regex</strong> y <strong>flags</strong> (p. ej. <code>i</code> para no distinguir mayúsculas).</li>
+              <li><strong>Patrón regex</strong> y <strong>flags</strong> (p. ej. <code>i</code> para no distinguir
+                mayúsculas).</li>
               <li>Útil cuando la respuesta válida sigue un formato claro.</li>
             </ul>
             <div class="mt-3 rounded border border-slate-200 bg-slate-50 p-3 text-xs">
@@ -186,23 +225,92 @@ require_once __DIR__ . '/../partials/header.php';
           <strong>Sugerencia</strong>: usa “Respuesta de ejemplo” como guía para el alumno; no se corrige, solo orienta.
         </div>
       </div>
+
+      <!-- Otros tipos -->
+      <div id="act-tipos" class="mt-8 scroll-mt-24 border-t border-slate-100 pt-5">
+        <h3 class="text-base font-semibold text-slate-800">3.5 Otros tipos de actividad</h3>
+        <div class="mt-3 space-y-4 text-sm text-slate-700">
+          <div>
+            <h4 class="font-semibold text-slate-800">Rellenar huecos</h4>
+            <p>Escribe el texto y usa doble corchete para los huecos: <code>La capital de Francia es [[París]]</code>.
+              El sistema detectará automáticamente "París" como la respuesta válida.</p>
+          </div>
+          <div>
+            <h4 class="font-semibold text-slate-800">Emparejar</h4>
+            <p>Define parejas de conceptos (Izquierda - Derecha). Al alumno se le presentará la columna derecha
+              desordenada para que busque las parejas correctas.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Exámenes -->
+    <section id="examenes" class="scroll-mt-24 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 class="text-lg font-semibold">4. Gestión de Exámenes</h2>
+      <div class="mt-3 space-y-4 text-sm text-slate-700 leading-6">
+        <p>Un <strong>Examen</strong> o <strong>Hoja de actividades</strong> es la agrupación final que el alumno debe
+          completar.</p>
+        <ol class="list-decimal pl-5 space-y-2">
+          <li>Crea el examen en <em>Admin &rarr; Exámenes</em> asignándolo a un curso y asignatura.</li>
+          <li>Usa el icono de "Actividades" (&plusmn;) en la tabla para añadir preguntas desde tu banco de actividades.
+          </li>
+          <li>Configura los <strong>parámetros técnicos</strong>:
+            <ul class="list-disc pl-5 mt-2 space-y-1">
+              <li><em>Borrador / Publicado</em>: solo los publicados son visibles para el alumno.</li>
+              <li><em>Fecha y Hora</em>: definen cuándo se abre la prueba.</li>
+              <li><em>Duración</em>: tiempo máximo que tendrá el alumno una vez iniciado.</li>
+            </ul>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- Evaluación -->
+    <section id="evaluacion" class="scroll-mt-24 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 class="text-lg font-semibold">5. Evaluación y Notas</h2>
+      <div class="mt-3 space-y-4 text-sm text-slate-700 leading-6">
+        <p>El sistema corrige automáticamente la mayoría de tipos, pero el profesor tiene el control final.</p>
+
+        <h3 class="font-semibold text-slate-800 mt-4 text-base">Ver Resultados</h3>
+        <p>En el listado de exámenes, pulsa <strong>Intentos</strong> para ver quién ha participado, su fecha de entrega
+          y su nota provisional.</p>
+
+        <h3 class="font-semibold text-slate-800 mt-4 text-base">Calificación Manual (Tareas)</h3>
+        <p>Las actividades de tipo <em>Tarea</em> requieren tu intervención:</p>
+        <ul class="list-disc pl-5 space-y-1">
+          <li>Entra en <strong>Ver/Calificar</strong> dentro de un intento.</li>
+          <li>Lee la respuesta o revisa el enlace enviado por el alumno.</li>
+          <li>Asigna la puntuación en el recuadro de esa actividad y pulsa <strong>Guardar calificaciones</strong>. La
+            nota total se recalculará automáticamente.</li>
+        </ul>
+      </div>
     </section>
 
     <!-- FAQ -->
     <section id="faq" class="scroll-mt-24 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 class="text-lg font-semibold">4. Preguntas frecuentes</h2>
+      <h2 class="text-lg font-semibold">6. Preguntas frecuentes</h2>
       <div class="mt-3 divide-y">
         <details class="py-3">
-          <summary class="cursor-pointer text-sm font-medium">¿Puedo cambiar el tipo de una actividad una vez creada?</summary>
-          <p class="mt-2 text-sm text-slate-700">Sí. Al editar, cambia el <em>Tipo</em> y completa sus opciones. No borramos configuraciones anteriores (quedan guardadas por si vuelves a ese tipo).</p>
+          <summary class="cursor-pointer text-sm font-medium">¿Puedo cambiar el tipo de una actividad una vez creada?
+          </summary>
+          <p class="mt-2 text-sm text-slate-700">Sí. Al editar, cambia el <em>Tipo</em> y completa sus opciones. No
+            borramos configuraciones anteriores (quedan guardadas por si vuelves a ese tipo).</p>
         </details>
         <details class="py-3">
-          <summary class="cursor-pointer text-sm font-medium">¿Qué significan “Privada” y “Publicada”?</summary>
-          <p class="mt-2 text-sm text-slate-700"><em>Privada</em> limita la visibilidad; <em>Publicada</em> la deja lista para su uso y visibilidad según la configuración del centro.</p>
+          <summary class="cursor-pointer text-sm font-medium">¿Por qué mis alumnos no ven el examen?</summary>
+          <p class="mt-2 text-sm text-slate-700">Asegúrate de que el estado es <strong>Publicado</strong> y que la
+            fecha/hora de inicio ya ha pasado. También debe tener al menos una actividad asociada.</p>
+        </details>
+        <details class="py-3">
+          <summary class="cursor-pointer text-sm font-medium">¿Qué significa el estado “Pendiente” en un intento?
+          </summary>
+          <p class="mt-2 text-sm text-slate-700">Significa que el intento contiene preguntas que requieren corrección
+            manual (como Tareas) o que el profesor aún no ha validado la nota.</p>
         </details>
         <details class="py-3">
           <summary class="cursor-pointer text-sm font-medium">Me da error con el JSON de palabras clave</summary>
-          <p class="mt-2 text-sm text-slate-700">Comprueba comas y comillas. Pruébalo con un validador JSON. Estructura mínima: <code>[{"palabra":"texto","peso":1}]</code>.</p>
+          <p class="mt-2 text-sm text-slate-700">Comprueba comas y comillas. Pruébalo con un validador JSON. Estructura
+            mínima: <code>[{"palabra":"texto","peso":1}]</code>.</p>
         </details>
       </div>
     </section>

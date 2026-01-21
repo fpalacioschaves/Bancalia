@@ -16,13 +16,17 @@ if (($u['role'] ?? '') !== 'admin') {
 //
 // Datos para selects (cargamos todo para dependencias en cliente)
 //
-$centros = pdo()->query('SELECT id, nombre FROM centros WHERE is_active=1 ORDER BY nombre ASC')->fetchAll();
+$centroService = new CentroService(pdo());
+$centros = $centroService->findAll(['onlyActive' => true]);
 
-$fams = pdo()->query('SELECT id, nombre FROM familias_profesionales WHERE is_active=1 ORDER BY nombre ASC')->fetchAll();
+$familiaService = new FamiliaService(pdo());
+$fams = $familiaService->findAll(['onlyActive' => true]);
 
-$cursos = pdo()->query('SELECT id, nombre, familia_id, orden FROM cursos WHERE is_active=1 ORDER BY familia_id ASC, orden ASC, nombre ASC')->fetchAll();
+$cursoService = new CursoService(pdo());
+$cursos = $cursoService->findAll(['onlyActive' => true]);
 
-$asigs = pdo()->query('SELECT id, nombre, curso_id, familia_id, orden FROM asignaturas WHERE is_active=1 ORDER BY familia_id ASC, curso_id ASC, orden ASC, nombre ASC')->fetchAll();
+$asignaturaService = new AsignaturaService(pdo());
+$asigs = $asignaturaService->findAll(['onlyActive' => true]);
 
 //
 // POST
@@ -36,39 +40,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $service = new ProfesorService(pdo());
 
-    // Profesor
-    $centro_id = ($_POST['centro_id'] ?? '') !== '' ? (int) $_POST['centro_id'] : null;
-    $nombre = trim($_POST['nombre'] ?? '');
-    $apellidos = trim($_POST['apellidos'] ?? '');
-    $email = trim($_POST['email'] ?? '');
-    $telefono = trim($_POST['telefono'] ?? '');
-    $notas = trim($_POST['notas'] ?? '');
-    $activo = isset($_POST['is_active']) ? 1 : 0;
-
     // 1. Crear Profesor
+    $centro_id = ($_POST['centro_id'] ?? '') !== '' ? (int) $_POST['centro_id'] : null;
+
     $profesor_id = $service->create([
       'centro_id' => $centro_id,
-      'nombre' => $nombre,
-      'apellidos' => $apellidos,
-      'email' => $email,
-      'telefono' => $telefono,
-      'notas' => $notas,
-      'is_active' => $activo
+      'nombre' => trim($_POST['nombre'] ?? ''),
+      'apellidos' => trim($_POST['apellidos'] ?? ''),
+      'email' => trim($_POST['email'] ?? ''),
+      'telefono' => trim($_POST['telefono'] ?? ''),
+      'notas' => trim($_POST['notas'] ?? ''),
+      'is_active' => isset($_POST['is_active']) ? 1 : 0
     ]);
 
     // 2. Asignaciones
-    // Mapa para validar coherencia
     $cursoToFamilia = [];
     foreach ($cursos as $c)
       $cursoToFamilia[(int) $c['id']] = (int) $c['familia_id'];
+
     $asigToCurso = [];
     foreach ($asigs as $a)
       $asigToCurso[(int) $a['id']] = (int) $a['curso_id'];
-
-    $mappings = [
-      'cursoToFamilia' => $cursoToFamilia,
-      'asigToCurso' => $asigToCurso
-    ];
 
     $inputs = [
       'familias' => $_POST['asig_familia_id'] ?? [],
@@ -77,11 +69,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       'anios' => $_POST['asig_anio'] ?? [],
       'horas' => $_POST['asig_horas'] ?? [],
       'obs' => $_POST['asig_obs'] ?? [],
-      'delete' => [], // En create no borramos nada
-      'ids' => [], // Insert nuevo
+      'delete' => [],
+      'ids' => [],
     ];
 
-    $service->saveAssignments($profesor_id, $centro_id, $inputs, $mappings);
+    $service->saveAssignments($profesor_id, $centro_id, $inputs, [
+      'cursoToFamilia' => $cursoToFamilia,
+      'asigToCurso' => $asigToCurso
+    ]);
 
     flash('success', 'Profesor creado con asignaciones (Vía Service).');
     header('Location: ' . PUBLIC_URL . '/admin/profesores/index.php');

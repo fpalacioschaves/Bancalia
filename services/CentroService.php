@@ -33,14 +33,25 @@ class CentroService
     /**
      * Obtiene todos los centros con filtros opcionales.
      */
-    public function findAll(string $query = ''): array
+    public function findAll(array $filters = []): array
     {
         $params = [];
         $sql = 'SELECT id, nombre, slug, localidad, provincia, comunidad, telefono, email, web, is_active FROM centros';
-        if ($query !== '') {
-            $sql .= ' WHERE nombre LIKE :q OR localidad LIKE :q OR provincia LIKE :q OR comunidad LIKE :q OR slug LIKE :q';
-            $params[':q'] = '%' . $query . '%';
+        $w = [];
+
+        if (!empty($filters['q'])) {
+            $w[] = '(nombre LIKE :q OR localidad LIKE :q OR provincia LIKE :q OR comunidad LIKE :q OR slug LIKE :q)';
+            $params[':q'] = '%' . $filters['q'] . '%';
         }
+
+        if (isset($filters['onlyActive']) && $filters['onlyActive']) {
+            $w[] = 'is_active = 1';
+        }
+
+        if ($w) {
+            $sql .= ' WHERE ' . implode(' AND ', $w);
+        }
+
         $sql .= ' ORDER BY nombre ASC';
 
         $st = $this->pdo->prepare($sql);

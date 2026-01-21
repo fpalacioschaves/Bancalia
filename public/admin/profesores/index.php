@@ -9,34 +9,18 @@ require_once __DIR__ . '/../../../partials/header.php';
 
 
 $q = trim($_GET['q'] ?? '');
-$centro = (int) ($_GET['centro_id'] ?? 0);
+$centroId = (int) ($_GET['centro_id'] ?? 0);
 $activos = ($_GET['activos'] ?? '1') === '0' ? 0 : 1;
 
-$centros = pdo()->query('SELECT id, nombre FROM centros WHERE is_active=1 ORDER BY nombre ASC')->fetchAll();
+$centroService = new CentroService(pdo());
+$centros = $centroService->findAll(['onlyActive' => true]);
 
-$sql = "SELECT p.id, p.nombre, p.apellidos, p.email, p.telefono, p.is_active, c.nombre AS centro
-        FROM profesores p
-        LEFT JOIN centros c ON c.id = p.centro_id";
-$params = [];
-$w = [];
-if ($q !== '') {
-  $w[] = "(p.nombre LIKE :q OR p.apellidos LIKE :q OR p.email LIKE :q OR p.telefono LIKE :q)";
-  $params[':q'] = "%{$q}%";
-}
-if ($centro > 0) {
-  $w[] = "p.centro_id = :cid";
-  $params[':cid'] = $centro;
-}
-$w[] = "p.is_active = :a";
-$params[':a'] = $activos;
-
-if ($w)
-  $sql .= ' WHERE ' . implode(' AND ', $w);
-$sql .= ' ORDER BY p.apellidos ASC, p.nombre ASC';
-
-$st = pdo()->prepare($sql);
-$st->execute($params);
-$rows = $st->fetchAll();
+$profesorService = new ProfesorService(pdo());
+$rows = $profesorService->findAll([
+  'q' => $q,
+  'centro_id' => $centroId,
+  'is_active' => $activos
+]);
 ?>
 
 <h1 class="text-xl font-semibold tracking-tight mb-4">Profesores</h1>
@@ -49,7 +33,7 @@ $rows = $st->fetchAll();
     class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
     <option value="0">Todos los centros</option>
     <?php foreach ($centros as $c): ?>
-      <option value="<?= (int) $c['id'] ?>" <?= $centro === (int) $c['id'] ? 'selected' : '' ?>>
+      <option value="<?= (int) $c['id'] ?>" <?= $centroId === (int) $c['id'] ? 'selected' : '' ?>>
         <?= h($c['nombre']) ?>
       </option>
     <?php endforeach; ?>

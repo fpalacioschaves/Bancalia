@@ -15,22 +15,19 @@ if (($u['role'] ?? '') !== 'admin') {
 try {
   if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     flash('error', 'Método no permitido.');
-    header('Location: ' . PUBLIC_URL . '/admin/profesores/index.php'); exit;
+    header('Location: ' . PUBLIC_URL . '/admin/profesores/index.php');
+    exit;
   }
 
   csrf_check($_POST['csrf'] ?? null);
 
-  $id = (int)($_POST['id'] ?? 0);
-  if ($id <= 0) throw new RuntimeException('ID inválido.');
+  $id = (int) ($_POST['id'] ?? 0);
+  if ($id <= 0)
+    throw new RuntimeException('ID inválido.');
 
-  $st = pdo()->prepare('DELETE FROM profesores WHERE id = :id LIMIT 1');
-  $st->execute([':id' => $id]);
-
-  if ($st->rowCount() > 0) {
-    flash('success', 'Profesor eliminado correctamente.');
-  } else {
-    flash('error', 'No se encontró el profesor.');
-  }
+  $service = new ProfesorService(pdo());
+  $service->delete($id);
+  flash('success', 'Profesor eliminado correctamente.');
 
 } catch (PDOException $e) {
   if ($e->getCode() === '23000') {

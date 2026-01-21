@@ -10,13 +10,18 @@ $u = current_user();
 // --------- CARGA PREVIA ---------
 $id = (int) ($_GET['id'] ?? 0);
 
-// Datos de referencia para selects
-$centros = pdo()->query('SELECT id, nombre FROM centros WHERE is_active=1 ORDER BY nombre ASC')->fetchAll();
-$fams = pdo()->query('SELECT id, nombre FROM familias_profesionales WHERE is_active=1 ORDER BY nombre ASC')->fetchAll();
-$cursos = pdo()->query('SELECT id, nombre, familia_id, orden FROM cursos WHERE is_active=1 ORDER BY familia_id ASC, orden ASC, nombre ASC')->fetchAll();
-$asigs = pdo()->query('SELECT id, nombre, curso_id, familia_id, orden FROM asignaturas WHERE is_active=1 ORDER BY familia_id ASC, curso_id ASC, orden ASC, nombre ASC')->fetchAll();
+$centroService = new CentroService(pdo());
+$centros = $centroService->findAll(['onlyActive' => true]);
 
-// Profesor
+$familiaService = new FamiliaService(pdo());
+$fams = $familiaService->findAll(['onlyActive' => true]);
+
+$cursoService = new CursoService(pdo());
+$cursos = $cursoService->findAll(['onlyActive' => true]);
+
+$asignaturaService = new AsignaturaService(pdo());
+$asigs = $asignaturaService->findAll(['onlyActive' => true]);
+
 $service = new ProfesorService(pdo());
 $prof = $service->find($id);
 
@@ -26,57 +31,34 @@ if (!$prof) {
   exit;
 }
 
-// Asignaciones actuales
-$asignaciones = pdo()->prepare('
-  SELECT pa.id, pa.familia_id, pa.curso_id, pa.asignatura_id, pa.anio_academico, pa.horas, pa.observaciones, pa.is_active,
-         f.nombre AS familia, c.nombre AS curso, a.nombre AS asignatura
-  FROM profesor_asignacion pa
-  JOIN familias_profesionales f ON f.id = pa.familia_id
-  JOIN cursos c ON c.id = pa.curso_id
-  JOIN asignaturas a ON a.id = pa.asignatura_id
-  WHERE pa.profesor_id = :p
-  ORDER BY f.nombre ASC, c.orden ASC, a.orden ASC, a.nombre ASC
-');
-$asignaciones->execute([':p' => $id]);
-$asigRows = $asignaciones->fetchAll();
+$asigRows = $service->getAssignments($id);
 
 // --------- POST (ACTUALIZAR) ---------
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   try {
     csrf_check($_POST['csrf'] ?? null);
 
-    // ----- Datos profesor -----
-    $centro_id = ($_POST['centro_id'] ?? '') !== '' ? (int) $_POST['centro_id'] : null;
-    $nombre = trim($_POST['nombre'] ?? '');
-    $apellidos = trim($_POST['apellidos'] ?? '');
-    $email = trim($_POST['email'] ?? '');
-    $telefono = trim($_POST['telefono'] ?? '');
-    $notas = trim($_POST['notas'] ?? '');
-    $activo = isset($_POST['is_active']) ? 1 : 0;
-
     // 1. Update Profesor
+    $centro_id = ($_POST['centro_id'] ?? '') !== '' ? (int) $_POST['centro_id'] : null;
+
     $service->update($id, [
       'centro_id' => $centro_id,
-      'nombre' => $nombre,
-      'apellidos' => $apellidos,
-      'email' => $email,
-      'telefono' => $telefono,
-      'notas' => $notas,
-      'is_active' => $activo
+      'nombre' => trim($_POST['nombre'] ?? ''),
+      'apellidos' => trim($_POST['apellidos'] ?? ''),
+      'email' => trim($_POST['email'] ?? ''),
+      'telefono' => trim($_POST['telefono'] ?? ''),
+      'notas' => trim($_POST['notas'] ?? ''),
+      'is_active' => isset($_POST['is_active']) ? 1 : 0
     ]);
 
     // 2. Asignaciones
     $cursoToFamilia = [];
     foreach ($cursos as $c)
       $cursoToFamilia[(int) $c['id']] = (int) $c['familia_id'];
+
     $asigToCurso = [];
     foreach ($asigs as $a)
       $asigToCurso[(int) $a['id']] = (int) $a['curso_id'];
-
-    $mappings = [
-      'cursoToFamilia' => $cursoToFamilia,
-      'asigToCurso' => $asigToCurso
-    ];
 
     $inputs = [
       'familias' => $_POST['asig_familia_id'] ?? [],
@@ -89,7 +71,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       'delete' => $_POST['asig_delete'] ?? [],
     ];
 
-    $service->saveAssignments($id, $centro_id, $inputs, $mappings);
+    $service->saveAssignments($id, $centro_id, $inputs, [
+      'cursoToFamilia' => $cursoToFamilia,
+      'asigToCurso' => $asigToCurso
+    ]);
 
     flash('success', 'Profesor actualizado (Vía Service).');
     header('Location: ' . PUBLIC_URL . '/admin/profesores/edit.php?id=' . $id);

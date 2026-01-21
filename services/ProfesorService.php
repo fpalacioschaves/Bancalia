@@ -11,6 +11,53 @@ class ProfesorService
     }
 
     /**
+     * Busca profesores según filtros.
+     */
+    public function findAll(array $filters = []): array
+    {
+        $sql = "SELECT p.*, c.nombre AS centro_nombre 
+                FROM profesores p 
+                LEFT JOIN centros c ON c.id = p.centro_id";
+        $w = [];
+        $params = [];
+
+        if (!empty($filters['q'])) {
+            $w[] = "(p.nombre LIKE :q OR p.apellidos LIKE :q OR p.email LIKE :q OR p.telefono LIKE :q)";
+            $params[':q'] = "%" . $filters['q'] . "%";
+        }
+        if (isset($filters['centro_id']) && $filters['centro_id'] > 0) {
+            $w[] = "p.centro_id = :cid";
+            $params[':cid'] = $filters['centro_id'];
+        }
+        if (isset($filters['is_active'])) {
+            $w[] = "p.is_active = :a";
+            $params[':a'] = (int) $filters['is_active'];
+        }
+
+        if ($w) {
+            $sql .= ' WHERE ' . implode(' AND ', $w);
+        }
+
+        $sql .= ' ORDER BY p.apellidos ASC, p.nombre ASC';
+
+        $st = $this->pdo->prepare($sql);
+        $st->execute($params);
+        return $st->fetchAll();
+    }
+
+    /**
+     * Elimina un profesor por ID.
+     */
+    public function delete(int $id): void
+    {
+        $st = $this->pdo->prepare('DELETE FROM profesores WHERE id = :id LIMIT 1');
+        $st->execute([':id' => $id]);
+        if ($st->rowCount() === 0) {
+            throw new RuntimeException("No se encontró el profesor o no pudo ser eliminado.");
+        }
+    }
+
+    /**
      * Busca un profesor por ID.
      */
     public function find(int $id): ?array
@@ -182,6 +229,24 @@ class ProfesorService
                 ]);
             }
         }
+    }
+
+    /**
+     * Obtiene las asignaciones actuales de un profesor.
+     */
+    public function getAssignments(int $profesorId): array
+    {
+        $st = $this->pdo->prepare('
+          SELECT pa.*, f.nombre AS familia, c.nombre AS curso, a.nombre AS asignatura
+          FROM profesor_asignacion pa
+          JOIN familias_profesionales f ON f.id = pa.familia_id
+          JOIN cursos c ON c.id = pa.curso_id
+          JOIN asignaturas a ON a.id = pa.asignatura_id
+          WHERE pa.profesor_id = :p
+          ORDER BY f.nombre ASC, c.orden ASC, a.orden ASC, a.nombre ASC
+        ');
+        $st->execute([':p' => $profesorId]);
+        return $st->fetchAll();
     }
 
     private function validateProfesorData(array $data, ?int $ignoreId = null): void
