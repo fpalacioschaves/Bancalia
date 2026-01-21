@@ -26,8 +26,28 @@ if (file_exists(__DIR__ . '/.env')) {
 
 /* ===== URLs base ===== */
 if (!defined('BASE_URL')) {
-  // Usar valor de .env o fallback vacío
-  define('BASE_URL', $_ENV['BASE_URL'] ?? '');
+  $envBase = $_ENV['BASE_URL'] ?? null;
+  if ($envBase !== null) {
+    define('BASE_URL', rtrim($envBase, '/'));
+  } else {
+    // Auto-detección: Calcula la ruta relativa desde DOCUMENT_ROOT a este archivo
+    $docRoot = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT'] ?? '');
+    $dir = str_replace('\\', '/', __DIR__);
+    // En Windows el casing de la unidad puede variar (C: vs c:), normalizamos para comparar
+    $docRootLower = strtolower($docRoot);
+    $dirLower = strtolower($dir);
+
+    if ($docRoot !== '' && strpos($dirLower, $docRootLower) === 0) {
+      $detected = substr($dir, strlen($docRoot));
+      $detected = str_replace('\\', '/', $detected);
+      if ($detected !== '' && $detected[0] !== '/')
+        $detected = '/' . $detected;
+      define('BASE_URL', rtrim($detected, '/'));
+    } else {
+      // Fallback si no se puede detectar
+      define('BASE_URL', '');
+    }
+  }
 }
 if (!defined('PUBLIC_URL'))
   define('PUBLIC_URL', BASE_URL . '/public');

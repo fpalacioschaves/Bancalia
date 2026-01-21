@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-require_once $_SERVER['DOCUMENT_ROOT'] . '/bancalia/config.php';
+require_once __DIR__ . '/../../config.php';
 
 /********************************************************************
  * FUNCIONES AUXILIARES
