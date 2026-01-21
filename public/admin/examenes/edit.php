@@ -51,10 +51,10 @@ $asigs = pdo()->query('
   ORDER BY f.nombre ASC, c.nombre ASC, a.nombre ASC
 ')->fetchAll();
 
+$examenService = new \Services\ExamenService(pdo());
+
 // Cargar examen actual
-$stEx = pdo()->prepare('SELECT * FROM examenes WHERE id = :id LIMIT 1');
-$stEx->execute([':id' => $id]);
-$examen = $stEx->fetch(PDO::FETCH_ASSOC);
+$examen = $examenService->find($id);
 
 if (!$examen) {
   http_response_code(404);
@@ -66,99 +66,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   try {
     csrf_check($_POST['csrf'] ?? null);
 
-    $profesor_id = (int) ($_POST['profesor_id'] ?? 0);
-    $familia_id = (int) ($_POST['familia_id'] ?? 0);
-    $curso_id = (int) ($_POST['curso_id'] ?? 0);
-    $asignatura_id = (int) ($_POST['asignatura_id'] ?? 0);
-    $titulo = trim($_POST['titulo'] ?? '');
-    $descripcion = trim($_POST['descripcion'] ?? '');
-    $estado = $_POST['estado'] ?? 'borrador';
-    $fecha_raw = trim($_POST['fecha'] ?? '');
-    $hora_raw = trim($_POST['hora'] ?? '');
-    $duracion_raw = trim($_POST['duracion_minutos'] ?? '');
-    $tipo = $_POST['tipo'] ?? 'examen';
+    $examenService->update($id, $_POST);
 
-    if ($profesor_id <= 0)
-      throw new RuntimeException('Selecciona un profesor.');
-    if ($familia_id <= 0)
-      throw new RuntimeException('Selecciona una familia.');
-    if ($curso_id <= 0)
-      throw new RuntimeException('Selecciona un curso.');
-    if ($asignatura_id <= 0)
-      throw new RuntimeException('Selecciona una asignatura.');
-    if ($titulo === '')
-      throw new RuntimeException('El título es obligatorio.');
-
-    if (!in_array($estado, ['borrador', 'publicado'], true)) {
-      $estado = 'borrador';
-    }
-
-    if (!in_array($tipo, ['examen', 'practica'], true)) {
-      $tipo = 'examen';
-    }
-
-    $fecha = $fecha_raw !== '' ? $fecha_raw : null; // YYYY-MM-DD
-    $hora = $hora_raw !== '' ? $hora_raw : null; // HH:MM (el navegador ya da formato correcto)
-    $duracion_minutos = $duracion_raw !== '' ? (int) $duracion_raw : null;
-
-    // Validaciones de existencia (coherentes con FKs)
-    $chkProf = pdo()->prepare('SELECT 1 FROM profesores WHERE id = :id AND is_active = 1 LIMIT 1');
-    $chkProf->execute([':id' => $profesor_id]);
-    if (!$chkProf->fetch()) {
-      throw new RuntimeException('El profesor seleccionado no existe o no está activo.');
-    }
-
-    $chkFam = pdo()->prepare('SELECT 1 FROM familias_profesionales WHERE id = :id AND is_active = 1 LIMIT 1');
-    $chkFam->execute([':id' => $familia_id]);
-    if (!$chkFam->fetch()) {
-      throw new RuntimeException('La familia seleccionada no existe o no está activa.');
-    }
-
-    $chkCurso = pdo()->prepare('SELECT 1 FROM cursos WHERE id = :id AND is_active = 1 LIMIT 1');
-    $chkCurso->execute([':id' => $curso_id]);
-    if (!$chkCurso->fetch()) {
-      throw new RuntimeException('El curso seleccionado no existe o no está activo.');
-    }
-
-    $chkAsig = pdo()->prepare('SELECT 1 FROM asignaturas WHERE id = :id AND is_active = 1 LIMIT 1');
-    $chkAsig->execute([':id' => $asignatura_id]);
-    if (!$chkAsig->fetch()) {
-      throw new RuntimeException('La asignatura seleccionada no existe o no está activa.');
-    }
-
-    // UPDATE EXACTO según estructura de `examenes` + campo `tipo`
-    $upd = pdo()->prepare('
-      UPDATE examenes
-      SET
-        profesor_id      = :profesor_id,
-        familia_id       = :familia_id,
-        curso_id         = :curso_id,
-        asignatura_id    = :asignatura_id,
-        titulo           = :titulo,
-        descripcion      = :descripcion,
-        estado           = :estado,
-        tipo             = :tipo,
-        fecha            = :fecha,
-        hora             = :hora,
-        duracion_minutos = :duracion_minutos
-      WHERE id = :id
-      LIMIT 1
-    ');
-
-    $upd->execute([
-      ':profesor_id' => $profesor_id,
-      ':familia_id' => $familia_id,
-      ':curso_id' => $curso_id,
-      ':asignatura_id' => $asignatura_id,
-      ':titulo' => $titulo,
-      ':descripcion' => $descripcion !== '' ? $descripcion : null,
-      ':estado' => $estado,
-      ':tipo' => $tipo,
-      ':fecha' => $fecha,
-      ':hora' => $hora,
-      ':duracion_minutos' => $duracion_minutos,
-      ':id' => $id,
-    ]);
+    flash('success', 'Examen actualizado correctamente.');
+    header('Location: ' . PUBLIC_URL . '/admin/examenes/index.php');
+    exit;
 
     flash('success', 'Examen actualizado correctamente.');
     header('Location: ' . PUBLIC_URL . '/admin/examenes/index.php');

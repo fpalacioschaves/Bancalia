@@ -16,42 +16,15 @@ $allowedEstados = ['borrador', 'publicado'];
 // Tipos válidos según la BD
 $allowedTipos = ['examen', 'practica'];
 
-// Construcción de la consulta base
-$sql = "SELECT e.id, e.titulo, e.estado, e.tipo, e.fecha, e.hora
-        FROM examenes e";
-$params = [];
+$examenService = new \Services\ExamenService(pdo());
 
-$w = [];
+$filters = [
+  'q' => $q,
+  'estado' => $estado,
+  'tipo' => $tipo
+];
 
-// Búsqueda por título
-if ($q !== '') {
-  $w[] = 'e.titulo LIKE :q';
-  $params[':q'] = "%{$q}%";
-}
-
-// Filtro por estado
-if ($estado !== '' && in_array($estado, $allowedEstados, true)) {
-  $w[] = 'e.estado = :estado';
-  $params[':estado'] = $estado;
-}
-
-// Filtro por tipo
-if ($tipo !== '' && in_array($tipo, $allowedTipos, true)) {
-  $w[] = 'e.tipo = :tipo';
-  $params[':tipo'] = $tipo;
-}
-
-// Añadir WHERE si procede
-if ($w) {
-  $sql .= ' WHERE ' . implode(' AND ', $w);
-}
-
-// Orden: primero los que tienen fecha, luego por fecha+hora, y si no, por id descendente
-$sql .= ' ORDER BY e.fecha IS NULL ASC, e.fecha ASC, e.hora ASC, e.id DESC';
-
-$st = pdo()->prepare($sql);
-$st->execute($params);
-$rows = $st->fetchAll();
+$rows = $examenService->findAll($filters);
 ?>
 
 <h1 class="text-xl font-semibold tracking-tight mb-4">Exámenes / Hojas de actividades</h1>

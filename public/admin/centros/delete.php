@@ -15,22 +15,20 @@ $u = current_user();
 try {
   if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     flash('error', 'Método no permitido.');
-    header('Location: ' . PUBLIC_URL . '/admin/centros/index.php'); exit;
+    header('Location: ' . PUBLIC_URL . '/admin/centros/index.php');
+    exit;
   }
 
   csrf_check($_POST['csrf'] ?? null);
 
-  $id = (int)($_POST['id'] ?? 0);
-  if ($id <= 0) throw new RuntimeException('ID inválido.');
+  $id = (int) ($_POST['id'] ?? 0);
+  if ($id <= 0)
+    throw new RuntimeException('ID inválido.');
 
-  $st = pdo()->prepare('DELETE FROM centros WHERE id = :id LIMIT 1');
-  $st->execute([':id' => $id]);
+  $centroService = new CentroService(pdo());
+  $centroService->delete($id);
 
-  if ($st->rowCount() > 0) {
-    flash('success', 'Centro eliminado correctamente.');
-  } else {
-    flash('error', 'No se encontró el centro.');
-  }
+  flash('success', 'Centro eliminado correctamente.');
 
 } catch (PDOException $e) {
   if ($e->getCode() === '23000') {

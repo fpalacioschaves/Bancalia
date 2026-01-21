@@ -13,24 +13,10 @@ if ($examenId <= 0) {
   exit('ID de examen inválido.');
 }
 
+$examenService = new \Services\ExamenService(pdo());
+
 // Cargar examen con contexto
-$stEx = pdo()->prepare('
-  SELECT e.*, 
-         p.nombre     AS profesor_nombre,
-         p.apellidos  AS profesor_apellidos,
-         a.nombre     AS asignatura_nombre,
-         c.nombre     AS curso_nombre,
-         f.nombre     AS familia_nombre
-  FROM examenes e
-  LEFT JOIN profesores p              ON p.id = e.profesor_id
-  LEFT JOIN asignaturas a            ON a.id = e.asignatura_id
-  LEFT JOIN cursos c                 ON c.id = e.curso_id
-  LEFT JOIN familias_profesionales f ON f.id = e.familia_id
-  WHERE e.id = :id
-  LIMIT 1
-');
-$stEx->execute([':id' => $examenId]);
-$examen = $stEx->fetch(PDO::FETCH_ASSOC);
+$examen = $examenService->findFull($examenId);
 
 if (!$examen) {
   http_response_code(404);
@@ -38,14 +24,7 @@ if (!$examen) {
 }
 
 // Actividades ya asociadas al examen
-$stEa = pdo()->prepare('
-  SELECT actividad_id, orden, puntuacion
-  FROM examenes_actividades
-  WHERE examen_id = :id
-  ORDER BY orden ASC, id ASC
-');
-$stEa->execute([':id' => $examenId]);
-$eaRows = $stEa->fetchAll(PDO::FETCH_ASSOC);
+$eaRows = $examenService->getActivities($examenId);
 
 $mapEA = [];
 foreach ($eaRows as $r) {
@@ -60,13 +39,6 @@ $q = trim($_GET['q'] ?? '');
 
 $whereActs  = [];
 $paramsActs = [];
-
-/*
-  IMPORTANTE:
-  - Antes usábamos (int)$u['id'], que es el ID de USUARIO.
-  - Las actividades usan profesor_id (tabla profesores / id de profesor).
-  - Aquí tiene sentido filtrar por el profesor del EXAMEN, no por el usuario logado.
-*/
 
 // SI EL USUARIO ES PROFESOR → solo ve actividades del profesor de ESTE examen
 if (($u['role'] ?? '') === 'profesor') {
@@ -112,50 +84,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check($_POST['csrf'] ?? null);
 
     $posted = $_POST['actividades'] ?? [];
-
-    pdo()->beginTransaction();
-
-    // Borrar asociaciones anteriores
-    $del = pdo()->prepare('DELETE FROM examenes_actividades WHERE examen_id = :id');
-    $del->execute([':id' => $examenId]);
-
-    // Insertar nuevas
-    $ins = pdo()->prepare('
-      INSERT INTO examenes_actividades (examen_id, actividad_id, orden, puntuacion)
-      VALUES (:examen_id, :actividad_id, :orden, :puntuacion)
-    ');
-
-    foreach ($posted as $actId => $data) {
-      $actId    = (int)$actId;
-      $selected = isset($data['selected']) ? (int)$data['selected'] : 0;
-
-      if ($actId <= 0 || $selected !== 1) {
-        continue;
-      }
-
-      $orden = isset($data['orden']) ? (int)$data['orden'] : 1;
-      if ($orden <= 0) $orden = 1;
-
-      $puntuacion = isset($data['puntuacion']) && $data['puntuacion'] !== ''
-        ? (float)$data['puntuacion']
-        : null;
-
-      $ins->execute([
-        ':examen_id'    => $examenId,
-        ':actividad_id' => $actId,
-        ':orden'        => $orden,
-        ':puntuacion'   => $puntuacion,
-      ]);
-    }
-
-    pdo()->commit();
+    $examenService->syncActivities($examenId, $posted);
 
     flash('success', 'Actividades del examen actualizadas correctamente.');
     header('Location: ' . PUBLIC_URL . '/admin/examenes/actividades.php?id=' . $examenId);
     exit;
 
   } catch (Throwable $e) {
-    if (pdo()->inTransaction()) pdo()->rollBack();
     flash('error', $e->getMessage());
     header('Location: ' . PUBLIC_URL . '/admin/examenes/actividades.php?id=' . $examenId);
     exit;

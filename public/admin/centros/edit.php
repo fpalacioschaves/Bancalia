@@ -12,12 +12,12 @@ if (!$u || !in_array(($u['role'] ?? ''), ['admin', 'profesor'], true)) {
   exit;
 }
 
-$id = (int) ($_GET['id'] ?? 0);
-$st = pdo()->prepare('SELECT * FROM centros WHERE id=:id LIMIT 1');
-$st->execute([':id' => $id]);
-$centro = $st->fetch();
+$id = (int) ($_GET['id'] ?? $_POST['id'] ?? 0);
+$centroService = new CentroService(pdo());
+$centro = $centroService->find($id);
+
 if (!$centro) {
-  $_SESSION['flash'] = 'Centro no encontrado.';
+  flash('error', 'Centro no encontrado.');
   header('Location: ' . PUBLIC_URL . '/admin/centros/index.php');
   exit;
 }
@@ -26,71 +26,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   try {
     csrf_check($_POST['csrf'] ?? null);
 
-    $nombre = trim((string) ($_POST['nombre'] ?? ''));
-    $slug = trim((string) ($_POST['slug'] ?? ''));
-    $direccion = trim((string) ($_POST['direccion'] ?? ''));
-    $cp = trim((string) ($_POST['cp'] ?? ''));
-    $localidad = trim((string) ($_POST['localidad'] ?? ''));
-    $provincia = trim((string) ($_POST['provincia'] ?? ''));
-    $comunidad = trim((string) ($_POST['comunidad'] ?? ''));
-    $telefono = trim((string) ($_POST['telefono'] ?? ''));
-    $email = trim((string) ($_POST['email'] ?? ''));
-    $web = trim((string) ($_POST['web'] ?? ''));
-    $lat = trim((string) ($_POST['lat'] ?? ''));
-    $lng = trim((string) ($_POST['lng'] ?? ''));
-    $is_active = isset($_POST['is_active']) ? 1 : 0;
+    $centroService->update($id, $_POST);
 
-    if ($nombre === '')
-      throw new RuntimeException('El nombre es obligatorio.');
-
-    if ($slug === '') {
-      $slug = strtolower(trim(preg_replace('/[^a-z0-9\-]+/i', '-', $nombre) ?? ''));
-      $slug = trim($slug, '-');
-    }
-    if ($slug === '')
-      throw new RuntimeException('No se pudo generar un slug válido.');
-
-    // Unicidad de slug excluyendo este id
-    $chk = pdo()->prepare('SELECT 1 FROM centros WHERE slug=:s AND id<>:id LIMIT 1');
-    $chk->execute([':s' => $slug, ':id' => $id]);
-    if ($chk->fetch())
-      throw new RuntimeException('Ya existe otro centro con ese slug.');
-
-    $telefono = ($telefono !== '') ? $telefono : null;
-    $email = ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) ? $email : null;
-    $web = ($web !== '') ? $web : null;
-    $latVal = ($lat !== '' ? (float) $lat : null);
-    $lngVal = ($lng !== '' ? (float) $lng : null);
-
-    $up = pdo()->prepare('
-      UPDATE centros
-      SET nombre=:n, slug=:s, direccion=:d, cp=:cp, localidad=:loc, provincia=:pr, comunidad=:co,
-          telefono=:t, email=:e, web=:w, lat=:lat, lng=:lng, is_active=:a
-      WHERE id=:id
-    ');
-    $up->execute([
-      ':n' => $nombre,
-      ':s' => $slug,
-      ':d' => ($direccion !== '' ? $direccion : null),
-      ':cp' => ($cp !== '' ? $cp : null),
-      ':loc' => ($localidad !== '' ? $localidad : null),
-      ':pr' => ($provincia !== '' ? $provincia : null),
-      ':co' => ($comunidad !== '' ? $comunidad : null),
-      ':t' => $telefono,
-      ':e' => $email,
-      ':w' => $web,
-      ':lat' => $latVal,
-      ':lng' => $lngVal,
-      ':a' => $is_active,
-      ':id' => $id
-    ]);
-
-    $_SESSION['flash'] = 'Centro actualizado.';
+    flash('success', 'Centro actualizado.');
     header('Location: ' . PUBLIC_URL . '/admin/centros/index.php');
     exit;
 
   } catch (Throwable $e) {
-    $_SESSION['flash'] = $e->getMessage();
+    flash('error', $e->getMessage());
     header('Location: ' . PUBLIC_URL . '/admin/centros/edit.php?id=' . $id);
     exit;
   }

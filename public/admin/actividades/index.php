@@ -11,199 +11,39 @@ $role = $u['role'] ?? '';
 $profesorId = (int) ($u['profesor_id'] ?? 0);
 $centroId = (int) ($u['centro_id'] ?? 0);
 
-// Filtros básicos
+// Filtros y orden
 $q = trim((string) ($_GET['q'] ?? ''));
 $fam = (int) ($_GET['familia_id'] ?? 0);
 $cur = (int) ($_GET['curso_id'] ?? 0);
 $asi = (int) ($_GET['asignatura_id'] ?? 0);
-
-// Filtros avanzados (tipo, dificultad, visibilidad, estado)
 $tipo = (string) ($_GET['tipo'] ?? '');
 $dificultad = (string) ($_GET['dificultad'] ?? '');
 $visibilidad = (string) ($_GET['visibilidad'] ?? '');
 $estado = (string) ($_GET['estado'] ?? '');
-
-// Filtro de orden
 $orden = (string) ($_GET['orden'] ?? 'fecha');
-$ordenesPermitidos = ['fecha', 'popularidad', 'dificultad'];
-if (!in_array($orden, $ordenesPermitidos, true)) {
-  $orden = 'fecha';
-}
 
-// Listas de valores permitidos (para validar filtros)
-$tipos = [
-  'opcion_multiple',
-  'verdadero_falso',
-  'respuesta_corta',
-  'rellenar_huecos',
-  'emparejar',
-  'tarea'
-];
+$actividadService = new ActividadService(pdo());
+$rows = $actividadService->findAll([
+  'q' => $q,
+  'familia_id' => $fam,
+  'curso_id' => $cur,
+  'asignatura_id' => $asi,
+  'tipo' => $tipo,
+  'dificultad' => $dificultad,
+  'visibilidad' => $visibilidad,
+  'estado' => $estado,
+  'orden' => $orden
+], $u);
 
-$labelsTipos = [
-  'opcion_multiple' => 'Opción múltiple',
-  'verdadero_falso' => 'Verdadero / Falso',
-  'respuesta_corta' => 'Respuesta corta',
-  'rellenar_huecos' => 'Rellenar huecos',
-  'emparejar' => 'Emparejar',
-  'tarea' => 'Tarea / entrega larga',
-];
+// Meta data para UI
+$labelsTipos = ActividadService::getTipos();
+$labelsDificultad = ActividadService::getDificultades();
+$labelsVisibilidad = ActividadService::getVisibilidades();
+$labelsEstado = ActividadService::getEstados();
 
-$dificultades = ['baja', 'media', 'alta'];
-$labelsDificultad = [
-  'baja' => 'Baja',
-  'media' => 'Media',
-  'alta' => 'Alta',
-];
-
-// AHORA: privada / centro / pública
-$visibilidades = ['privada', 'centro', 'publica'];
-$labelsVisibilidad = [
-  'privada' => 'Privada',
-  'centro' => 'Centro',
-  'publica' => 'Pública',
-];
-
-$estados = ['borrador', 'publicada'];
-$labelsEstado = [
-  'borrador' => 'Borrador',
-  'publicada' => 'Publicada',
-];
-
-// Datos para selects de familia / curso / asignatura
 $familias = pdo()->query("SELECT id, nombre FROM familias_profesionales WHERE is_active=1 ORDER BY nombre ASC")->fetchAll();
 $cursosAll = pdo()->query("SELECT id, nombre, familia_id FROM cursos WHERE is_active=1 ORDER BY familia_id ASC, orden ASC, nombre ASC")->fetchAll();
 $asigsAll = pdo()->query("SELECT id, nombre, curso_id FROM asignaturas WHERE is_active=1 ORDER BY curso_id ASC, orden ASC, nombre ASC")->fetchAll();
-
-// Asignaturas del profesor (para limitar públicas a su ámbito)
-$misAsignaturas = [];
-if ($role !== 'admin' && $profesorId > 0) {
-  $st = pdo()->prepare('SELECT DISTINCT asignatura_id FROM profesor_asignacion WHERE profesor_id=:p');
-  $st->execute([':p' => $profesorId]);
-  $misAsignaturas = array_map('intval', array_column($st->fetchAll(), 'asignatura_id'));
-}
-
-// Query base (incluye popularidad)
-$params = [];
-$sql = "SELECT a.id,
-               a.titulo,
-               a.tipo,
-               a.visibilidad,
-               a.estado,
-               a.dificultad,
-               a.updated_at,
-               a.profesor_id,
-               a.centro_id,
-               asig.nombre AS asignatura,
-               c.nombre    AS curso,
-               f.nombre    AS familia,
-               COALESCE(pop.popularidad, 0) AS popularidad
-        FROM actividades a
-        JOIN asignaturas asig ON asig.id = a.asignatura_id
-        JOIN cursos c         ON c.id = a.curso_id
-        JOIN familias_profesionales f ON f.id = a.familia_id
-        LEFT JOIN (
-          SELECT ea.actividad_id,
-                 COUNT(DISTINCT e.profesor_id) AS popularidad
-          FROM examenes_actividades ea
-          JOIN examenes e ON e.id = ea.examen_id
-          GROUP BY ea.actividad_id
-        ) pop ON pop.actividad_id = a.id";
-
-$where = [];
-
-// Visibilidad según rol
-if ($role === 'admin') {
-  // Admin ve todo, sin restricciones
-} else {
-  if ($misAsignaturas) {
-    // Con asignaturas vinculadas:
-    // - Siempre ve sus actividades
-    // - Ve públicas SOLO de sus asignaturas
-    // - Ve actividades de centro SI coinciden centro_id
-    $in = implode(',', array_fill(0, count($misAsignaturas), '?'));
-    $where[] = "(
-      a.profesor_id = ?
-      OR (a.visibilidad = 'publica' AND a.asignatura_id IN ($in))
-      OR (a.visibilidad = 'centro' AND a.centro_id = ?)
-    )";
-    $params[] = $profesorId;
-    $params = array_merge($params, $misAsignaturas);
-    $params[] = $centroId;
-  } else {
-    // Sin asignaturas vinculadas:
-    // - ve lo suyo
-    // - ve todas públicas
-    // - ve centro si coincide centro_id
-    $where[] = "(
-      a.profesor_id = ?
-      OR a.visibilidad = 'publica'
-      OR (a.visibilidad = 'centro' AND a.centro_id = ?)
-    )";
-    $params[] = $profesorId;
-    $params[] = $centroId;
-  }
-}
-
-// Filtro de texto
-if ($q !== '') {
-  $where[] = "(a.titulo LIKE ? OR a.descripcion LIKE ?)";
-  $params[] = "%$q%";
-  $params[] = "%$q%";
-}
-
-// Filtros por jerarquía académica
-if ($fam > 0) {
-  $where[] = "a.familia_id = ?";
-  $params[] = $fam;
-}
-if ($cur > 0) {
-  $where[] = "a.curso_id = ?";
-  $params[] = $cur;
-}
-if ($asi > 0) {
-  $where[] = "a.asignatura_id = ?";
-  $params[] = $asi;
-}
-
-// Filtros avanzados (tipo, dificultad, visibilidad, estado)
-if ($tipo !== '' && in_array($tipo, $tipos, true)) {
-  $where[] = "a.tipo = ?";
-  $params[] = $tipo;
-}
-
-if ($dificultad !== '' && in_array($dificultad, $dificultades, true)) {
-  $where[] = "a.dificultad = ?";
-  $params[] = $dificultad;
-}
-
-if ($visibilidad !== '' && in_array($visibilidad, $visibilidades, true)) {
-  $where[] = "a.visibilidad = ?";
-  $params[] = $visibilidad;
-}
-
-if ($estado !== '' && in_array($estado, $estados, true)) {
-  $where[] = "a.estado = ?";
-  $params[] = $estado;
-}
-
-if ($where) {
-  $sql .= " WHERE " . implode(' AND ', $where);
-}
-
-// Orden
-$orderSql = 'a.updated_at DESC, a.id DESC'; // fecha por defecto
-if ($orden === 'popularidad') {
-  $orderSql = 'popularidad DESC, a.updated_at DESC';
-} elseif ($orden === 'dificultad') {
-  $orderSql = 'a.dificultad ASC, a.updated_at DESC';
-}
-
-$sql .= " ORDER BY $orderSql LIMIT 200";
-
-$stList = pdo()->prepare($sql);
-$stList->execute($params);
-$rows = $stList->fetchAll();
 
 ?>
 
@@ -248,9 +88,9 @@ $rows = $stList->fetchAll();
   <select name="tipo"
     class="w-56 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus-border-slate-400">
     <option value="">Todos los tipos</option>
-    <?php foreach ($tipos as $t): ?>
-      <option value="<?= h($t) ?>" <?= $tipo === $t ? 'selected' : '' ?>>
-        <?= h($labelsTipos[$t] ?? $t) ?>
+    <?php foreach ($labelsTipos as $k => $v): ?>
+      <option value="<?= h($k) ?>" <?= $tipo === $k ? 'selected' : '' ?>>
+        <?= h($v) ?>
       </option>
     <?php endforeach; ?>
   </select>
@@ -258,9 +98,9 @@ $rows = $stList->fetchAll();
   <select name="dificultad"
     class="w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus-border-slate-400">
     <option value="">Todas las dificultades</option>
-    <?php foreach ($dificultades as $d): ?>
-      <option value="<?= h($d) ?>" <?= $dificultad === $d ? 'selected' : '' ?>>
-        <?= h($labelsDificultad[$d] ?? $d) ?>
+    <?php foreach ($labelsDificultad as $k => $v): ?>
+      <option value="<?= h($k) ?>" <?= $dificultad === $k ? 'selected' : '' ?>>
+        <?= h($v) ?>
       </option>
     <?php endforeach; ?>
   </select>
@@ -268,9 +108,9 @@ $rows = $stList->fetchAll();
   <select name="visibilidad"
     class="w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus-border-slate-400">
     <option value="">Todas las visibilidades</option>
-    <?php foreach ($visibilidades as $v): ?>
-      <option value="<?= h($v) ?>" <?= $visibilidad === $v ? 'selected' : '' ?>>
-        <?= h($labelsVisibilidad[$v] ?? $v) ?>
+    <?php foreach ($labelsVisibilidad as $k => $v): ?>
+      <option value="<?= h($k) ?>" <?= $visibilidad === $k ? 'selected' : '' ?>>
+        <?= h($v) ?>
       </option>
     <?php endforeach; ?>
   </select>
@@ -278,9 +118,9 @@ $rows = $stList->fetchAll();
   <select name="estado"
     class="w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus-border-slate-400">
     <option value="">Todos los estados</option>
-    <?php foreach ($estados as $e): ?>
-      <option value="<?= h($e) ?>" <?= $estado === $e ? 'selected' : '' ?>>
-        <?= h($labelsEstado[$e] ?? $e) ?>
+    <?php foreach ($labelsEstado as $k => $v): ?>
+      <option value="<?= h($k) ?>" <?= $estado === $k ? 'selected' : '' ?>>
+        <?= h($v) ?>
       </option>
     <?php endforeach; ?>
   </select>

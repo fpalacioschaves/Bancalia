@@ -99,6 +99,8 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 // Services
 require_once __DIR__ . '/services/Validator.php';
 require_once __DIR__ . '/services/ProfesorService.php';
+require_once __DIR__ . '/services/CentroService.php';
+require_once __DIR__ . '/services/ActividadService.php';
 
 /* ===== DB ===== */
 function pdo(): PDO

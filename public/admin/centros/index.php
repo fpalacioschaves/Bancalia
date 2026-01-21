@@ -17,17 +17,8 @@ if (!$u || !in_array(($u['role'] ?? ''), ['admin', 'profesor'], true)) {
 
 // Búsqueda
 $q = trim((string) ($_GET['q'] ?? ''));
-$params = [];
-$sql = 'SELECT id, nombre, slug, localidad, provincia, comunidad, telefono, email, web, is_active FROM centros';
-if ($q !== '') {
-  $sql .= ' WHERE nombre LIKE :q OR localidad LIKE :q OR provincia LIKE :q OR comunidad LIKE :q OR slug LIKE :q';
-  $params[':q'] = '%' . $q . '%';
-}
-$sql .= ' ORDER BY nombre ASC';
-
-$st = pdo()->prepare($sql);
-$st->execute($params);
-$rows = $st->fetchAll();
+$centroService = new CentroService(pdo());
+$rows = $centroService->findAll($q);
 ?>
 <div class="mb-6 flex items-center justify-between">
   <div>

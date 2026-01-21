@@ -1,31 +1,31 @@
 <?php
-// public/examenes/delete.php
-// Borra un examen por ID (POST).
+// /public/admin/examenes/delete.php
+declare(strict_types=1);
 
-// TODO: ajusta la ruta según tu proyecto
-require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../../config.php';
+require_login_or_redirect();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: index.php');
+    header('Location: ' . PUBLIC_URL . '/admin/examenes/index.php');
     exit;
 }
 
-$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
-
-if ($id <= 0) {
-    die('ID de examen inválido.');
-}
-
 try {
-    // Gracias a la FK con ON DELETE CASCADE, si la tienes,
-    // se borrarán también las relaciones en examenes_actividades.
-    $stmt = $pdo->prepare("DELETE FROM examenes WHERE id = :id");
-    $stmt->execute([':id' => $id]);
+    csrf_check($_POST['csrf'] ?? null);
 
-} catch (PDOException $e) {
-    die('Error al borrar el examen: ' . h($e->getMessage()));
+    $id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+    if ($id <= 0) {
+        throw new RuntimeException('ID de examen inválido.');
+    }
+
+    $examenService = new \Services\ExamenService(pdo());
+    $examenService->delete($id);
+
+    flash('success', 'Examen eliminado correctamente.');
+
+} catch (Throwable $e) {
+    flash('error', 'Error al borrar el examen: ' . $e->getMessage());
 }
 
-// Volvemos al listado
-header('Location: index.php');
+header('Location: ' . PUBLIC_URL . '/admin/examenes/index.php');
 exit;
