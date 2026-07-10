@@ -1,287 +1,176 @@
 <h1 align="center">🎓 Bancalia</h1>
 
 <p align="center">
-  <strong>Plataforma inteligente de banco de actividades, exámenes y evaluación educativa</strong>
+  <strong>Banco de actividades educativas para crear, clasificar, reutilizar y evaluar recursos formativos</strong>
 </p>
 
 <p align="center">
   <img alt="PHP" src="https://img.shields.io/badge/PHP-8.x-blue" />
   <img alt="MySQL" src="https://img.shields.io/badge/MySQL-MariaDB-orange" />
-  <img alt="Status" src="https://img.shields.io/badge/status-en%20desarrollo-yellow" />
-  <img alt="License" src="https://img.shields.io/badge/license-MIT-green" />
+  <img alt="Frontend" src="https://img.shields.io/badge/Frontend-HTML%20%7C%20CSS%20%7C%20jQuery-61dafb" />
+  <img alt="Estado" src="https://img.shields.io/badge/estado-en%20desarrollo-yellow" />
 </p>
 
-<hr/>
+---
 
-<h2>📑 Índice</h2>
-<ul>
-  <li><a href="#descripcion">Descripción</a></li>
-  <li><a href="#caracteristicas">Características</a></li>
-  <li><a href="#demo--capturas">Demo / Capturas</a></li>
-  <li><a href="#tecnologias">Tecnologías</a></li>
-  <li><a href="#requisitos">Requisitos</a></li>
-  <li><a href="#instalacion-rapida">Instalación rápida</a></li>
-  <li><a href="#base-de-datos">Base de datos</a></li>
-  <li><a href="#uso">Uso</a></li>
-  <li><a href="#despliegue">Despliegue</a></li>
-  <li><a href="#contribuir">Contribuir</a></li>
-  <li><a href="#roadmap">Roadmap</a></li>
-  <li><a href="#seguridad">Seguridad</a></li>
-  <li><a href="#licencia">Licencia</a></li>
-  <li><a href="#contacto">Contacto</a></li>
-</ul>
+## Descripción
 
-<hr/>
+**Bancalia** es una aplicación web orientada a la gestión de actividades educativas. Su objetivo es ayudar al profesorado a crear, clasificar, compartir y reutilizar actividades estructuradas en entornos de Formación Profesional y formación técnica.
 
-<h2 id="descripcion">📘 Descripción</h2>
-<p>
-  <strong>Bancalia</strong> es un banco de actividades educativas que permite a profesores, alumnos y administradores
-  crear, gestionar y utilizar actividades estructuradas (tests, respuestas cortas, rellenar huecos, emparejar, tareas, etc.).
-  Diseñado para centros de Formación Profesional y entornos reglados, con soporte para generación de actividades con IA y opciones
-  de monetización por suscripción.
-</p>
+El proyecto nace de una necesidad habitual en el aula: evitar que las actividades, pruebas, rúbricas y recursos queden dispersos en documentos sueltos, carpetas personales o plataformas poco conectadas entre sí.
 
-<hr/>
+La idea central es convertir ese material didáctico en un **banco organizado de actividades**, consultable por módulo, curso, tema, dificultad, tipo de actividad y etiquetas.
 
-<h2 id="caracteristicas">✨ Características</h2>
+---
 
-<ul>
-  <li>📚 <strong>Banco centralizado de actividades</strong></li>
-  <li>🧩 <strong>Tipos</strong>: Opción múltiple, V/F, Respuesta corta, Rellenar huecos, Emparejar, Tareas con rúbrica</li>
-  <li>👥 <strong>Gestión de permisos</strong>: profesor, alumno, administrador</li>
-  <li>🔄 <strong>Estados de actividad</strong>: borrador / publicada / entregada / corregida</li>
-  <li>🧩 <strong>Integración LMS</strong> (iframe), acceso por QR o código</li>
-  <li>🧠 <strong>Generación de actividades mediante IA</strong> (opcional)</li>
-  <li>💳 <strong>Suscripciones y planes</strong> (Plan gratuito / Plan Pro)</li>
-</ul>
+## Qué problema resuelve
 
-<details>
-  <summary><strong>📌 Ver detalle por apartados</strong></summary>
+En muchos contextos formativos, el profesorado genera una gran cantidad de materiales: cuestionarios, tareas, actividades de refuerzo, ejercicios de evaluación, prácticas, rúbricas o pruebas rápidas. El problema no es solo crearlos, sino mantenerlos ordenados, reutilizables y adaptables.
 
-  <h3>🧩 Tipos de actividad</h3>
-  <ul>
-    <li>Opción múltiple</li>
-    <li>Verdadero / Falso</li>
-    <li>Respuesta corta (palabras clave o regex)</li>
-    <li>Rellenar huecos</li>
-    <li>Emparejar conceptos</li>
-    <li>Tareas de entrega con rúbrica</li>
-  </ul>
+Bancalia propone una solución para:
 
-  <h3>👥 Gestión de roles</h3>
-  <ul>
-    <li>Profesor</li>
-    <li>Alumno</li>
-    <li>Administrador</li>
-  </ul>
+- centralizar actividades y recursos didácticos,
+- clasificar materiales por criterios pedagógicos,
+- reutilizar actividades entre cursos o grupos,
+- preparar pruebas y ejercicios de forma más rápida,
+- facilitar la revisión, mejora y evolución de los materiales,
+- conectar mejor el trabajo docente con la evaluación.
 
-  <h3>🔄 Estados de actividad</h3>
-  <ul>
-    <li>Borrador</li>
-    <li>Publicada</li>
-    <li>Entregada</li>
-    <li>Corregida</li>
-  </ul>
+---
 
-  <h3>🏷️ Clasificación pedagógica completa</h3>
-  <ul>
-    <li>Familia profesional / Grado</li>
-    <li>Curso</li>
-    <li>Asignatura</li>
-    <li>Tema</li>
-    <li>Dificultad</li>
-    <li>Etiquetas compartidas</li>
-  </ul>
+## Funcionalidades previstas
 
-  <h3>📱 Acceso rápido</h3>
-  <ul>
-    <li>Código de acceso</li>
-    <li>Código QR</li>
-  </ul>
+- Banco centralizado de actividades educativas.
+- Gestión de usuarios con perfiles diferenciados.
+- Clasificación por familia, ciclo, curso, módulo, tema, dificultad y etiquetas.
+- Actividades de opción múltiple, verdadero/falso, respuesta corta, huecos, emparejamiento y tareas con rúbrica.
+- Estados de actividad: borrador, publicada, entregada y corregida.
+- Posibilidad de compartir actividades o mantenerlas privadas.
+- Preparación de pruebas a partir de actividades existentes.
+- Acceso rápido mediante código o enlace.
+- Base para integración futura con LMS o plataformas de aula.
+- Posible apoyo de IA para generación o adaptación de actividades.
 
-  <h3>🧩 Integración con LMS</h3>
-  <ul>
-    <li>Iframe embebible (Moodle, etc.)</li>
-  </ul>
+---
 
-  <h3>💳 Suscripciones</h3>
-  <ul>
-    <li>Plan gratuito</li>
-    <li>Plan Pro para profesorado</li>
-  </ul>
-</details>
+## Valor educativo
 
-<hr/>
+Bancalia no está planteado como un ejercicio aislado, sino como una herramienta educativa real. Encaja especialmente en ciclos de FP, certificados de profesionalidad y entornos donde se necesita trabajar con actividades prácticas, evaluación continua y materiales reutilizables.
 
-<h2 id="demo--capturas">🖥️ Demo / Capturas</h2>
-<ul>
-  <li>🔗 <strong>Demo en vivo</strong>: Próximamente</li>
-  <li>🖼️ <strong>Capturas de pantalla</strong>: Próximamente</li>
-</ul>
+El proyecto conecta varias líneas de trabajo:
 
-<hr/>
+- **Docencia técnica:** actividades pensadas para programación, bases de datos, desarrollo web y módulos TIC.
+- **Gestión educativa:** organización de recursos, clasificación, seguimiento y evaluación.
+- **Desarrollo web:** aplicación CRUD con backend PHP, base de datos relacional y estructura modular.
+- **Mejora docente:** reutilización de materiales y construcción progresiva de un repositorio didáctico.
 
-<h2 id="tecnologias">🛠️ Tecnologías</h2>
+---
 
-<table>
-  <thead>
-    <tr>
-      <th align="left">Capa</th>
-      <th align="left">Tecnologías</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><strong>Frontend</strong></td>
-      <td>HTML5, CSS3, jQuery</td>
-    </tr>
-    <tr>
-      <td><strong>Backend</strong></td>
-      <td>PHP 8+, PDO, arquitectura modular</td>
-    </tr>
-    <tr>
-      <td><strong>Base de datos</strong></td>
-      <td>MySQL / MariaDB</td>
-    </tr>
-  </tbody>
-</table>
+## Stack técnico
 
-<hr/>
+| Capa | Tecnología |
+|---|---|
+| Backend | PHP 8+, PDO, arquitectura modular |
+| Frontend | HTML5, CSS3, JavaScript, jQuery |
+| Base de datos | MySQL / MariaDB |
+| Servidor | Apache / Nginx / servidor PHP integrado para desarrollo |
+| Enfoque | CRUD, roles, clasificación pedagógica, gestión educativa |
 
-<h2 id="requisitos">⚙️ Requisitos</h2>
-<ul>
-  <li>PHP &gt;= 8.x</li>
-  <li>MySQL / MariaDB</li>
-  <li>Servidor web (Apache / Nginx)</li>
-  <li>Composer (opcional)</li>
-  <li>Docker / docker-compose (opcional)</li>
-</ul>
+---
 
-<hr/>
+## Arquitectura general
 
-<h2 id="instalacion-rapida">🚀 Instalación rápida</h2>
+El proyecto está planteado como una aplicación web clásica con separación entre:
 
-<h3>1) Clonar el repositorio</h3>
-<pre><code>git clone https://github.com/fpalacioschaves/Bancalia.git
+```txt
+Bancalia/
+├── public/          # Punto de entrada público de la aplicación
+├── config/          # Configuración de entorno y conexión
+├── database/        # Esquemas o volcados de base de datos
+├── src/             # Lógica principal de aplicación
+├── views/           # Plantillas o vistas
+└── assets/          # CSS, JS e imágenes
+```
+
+> La estructura exacta puede evolucionar durante el desarrollo.
+
+---
+
+## Flujo de uso previsto
+
+### Profesorado
+
+1. Crear una actividad.
+2. Clasificarla por curso, módulo, tema y dificultad.
+3. Añadir preguntas, enunciados, soluciones o rúbricas.
+4. Guardarla como borrador o publicarla.
+5. Reutilizarla en una prueba, tarea o actividad de aula.
+6. Revisar resultados y mejorar el recurso.
+
+### Alumnado
+
+1. Acceder a una actividad o prueba.
+2. Resolver las preguntas o entregar la tarea.
+3. Recibir feedback o consultar el estado.
+4. Repetir o mejorar la actividad cuando proceda.
+
+---
+
+## Instalación local orientativa
+
+```bash
+git clone https://github.com/fpalacioschaves/Bancalia.git
 cd Bancalia
-</code></pre>
+```
 
-<h3>2) Configurar entorno</h3>
-<p>Edita el archivo <code>config.php</code> con tus credenciales de base de datos.</p>
+Configura la conexión a base de datos en el archivo de configuración correspondiente y crea una base de datos MySQL/MariaDB para el proyecto.
 
-<h3>3) Base de datos</h3>
-<p>Importa el esquema o dump inicial:</p>
-<pre><code>mysql -u root -p bancalia &lt; database/dump/bancalia.sql
-</code></pre>
+Ejemplo de arranque con servidor PHP integrado:
 
-<h3>4) Arrancar servidor</h3>
-<pre><code>php -S localhost -t public
-</code></pre>
+```bash
+php -S localhost:8000 -t public
+```
 
-<p>
-  Accede a: 👉 <strong><a href="http://localhost">http://localhost</a></strong>
-</p>
+Después accede desde el navegador a:
 
-<hr/>
+```txt
+http://localhost:8000
+```
 
-<h2 id="base-de-datos">🗄️ Base de datos</h2>
-<ul>
-  <li><strong>Esquema relacional normalizado</strong></li>
-  <li><strong>Soporte para</strong>:
-    <ul>
-      <li>actividades</li>
-      <li>exámenes</li>
-      <li>asignaciones</li>
-      <li>entregas</li>
-      <li>usuarios y roles</li>
-      <li>suscripciones</li>
-    </ul>
-  </li>
-</ul>
+---
 
-<p><strong>Restaurar base de datos de ejemplo:</strong></p>
-<pre><code>mysql -u root -p bancalia &lt; database/dump/example.sql
-</code></pre>
+## Estado del proyecto
 
-<hr/>
+Proyecto en desarrollo y evolución. El repositorio funciona como prototipo técnico y como base para una posible herramienta educativa más completa.
 
-<h2 id="uso">▶️ Uso</h2>
+Líneas de mejora previstas:
 
-<h3>👨‍🏫 Flujo típico (profesor)</h3>
-<ol>
-  <li>Crear actividad</li>
-  <li>Clasificarla (curso, asignatura, tema, etiquetas)</li>
-  <li>Marcar como publicada</li>
-  <li>Compartir con el resto del profesorado o mantenerla privada</li>
-  <li>Usarla como parte de un exámen</li>
-</ol>
+- completar flujos de asignación y entrega,
+- mejorar la generación de pruebas,
+- añadir analíticas de uso y resultados,
+- reforzar permisos y roles,
+- preparar integración con LMS,
+- explorar generación asistida de actividades mediante IA.
 
-<h3>🎓 Flujo típico (alumno)</h3>
-<ol>
-  <li>Acceder a la actividad/exámen</li>
-  <li>Resolverla</li>
-  <li>Entregar</li>
-  <li>Consultar feedback y estado</li>
-</ol>
+---
 
-<hr/>
+## Relación con mi perfil profesional
 
-<h2 id="despliegue">☁️ Despliegue</h2>
-<p><strong>Recomendaciones:</strong></p>
-<ul>
-  <li>PHP 8+</li>
-  <li>HTTPS (TLS)</li>
-  <li>Backups periódicos de la base de datos</li>
-  <li>Separar almacenamiento de archivos si se escala</li>
-</ul>
-<p><em>Soporte para Docker previsto.</em></p>
+Bancalia forma parte de una línea de proyectos centrados en tecnología educativa, Formación Profesional y desarrollo de herramientas reales para el aula.
 
-<hr/>
+Se relaciona directamente con otros proyectos como:
 
-<h2 id="contribuir">🤝 Contribuir</h2>
-<p>¡Las contribuciones son bienvenidas!</p>
-<ol>
-  <li>Abre un issue antes de cambios grandes</li>
-  <li>Haz fork del proyecto</li>
-  <li>Crea una rama <code>feature/nombre</code></li>
-  <li>Envía un Pull Request bien documentado</li>
-</ol>
+- [SAFA Twin](https://github.com/fpalacioschaves/safa-twin), gemelo digital académico para FP.
+- [CV React](https://github.com/fpalacioschaves/cv-react), portfolio profesional desarrollado con React y Vite.
+- [Practicalia](https://github.com/fpalacioschaves/practicalia), herramienta para gestión de FP Dual y prácticas.
 
-<hr/>
+---
 
-<h2 id="roadmap">🗺️ Roadmap</h2>
-<ul>
-  <li>✅ MVP: banco de actividades</li>
-  <li>🔄 Asignaciones y entregas</li>
-  <li>📝 Exámenes automáticos</li>
-  <li>🧩 Integración LMS</li>
-  <li>🤖 IA educativa (beta)</li>
-  <li>📊 Analíticas y métricas</li>
-  <li>💳 Monetización y planes avanzados</li>
-</ul>
+## Contacto
 
-<hr/>
+**Francisco Palacios Chaves**  
+Docente FP TIC · Desarrollador web full stack · Tecnología educativa
 
-<h2 id="seguridad">🔐 Seguridad</h2>
-<p>
-  Si detectas una vulnerabilidad, por favor repórtala de forma responsable a:
-  <br/>
-  📧 <strong><a href="mailto:fpalacioschaves@gmail.com">fpalacioschaves@gmail.com</a></strong>
-  <em>(placeholder)</em>
-</p>
-
-<hr/>
-
-<h2 id="licencia">📄 Licencia</h2>
-<p>Este proyecto está bajo licencia <strong>MIT</strong>.</p>
-
-<hr/>
-
-<h2 id="contacto">📬 Contacto</h2>
-<ul>
-  <li>👤 <strong>Mantenedor:</strong> Paco Palacios</li>
-  <li>🐙 <strong>GitHub:</strong> <a href="https://github.com/fpalacioschaves">https://github.com/fpalacioschaves</a></li>
-  <li>📧 <strong>Email:</strong> <a href="mailto:fpalacioschaves@gmail.com">fpalacioschaves@gmail.com</a></li>
-</ul>
-
-
+- GitHub: [https://github.com/fpalacioschaves](https://github.com/fpalacioschaves)
+- CV online: [https://fpalacioschaves.github.io/cv-react/](https://fpalacioschaves.github.io/cv-react/)
+- Email: [fpalacioschaves@gmail.com](mailto:fpalacioschaves@gmail.com)
